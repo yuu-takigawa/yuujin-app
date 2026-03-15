@@ -1,0 +1,6 @@
+{
+  "extends": "expo-router/tsconfig",
+  "compilerOptions": {
+    "strict": true
+  }
+}
