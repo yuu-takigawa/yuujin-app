@@ -24,6 +24,7 @@ const SIDE_SCALE_DROP = 0.12;
 const VISIBLE_RANGE = 3;
 const ARC_Y = 20;
 const OPACITY_DROP = 0.3;
+const SWIPE_VELOCITY_THRESHOLD = 0.3;
 
 export default function FriendsScreen() {
   const router = useRouter();
@@ -71,14 +72,18 @@ export default function FriendsScreen() {
     Animated.spring(scrollX, {
       toValue: clamped,
       useNativeDriver: true,
-      tension: 68,
-      friction: 12,
+      tension: 100,
+      friction: 14,
     }).start();
   };
 
   const panResponder = useMemo(() =>
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 8,
+      onPanResponderGrant: () => {
+        // Stop any running spring animation
+        scrollX.stopAnimation();
+      },
       onPanResponderMove: (_, gs) => {
         const newVal = activeIndexRef.current - gs.dx / CARD_SPACING;
         scrollX.setValue(newVal);
@@ -87,7 +92,7 @@ export default function FriendsScreen() {
         const projected = activeIndexRef.current - gs.dx / CARD_SPACING;
         let targetIndex: number;
 
-        if (Math.abs(gs.vx) > 0.5) {
+        if (Math.abs(gs.vx) > SWIPE_VELOCITY_THRESHOLD) {
           targetIndex = gs.vx > 0
             ? Math.floor(projected)
             : Math.ceil(projected);
@@ -102,7 +107,7 @@ export default function FriendsScreen() {
 
   const getCardTransforms = (index: number) => {
     const len = totalCards;
-    if (len === 0) return { transforms: [], opacity: 1 as any, zIndex: 0, blur: 0 };
+    if (len === 0) return { transforms: [], opacity: 1 as any, zIndex: 0 };
 
     const inputRange: number[] = [];
     const translateXOut: number[] = [];
@@ -140,7 +145,6 @@ export default function FriendsScreen() {
     }
 
     const distFromActive = Math.abs(index - activeIndex);
-    const blur = distFromActive > 0 ? Math.min(distFromActive * 4, 10) : 0;
 
     return {
       transforms: [
@@ -179,7 +183,6 @@ export default function FriendsScreen() {
         extrapolate: 'clamp',
       }),
       zIndex: len - distFromActive,
-      blur,
     };
   };
 
@@ -206,7 +209,7 @@ export default function FriendsScreen() {
           const distFromActive = Math.abs(index - activeIndex);
           if (distFromActive > VISIBLE_RANGE) return null;
 
-          const { transforms, opacity, zIndex, blur } = getCardTransforms(index);
+          const { transforms, opacity, zIndex } = getCardTransforms(index);
           const isAddCard = index === characters.length;
           const char = characters[index];
 
@@ -219,8 +222,6 @@ export default function FriendsScreen() {
                   zIndex,
                   opacity,
                   transform: transforms,
-                  // @ts-ignore — web-only CSS filter for gaussian blur
-                  filter: blur > 0 ? `blur(${blur}px)` : undefined,
                 },
               ]}
             >
