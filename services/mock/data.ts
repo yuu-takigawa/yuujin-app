@@ -10,6 +10,7 @@ export interface User {
   level: number;
   jpLevel: JpLevel;
   onboardingCompleted: boolean;
+  defaultModelId?: string;
 }
 
 export interface Character {

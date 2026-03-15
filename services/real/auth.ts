@@ -20,7 +20,7 @@ interface ServerUser {
   avatarEmoji?: string;
   jpLevel?: string;
   membership?: string;
-  settings?: { onboardingCompleted?: boolean };
+  settings?: { onboardingCompleted?: boolean; defaultModelId?: string };
 }
 
 function mapUser(serverUser: ServerAuthResult['user'], isNewUser = false): User {
@@ -44,6 +44,7 @@ function mapFullUser(s: ServerUser): User {
     level: 1,
     jpLevel: (s.jpLevel || 'N5') as User['jpLevel'],
     onboardingCompleted: s.settings?.onboardingCompleted ?? true,
+    defaultModelId: s.settings?.defaultModelId,
   };
 }
 

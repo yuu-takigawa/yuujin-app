@@ -30,8 +30,10 @@ export default function ModelSelectorModal({ visible, onClose }: ModelSelectorMo
   const setSelectedModel = useCreditStore((s) => s.setSelectedModel);
   const credits = useCreditStore((s) => s.credits);
 
+  const setDefaultModel = useCreditStore((s) => s.setDefaultModel);
+
   const handleSelect = (modelId: string) => {
-    setSelectedModel(modelId);
+    setDefaultModel(modelId);
     onClose();
   };
 
