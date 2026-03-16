@@ -384,6 +384,22 @@
 
 ---
 
+## 2026-03-17 前端部署流程修复
+
+### 问题
+`npx expo export --platform web` 每次构建会生成默认 `index.html`，覆盖自定义 PWA 配置（禁缩放、Safari 全屏、viewport-fit 等）。
+
+### 修复
+新增 `deploy-web.sh` 一键部署脚本，构建后自动用 `web/index.html` 模板替换，动态注入 JS bundle 路径。
+
+### 文件
+| 文件 | 说明 |
+|------|------|
+| `deploy-web.sh` | 构建 → 替换 index.html → scp 上传 ECS |
+| `web/index.html` | 自定义 PWA 模板（禁缩放 + Safari 全屏 + overscroll-behavior） |
+
+---
+
 ## 2026-03-16 API 域名切换
 
 ### 生产 API 地址变更
