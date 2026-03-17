@@ -7,8 +7,8 @@ interface ServerTopic {
 }
 
 export async function drawTopics(characterId: string): Promise<Topic[]> {
-  const result = await post<{ topics: ServerTopic[] }>('/topics/draw', { characterId });
-  return (result.topics || []).map((t, i) => ({
+  const result = await post<{ success: boolean; data: ServerTopic[] }>('/topics/draw', { characterId });
+  return (result.data || []).map((t, i) => ({
     id: `ai-topic-${i}`,
     text: t.text,
     emoji: t.emoji,
