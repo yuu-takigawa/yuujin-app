@@ -78,6 +78,9 @@ export async function put<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
-export async function del<T>(path: string): Promise<T> {
-  return request<T>(path, { method: 'DELETE' });
+export async function del<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'DELETE',
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }

@@ -67,6 +67,8 @@ export default function SettingsScreen() {
   const t = useTheme();
   const user = useAuthStore((s) => s.user);
   const setJpLevel = useAuthStore((s) => s.setJpLevel);
+  const logout = useAuthStore((s) => s.logout);
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const darkMode = useSettingsStore((s) => s.darkMode);
   const setDarkMode = useSettingsStore((s) => s.setDarkMode);
   const jpLevel = user?.jpLevel || 'N4';
@@ -83,6 +85,34 @@ export default function SettingsScreen() {
   const currentModelName = models.find((m) => m.id === selectedModelId)?.name || '自動選択';
 
   const currentLevel = JP_LEVELS.find((l) => l.value === jpLevel) || JP_LEVELS[1];
+
+  const handleLogout = () => {
+    Alert.alert('ログアウト', '本当にログアウトしますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: 'ログアウト', style: 'destructive', onPress: () => {
+          logout();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert('アカウント削除', '本当に削除しますか？この操作は取り消せません。', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '削除', style: 'destructive', onPress: async () => {
+          try {
+            await deleteAccount();
+            router.replace('/(auth)/login');
+          } catch {
+            Alert.alert('エラー', '削除に失敗しました。もう一度お試しください。');
+          }
+        },
+      },
+    ]);
+  };
 
   const handleJpLevelChange = () => {
     const labels = JP_LEVELS.map((l) => `${l.label} — ${l.desc}`);
@@ -196,16 +226,19 @@ export default function SettingsScreen() {
           />
           <RowDivider />
           <SettingsRow
+            icon="log-out-outline"
+            label="ログアウト"
+            destructive
+            iconColor={t.error || '#E53935'}
+            onPress={handleLogout}
+          />
+          <RowDivider />
+          <SettingsRow
             icon="trash-outline"
             label="アカウント削除"
             destructive
             iconColor={t.error || '#E53935'}
-            onPress={() =>
-              Alert.alert('アカウント削除', '本当に削除しますか？この操作は取り消せません。', [
-                { text: 'キャンセル', style: 'cancel' },
-                { text: '削除', style: 'destructive', onPress: () => Alert.alert('準備中', 'この機能は近日公開予定です。') },
-              ])
-            }
+            onPress={handleDeleteAccount}
           />
         </View>
 

@@ -3,7 +3,7 @@
 export const USE_REAL_API = true;
 
 // ─── Auth ───
-export { login, register, refreshToken, updateProfile } from './real/auth';
+export { login, register, refreshToken, updateProfile, deleteAccount } from './real/auth';
 
 // ─── Chat streaming ───
 export { streamResponse, streamText } from './real/chat';
@@ -60,6 +60,12 @@ export type { Notification } from './real/notifications';
 // ─── Credits & Models ───
 export { getCredits, getModels } from './real/credits';
 export type { CreditsInfo, AiModel } from './real/credits';
+
+// ─── Subscriptions ───
+export { upgradeSubscription } from './real/subscription';
+
+// ─── Push Notifications ───
+export { registerPushToken, unregisterPushToken } from './real/push';
 
 // Keep mock data for components that need it (topics, news details fallback)
 export { mockTopics } from './mock/data';

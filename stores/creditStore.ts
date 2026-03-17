@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CreditsInfo, AiModel } from '../services/api';
-import { getCredits, getModels, updateProfile } from '../services/api';
+import { getCredits, getModels, updateProfile, upgradeSubscription } from '../services/api';
 import { useAuthStore } from './authStore';
 
 const AUTH_STORAGE_KEY = 'yuujin_auth';
@@ -13,12 +13,14 @@ interface CreditState {
   models: AiModel[];
   selectedModelId: string | null;
   isLoaded: boolean;
+  isUpgrading: boolean;
 
   loadCredits: () => Promise<void>;
   loadModels: () => Promise<void>;
   setSelectedModel: (modelId: string) => void;
   setDefaultModel: (modelId: string) => Promise<void>;
   updateCredits: (credits: number) => void;
+  upgradePlan: (tier: 'basic' | 'premium') => Promise<void>;
 }
 
 export const useCreditStore = create<CreditState>((set, get) => ({
@@ -28,6 +30,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   models: [],
   selectedModelId: null,
   isLoaded: false,
+  isUpgrading: false,
 
   loadCredits: async () => {
     try {
@@ -95,4 +98,20 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   },
 
   updateCredits: (credits) => set({ credits }),
+
+  upgradePlan: async (tier) => {
+    set({ isUpgrading: true });
+    try {
+      const result = await upgradeSubscription(tier);
+      set({
+        membership: result.membership,
+        credits: result.credits,
+        dailyCredits: result.dailyCredits,
+      });
+      // Reload models after tier change
+      await get().loadModels();
+    } finally {
+      set({ isUpgrading: false });
+    }
+  },
 }));

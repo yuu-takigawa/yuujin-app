@@ -1,10 +1,32 @@
 import { Tabs } from 'expo-router';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useEffect, useState } from 'react';
-import { getUnreadCount } from '../../services/api';
+import { getUnreadCount, registerPushToken } from '../../services/api';
+
+async function registerForPushNotifications() {
+  if (Platform.OS === 'web') return;
+  try {
+    const { default: Notifications } = await import('expo-notifications');
+    const Constants = (await import('expo-constants')).default;
+
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== 'granted') return;
+
+    // EAS projectId 必须在 app.json extra.eas.projectId 配置
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) return; // 未配置 EAS 项目时跳过
+
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (token.data) {
+      await registerPushToken(token.data, 'expo');
+    }
+  } catch {
+    // 推送注册失败不影响主功能
+  }
+}
 
 export default function MainLayout() {
   const t = useTheme();
@@ -15,6 +37,7 @@ export default function MainLayout() {
     const fetch = () => getUnreadCount().then(setUnreadCount).catch(() => {});
     fetch();
     const interval = setInterval(fetch, 60000); // 每分钟轮询一次
+    registerForPushNotifications(); // 注册推送令牌（失败时静默）
     return () => clearInterval(interval);
   }, []);
 

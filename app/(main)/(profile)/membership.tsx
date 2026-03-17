@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { ActivityIndicator } from 'react-native';
 
 type Tier = 'free' | 'basic' | 'premium' | 'admin';
 
@@ -62,6 +63,8 @@ export default function MembershipScreen() {
   const membership = useCreditStore((s) => s.membership) as Tier;
   const credits = useCreditStore((s) => s.credits);
   const dailyCredits = useCreditStore((s) => s.dailyCredits);
+  const upgradePlan = useCreditStore((s) => s.upgradePlan);
+  const isUpgrading = useCreditStore((s) => s.isUpgrading);
 
   const isAdmin = membership === 'admin';
   const currentTierOrder = TIER_ORDER[membership] ?? 0;
@@ -206,11 +209,34 @@ export default function MembershipScreen() {
               {/* CTA */}
               {!isCurrent && isUpgrade && (
                 <TouchableOpacity
-                  style={[styles.ctaBtn, { backgroundColor: plan.color }]}
+                  style={[styles.ctaBtn, { backgroundColor: isUpgrading ? plan.color + '88' : plan.color }]}
                   activeOpacity={0.8}
-                  onPress={() => Alert.alert('準備中', '支払い機能は近日公開予定です。')}
+                  disabled={isUpgrading}
+                  onPress={() =>
+                    Alert.alert(
+                      `${plan.name}にアップグレード`,
+                      `毎日${plan.dailyCredits}ポイントが利用可能になります。\n\n※現在テスト中のため無料でアップグレードできます。`,
+                      [
+                        { text: 'キャンセル', style: 'cancel' },
+                        {
+                          text: 'アップグレード', onPress: async () => {
+                            try {
+                              await upgradePlan(plan.tier as 'basic' | 'premium');
+                              Alert.alert('🎉 アップグレード完了', `${plan.name}になりました！`);
+                            } catch {
+                              Alert.alert('エラー', 'アップグレードに失敗しました。');
+                            }
+                          },
+                        },
+                      ],
+                    )
+                  }
                 >
-                  <Text style={styles.ctaBtnText}>アップグレード</Text>
+                  {isUpgrading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.ctaBtnText}>アップグレード</Text>
+                  )}
                 </TouchableOpacity>
               )}
               {isCurrent && (

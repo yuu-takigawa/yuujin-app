@@ -1,4 +1,4 @@
-import { get, post, put, setTokens, getRefreshToken } from '../http';
+import { get, post, put, del, setTokens, getRefreshToken } from '../http';
 import type { User } from '../mock/data';
 
 interface AuthResponse {
@@ -76,4 +76,8 @@ export async function refreshToken(): Promise<{ token: string }> {
 
 export async function updateProfile(updates: { name?: string; jpLevel?: string; settings?: Record<string, unknown> }): Promise<void> {
   await put('/users/me', updates);
+}
+
+export async function deleteAccount(): Promise<void> {
+  await del('/users/me');
 }

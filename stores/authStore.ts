@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '../services/api';
-import { login as apiLogin, register as apiRegister, updateProfile, USE_REAL_API } from '../services/api';
+import { login as apiLogin, register as apiRegister, updateProfile, deleteAccount as apiDeleteAccount, USE_REAL_API } from '../services/api';
 import { setTokens } from '../services/http';
 
 const AUTH_STORAGE_KEY = 'yuujin_auth';
@@ -14,6 +14,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => void;
+  deleteAccount: () => Promise<void>;
   completeOnboarding: () => void;
   setJpLevel: (level: User['jpLevel']) => void;
   updateUser: (updates: { username?: string; avatarEmoji?: string; avatarUrl?: string }) => Promise<void>;
@@ -67,6 +68,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    setTokens(null);
+    set({ token: null, user: null });
+    AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+  },
+
+  deleteAccount: async () => {
+    if (USE_REAL_API) {
+      await apiDeleteAccount();
+    }
     setTokens(null);
     set({ token: null, user: null });
     AsyncStorage.removeItem(AUTH_STORAGE_KEY);
