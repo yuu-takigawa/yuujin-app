@@ -347,6 +347,7 @@ export default function ConversationScreen() {
         visible={topicDrawVisible}
         onClose={() => setTopicDrawVisible(false)}
         onSelectTopic={(topic) => handleTopicSend(topic.text)}
+        characterId={character?.id}
       />
 
       <NewsPickerModal

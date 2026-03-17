@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { radii } from '../../constants/theme';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
-import { getNewsDetail } from '../../services/api';
+import { getNewsDetail, getNewsComments, postNewsComment } from '../../services/api';
 import type { NewsArticleDetail, NewsParagraph, NewsComment } from '../../services/api';
 
 function formatCommentTime(dateStr: string): string {
@@ -35,6 +35,16 @@ export default function NewsDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [article, setArticle] = useState<NewsArticleDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [comments, setComments] = useState<NewsComment[]>([]);
+  const [sending, setSending] = useState(false);
+  const commentInputRef = useRef<TextInput>(null);
+
+  const loadComments = async (id: string) => {
+    try {
+      const list = await getNewsComments(id);
+      setComments(list);
+    } catch { /* silent */ }
+  };
 
   useEffect(() => {
     if (!articleId) return;
@@ -43,7 +53,21 @@ export default function NewsDetailScreen() {
       setArticle(detail);
       setLoading(false);
     }).catch(() => setLoading(false));
+    loadComments(articleId);
   }, [articleId]);
+
+  const handleSendComment = async () => {
+    if (!commentText.trim() || !articleId || sending) return;
+    setSending(true);
+    try {
+      await postNewsComment(articleId, commentText.trim());
+      setCommentText('');
+      commentInputRef.current?.blur();
+      await loadComments(articleId);
+    } catch { /* silent */ } finally {
+      setSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -137,7 +161,6 @@ export default function NewsDetailScreen() {
   );
 
   const paragraphs = article.paragraphs || [];
-  const comments = article.comments || [];
 
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
@@ -222,17 +245,25 @@ export default function NewsDetailScreen() {
 
           <View style={[styles.commentInput, { backgroundColor: t.surface, borderColor: t.border }]}>
             <TextInput
+              ref={commentInputRef}
               style={[styles.commentField, { color: t.text }]}
               placeholder="コメントを書く..."
               placeholderTextColor={t.textSecondary}
               value={commentText}
               onChangeText={setCommentText}
+              returnKeyType="send"
+              onSubmitEditing={handleSendComment}
+              blurOnSubmit={false}
             />
             <TouchableOpacity
-              style={[styles.commentSend, { backgroundColor: commentText.trim() ? t.brand : t.inputBg }]}
-              disabled={!commentText.trim()}
+              style={[styles.commentSend, { backgroundColor: commentText.trim() && !sending ? t.brand : t.inputBg }]}
+              onPress={handleSendComment}
+              disabled={!commentText.trim() || sending}
             >
-              <Ionicons name="arrow-up" size={16} color={commentText.trim() ? '#FFFFFF' : t.textSecondary} />
+              {sending
+                ? <ActivityIndicator size={12} color={t.textSecondary} />
+                : <Ionicons name="arrow-up" size={16} color={commentText.trim() ? '#FFFFFF' : t.textSecondary} />
+              }
             </TouchableOpacity>
           </View>
         </View>

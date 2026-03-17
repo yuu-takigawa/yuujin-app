@@ -1,6 +1,32 @@
 import { get, post } from '../http';
 import type { NewsArticle, NewsArticleDetail, NewsParagraph, NewsComment } from '../mock/data';
 
+interface ServerComment {
+  id: string;
+  newsId: string;
+  userId: string | null;
+  characterId: string | null;
+  parentId: string | null;
+  content: string;
+  isAi: number;
+  createdAt: string;
+  author: { id: string; name: string; avatarEmoji: string; isAi: boolean } | null;
+  replies?: ServerComment[];
+}
+
+function mapComment(c: ServerComment, articleId: string): NewsComment {
+  return {
+    id: c.id,
+    articleId,
+    characterId: c.characterId || c.userId || '',
+    characterName: c.author?.name || 'ゲスト',
+    characterEmoji: c.author?.avatarEmoji || '👤',
+    content: c.content,
+    createdAt: c.createdAt,
+    replies: (c.replies || []).map((r) => mapComment(r, articleId)),
+  };
+}
+
 interface ServerNewsArticle {
   id: string;
   title: string;
@@ -92,4 +118,17 @@ export async function getNewsDetail(id: string): Promise<NewsArticleDetail | nul
 
 export async function markNewsAsRead(id: string): Promise<void> {
   await post(`/news/${id}/read`);
+}
+
+export async function getNewsComments(newsId: string): Promise<NewsComment[]> {
+  const list = await get<ServerComment[]>(`/news/${newsId}/comments`);
+  return list.map((c) => mapComment(c, newsId));
+}
+
+export async function postNewsComment(
+  newsId: string,
+  content: string,
+  parentId?: string,
+): Promise<{ id: string }> {
+  return post<{ id: string }>(`/news/${newsId}/comments`, { content, parentId });
 }

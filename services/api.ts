@@ -44,7 +44,14 @@ export {
 } from './real/friends';
 
 // ─── News ───
-export { getNewsArticles, getNewsDetail, markNewsAsRead } from './real/news';
+export { getNewsArticles, getNewsDetail, markNewsAsRead, getNewsComments, postNewsComment } from './real/news';
+
+// ─── Topics ───
+export { drawTopics } from './real/topics';
+
+// ─── Notifications ───
+export { getNotifications, getUnreadCount, markAllRead } from './real/notifications';
+export type { Notification } from './real/notifications';
 
 // ─── Credits & Models ───
 export { getCredits, getModels } from './real/credits';

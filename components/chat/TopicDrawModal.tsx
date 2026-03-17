@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { mockTopics } from '../../services/api';
+import { mockTopics, drawTopics } from '../../services/api';
 import type { Topic } from '../../services/api';
 import HalfScreenModal from '../common/HalfScreenModal';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,14 +10,32 @@ interface TopicDrawModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectTopic: (topic: Topic) => void;
+  characterId?: string;
 }
 
-export default function TopicDrawModal({ visible, onClose, onSelectTopic }: TopicDrawModalProps) {
+export default function TopicDrawModal({ visible, onClose, onSelectTopic, characterId }: TopicDrawModalProps) {
   const t = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [topics, setTopics] = useState<Topic[]>(mockTopics);
+  const [loadingTopics, setLoadingTopics] = useState(false);
   const cardAnim = useRef(new Animated.Value(1)).current;
   const panY = useRef(new Animated.Value(0)).current;
   const panOpacity = useRef(new Animated.Value(1)).current;
+
+  // 每次打开时从 API 拉取 AI 生成的话题
+  useEffect(() => {
+    if (!visible || !characterId) return;
+    setLoadingTopics(true);
+    drawTopics(characterId)
+      .then((aiTopics) => {
+        if (aiTopics.length > 0) {
+          setTopics(aiTopics);
+          setCurrentIndex(0);
+        }
+      })
+      .catch(() => { /* fall back to mockTopics */ })
+      .finally(() => setLoadingTopics(false));
+  }, [visible, characterId]);
 
   const shuffleTopic = useCallback(() => {
     Animated.timing(cardAnim, {
@@ -25,16 +43,16 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic }: Topi
       duration: 120,
       useNativeDriver: true,
     }).start(() => {
-      setCurrentIndex((prev) => (prev + 1) % mockTopics.length);
+      setCurrentIndex((prev) => (prev + 1) % topics.length);
       Animated.timing(cardAnim, {
         toValue: 1,
         duration: 120,
         useNativeDriver: true,
       }).start();
     });
-  }, []);
+  }, [topics.length]);
 
-  const currentTopic = mockTopics[currentIndex];
+  const currentTopic = topics[currentIndex] || mockTopics[0];
 
   const handleSend = useCallback(() => {
     onSelectTopic(currentTopic);
@@ -99,9 +117,19 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic }: Topi
             style={styles.frontCardInner}
             onPress={shuffleTopic}
             activeOpacity={0.85}
+            disabled={loadingTopics}
           >
-            <Text style={[styles.cardTopic, { color: t.text }]}>{currentTopic.text}</Text>
-            <Text style={[styles.cardHint, { color: t.textSecondary }]}>タップしてシャッフル</Text>
+            {loadingTopics ? (
+              <>
+                <ActivityIndicator size="large" color={t.brand} />
+                <Text style={[styles.cardHint, { color: t.textSecondary }]}>AI が話題を考えています...</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.cardTopic, { color: t.text }]}>{currentTopic.text}</Text>
+                <Text style={[styles.cardHint, { color: t.textSecondary }]}>タップしてシャッフル</Text>
+              </>
+            )}
           </TouchableOpacity>
         </Animated.View>
       </View>

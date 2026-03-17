@@ -1,12 +1,22 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
+import { useEffect, useState } from 'react';
+import { getUnreadCount } from '../../services/api';
 
 export default function MainLayout() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetch = () => getUnreadCount().then(setUnreadCount).catch(() => {});
+    fetch();
+    const interval = setInterval(fetch, 60000); // 每分钟轮询一次
+    return () => clearInterval(interval);
+  }, []);
 
   const tabBarHeight = 52 + insets.bottom;
 
@@ -74,10 +84,37 @@ export default function MainLayout() {
         options={{
           title: 'マイページ',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+            <View>
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+              {unreadCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 12,
+  },
+});
