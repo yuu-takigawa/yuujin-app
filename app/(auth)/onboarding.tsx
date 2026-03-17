@@ -29,7 +29,7 @@ export default function OnboardingScreen() {
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters);
   const addFriend = useFriendStore((s) => s.addFriend);
 
-  const levels: Array<import('../../services/api').JpLevel> = ['none', 'N5', 'N4', 'N3', 'N2', 'N1'];
+  const levels: Array<import('../../services/api').JpLevel> = ['none', 'N5', 'N4', 'N3', 'N2', 'N1', 'native'];
   const levelDescriptions: Record<string, string> = {
     none: '🔰 無経験 — まったくの初心者',
     N5: '初心者 — ひらがな・カタカナ、基本的な挨拶',
@@ -37,6 +37,7 @@ export default function OnboardingScreen() {
     N3: '中級 — 日常的な場面で使える',
     N2: '中上級 — 幅広い場面で使える',
     N1: '上級 — 複雑な文章も理解できる',
+    native: '🇯🇵 母語話者 — ネイティブレベル',
   };
 
   const handleLevelSelect = () => {

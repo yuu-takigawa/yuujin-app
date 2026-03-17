@@ -1,6 +1,6 @@
 // ─── Types ───
 
-export type JpLevel = 'none' | 'N5' | 'N4' | 'N3' | 'N2' | 'N1';
+export type JpLevel = 'none' | 'N5' | 'N4' | 'N3' | 'N2' | 'N1' | 'native';
 
 export interface User {
   id: string;

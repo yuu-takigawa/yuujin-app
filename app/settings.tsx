@@ -16,7 +16,7 @@ export default function SettingsScreen() {
   const jpLevel = useSettingsStore((s) => s.jpLevel);
   const setJpLevel = useSettingsStore((s) => s.setJpLevel);
 
-  const levels: Array<import('../services/api').JpLevel> = ['none', 'N5', 'N4', 'N3', 'N2', 'N1'];
+  const levels: Array<import('../services/api').JpLevel> = ['none', 'N5', 'N4', 'N3', 'N2', 'N1', 'native'];
 
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
                   { color: jpLevel === lv ? '#FFF' : t.text },
                 ]}
               >
-                {lv === 'none' ? '🔰' : lv}
+                {lv === 'none' ? '🔰' : lv === 'native' ? '🇯🇵' : lv}
               </Text>
             </TouchableOpacity>
           ))}
