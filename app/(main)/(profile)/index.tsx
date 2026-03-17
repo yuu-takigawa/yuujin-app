@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,8 +90,9 @@ export default function ProfileScreen() {
   // 经过乱码过滤的安全显示名
   const displayName = safeDisplayName(user?.username, user?.email);
 
-  // Avatar: emoji if set, else first character of safe display name
-  const hasEmoji = !!user?.avatarEmoji && user.avatarEmoji !== '👤';
+  // Avatar priority: image > emoji > letter
+  const hasImage = !!user?.avatarUrl;
+  const hasEmoji = !hasImage && !!user?.avatarEmoji && user.avatarEmoji !== '👤';
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const menuItems = [
@@ -160,7 +161,9 @@ export default function ProfileScreen() {
                 activeOpacity={0.8}
               >
                 <View style={[styles.avatar, { backgroundColor: t.surface }]}>
-                  {hasEmoji ? (
+                  {hasImage ? (
+                    <Image source={{ uri: user!.avatarUrl }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+                  ) : hasEmoji ? (
                     <Text style={styles.avatarEmoji}>{user!.avatarEmoji}</Text>
                   ) : (
                     <Text style={[styles.avatarLetter, { color: tierColor }]}>{avatarLetter}</Text>

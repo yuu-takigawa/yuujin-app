@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { uploadAvatar } from '../../../services/api';
 
 function safeDisplayName(username: string | undefined, email: string | undefined): string {
   if (!username || username.trim().length === 0) return email?.split('@')[0] || '';
@@ -27,7 +30,37 @@ export default function EditProfileScreen() {
 
   const [username, setUsername] = useState(safeDisplayName(user?.username, user?.email));
   const [selectedEmoji, setSelectedEmoji] = useState(user?.avatarEmoji || '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要', 'フォトライブラリへのアクセスを許可してください');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType || 'image/jpeg';
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadAvatar(asset.uri, mimeType, 'user', user!.id);
+      setAvatarUrl(url);
+      setSelectedEmoji(''); // 切换到图片模式时清除 emoji
+    } catch (err) {
+      Alert.alert('アップロード失敗', (err as Error).message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleSave = async () => {
     const trimmed = username.trim();
@@ -37,15 +70,16 @@ export default function EditProfileScreen() {
     }
     setSaving(true);
     try {
-      await updateUser({ username: trimmed, avatarEmoji: selectedEmoji });
+      await updateUser({ username: trimmed, avatarEmoji: selectedEmoji, avatarUrl: avatarUrl || undefined });
       router.back();
     } finally {
       setSaving(false);
     }
   };
 
+  const hasImage = !!avatarUrl;
   const currentEmoji = selectedEmoji || user?.username?.charAt(0) || '?';
-  const hasEmoji = !!selectedEmoji;
+  const hasEmoji = !!selectedEmoji && !hasImage;
 
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
@@ -70,18 +104,34 @@ export default function EditProfileScreen() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Current avatar preview */}
         <View style={styles.avatarSection}>
-          <View style={[styles.avatarPreview, { backgroundColor: t.brandLight, borderColor: t.border }]}>
-            {hasEmoji ? (
+          <TouchableOpacity
+            style={[styles.avatarPreview, { backgroundColor: t.brandLight, borderColor: t.brand }]}
+            onPress={handlePickImage}
+            activeOpacity={0.8}
+            disabled={uploadingAvatar}
+          >
+            {uploadingAvatar ? (
+              <ActivityIndicator size="large" color={t.brand} />
+            ) : hasImage ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : hasEmoji ? (
               <Text style={styles.avatarEmoji}>{currentEmoji}</Text>
             ) : (
               <Text style={[styles.avatarLetter, { color: t.brand }]}>{user?.username?.charAt(0)?.toUpperCase() || '?'}</Text>
             )}
-          </View>
-          {hasEmoji && (
-            <TouchableOpacity onPress={() => setSelectedEmoji('')} activeOpacity={0.7}>
+            {/* Camera overlay */}
+            {!uploadingAvatar && (
+              <View style={[styles.cameraOverlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
+                <Ionicons name="camera" size={22} color="#FFFFFF" />
+              </View>
+            )}
+          </TouchableOpacity>
+          {(hasImage || hasEmoji) && (
+            <TouchableOpacity onPress={() => { setAvatarUrl(''); setSelectedEmoji(''); }} activeOpacity={0.7}>
               <Text style={[styles.clearEmoji, { color: t.textSecondary }]}>デフォルトに戻す</Text>
             </TouchableOpacity>
           )}
+          <Text style={[styles.uploadHint, { color: t.textSecondary }]}>タップして写真を変更</Text>
         </View>
 
         {/* Emoji grid */}
@@ -158,13 +208,25 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    borderWidth: 1,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: 88, height: 88, borderRadius: 44 },
   avatarEmoji: { fontSize: 44 },
   avatarLetter: { fontSize: 36, fontWeight: '700' },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   clearEmoji: { fontSize: 13 },
+  uploadHint: { fontSize: 12, marginTop: 2 },
   card: {
     borderRadius: 12,
     padding: 16,

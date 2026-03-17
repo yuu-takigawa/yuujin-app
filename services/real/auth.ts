@@ -41,6 +41,7 @@ function mapFullUser(s: ServerUser): User {
     email: s.email,
     username: s.name,
     avatarEmoji: s.avatarEmoji || '👤',
+    avatarUrl: s.avatarUrl || undefined,
     level: 1,
     jpLevel: (s.jpLevel || 'N5') as User['jpLevel'],
     onboardingCompleted: s.settings?.onboardingCompleted ?? true,

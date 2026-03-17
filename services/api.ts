@@ -49,6 +49,10 @@ export { getNewsArticles, getNewsDetail, markNewsAsRead, getNewsComments, postNe
 // ─── Topics ───
 export { drawTopics } from './real/topics';
 
+// ─── Avatars ───
+export { getAvatarPresets, uploadAvatar } from './real/avatars';
+export type { AvatarPreset } from './real/avatars';
+
 // ─── Notifications ───
 export { getNotifications, getUnreadCount, markAllRead } from './real/notifications';
 export type { Notification } from './real/notifications';

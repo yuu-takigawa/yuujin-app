@@ -16,7 +16,7 @@ interface AuthState {
   logout: () => void;
   completeOnboarding: () => void;
   setJpLevel: (level: User['jpLevel']) => void;
-  updateUser: (updates: { username?: string; avatarEmoji?: string }) => Promise<void>;
+  updateUser: (updates: { username?: string; avatarEmoji?: string; avatarUrl?: string }) => Promise<void>;
   restoreSession: () => Promise<void>;
 }
 

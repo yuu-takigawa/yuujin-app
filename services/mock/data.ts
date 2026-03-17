@@ -7,6 +7,7 @@ export interface User {
   email: string;
   username: string;
   avatarEmoji: string;
+  avatarUrl?: string;
   level: number;
   jpLevel: JpLevel;
   onboardingCompleted: boolean;
@@ -64,6 +65,7 @@ export interface NewsArticle {
   imageEmoji: string;
   imageUrl?: string;
   url: string;
+  difficulty?: string; // N5 / N4 / N3 / N2 / N1
 }
 
 export interface NewsParagraph {

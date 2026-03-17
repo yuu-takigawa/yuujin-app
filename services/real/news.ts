@@ -89,6 +89,7 @@ function mapArticle(s: ServerNewsArticle): NewsArticle {
     imageEmoji: ann.imageEmoji,
     imageUrl: s.imageUrl || undefined,
     url: s.sourceUrl || '',
+    difficulty: s.difficulty || undefined,
   };
 }
 

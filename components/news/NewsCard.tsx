@@ -4,6 +4,14 @@ import { useTheme } from '../../hooks/useTheme';
 import { spacing, fontSize, radii } from '../../constants/theme';
 import type { NewsArticle } from '../../services/api';
 
+const DIFFICULTY_COLOR: Record<string, string> = {
+  N5: '#22C55E', // green - easiest
+  N4: '#84CC16',
+  N3: '#EAB308', // yellow
+  N2: '#F97316', // orange
+  N1: '#EF4444', // red - hardest
+};
+
 interface NewsCardProps {
   article: NewsArticle;
   onPress?: () => void;
@@ -37,6 +45,13 @@ export default function NewsCard({ article, onPress, onShare }: NewsCardProps) {
       {/* Meta row */}
       <View style={styles.metaRow}>
         <View style={styles.metaLeft}>
+          {article.difficulty && (
+            <View style={[styles.diffBadge, { backgroundColor: (DIFFICULTY_COLOR[article.difficulty] || '#9CA3AF') + '22', borderColor: (DIFFICULTY_COLOR[article.difficulty] || '#9CA3AF') + '66' }]}>
+              <Text style={[styles.diffText, { color: DIFFICULTY_COLOR[article.difficulty] || '#9CA3AF' }]}>
+                {article.difficulty}
+              </Text>
+            </View>
+          )}
           <Text style={[styles.source, { color: t.textSecondary }]}>{article.source}</Text>
           <Text style={[styles.dot, { color: t.textSecondary }]}>·</Text>
           <Text style={[styles.time, { color: t.textSecondary }]}>{article.timeAgo}</Text>
@@ -95,5 +110,15 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
+  },
+  diffBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  diffText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
