@@ -103,9 +103,20 @@ function mapArticleDetail(s: ServerNewsArticle): NewsArticleDetail {
   };
 }
 
-export async function getNewsArticles(): Promise<NewsArticle[]> {
-  const list = await get<ServerNewsArticle[]>('/news/');
-  return list.map(mapArticle);
+export async function getNewsArticles(
+  options?: { limit?: number; offset?: number },
+): Promise<{ articles: NewsArticle[]; hasMore: boolean }> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.offset) params.set('offset', String(options.offset));
+  const qs = params.toString();
+  const res = await get<{ articles: ServerNewsArticle[]; hasMore: boolean }>(
+    `/news/${qs ? `?${qs}` : ''}`,
+  );
+  return {
+    articles: res.articles.map(mapArticle),
+    hasMore: res.hasMore,
+  };
 }
 
 export async function getNewsDetail(id: string): Promise<NewsArticleDetail | null> {

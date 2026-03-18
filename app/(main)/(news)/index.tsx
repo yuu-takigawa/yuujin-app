@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
@@ -9,21 +9,44 @@ import ShareModal from '../../../components/common/ShareModal';
 import { getNewsArticles } from '../../../services/api';
 import type { NewsArticle } from '../../../services/api';
 
+const PAGE_SIZE = 20;
+
 export default function NewsScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const router = useRouter();
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [shareVisible, setShareVisible] = useState(false);
   const [shareArticle, setShareArticle] = useState<NewsArticle | null>(null);
 
-  useEffect(() => {
-    getNewsArticles()
-      .then(setArticles)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadArticles = useCallback(async (offset = 0, replace = false) => {
+    try {
+      const res = await getNewsArticles({ limit: PAGE_SIZE, offset });
+      setArticles(prev => replace ? res.articles : [...prev, ...res.articles]);
+      setHasMore(res.hasMore);
+    } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    loadArticles(0, true).finally(() => setLoading(false));
+  }, [loadArticles]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadArticles(0, true);
+    setRefreshing(false);
+  }, [loadArticles]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    await loadArticles(articles.length);
+    setLoadingMore(false);
+  }, [loadingMore, hasMore, articles.length, loadArticles]);
 
   const handleShare = (article: NewsArticle) => {
     setShareArticle(article);
@@ -59,6 +82,23 @@ export default function NewsScreen() {
               onShare={() => handleShare(item)}
             />
           )}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={t.brand}
+              colors={[t.brand]}
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerWrap}>
+                <ActivityIndicator size="small" color={t.brand} />
+              </View>
+            ) : null
+          }
         />
       )}
       <ShareModal
@@ -95,5 +135,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: fontSize.body,
+  },
+  footerWrap: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
   },
 });

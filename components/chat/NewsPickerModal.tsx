@@ -20,7 +20,7 @@ export default function NewsPickerModal({ visible, onClose, onSelectNews }: News
     if (visible && articles.length === 0) {
       setLoading(true);
       getNewsArticles()
-        .then(setArticles)
+        .then(res => setArticles(res.articles))
         .catch(() => {})
         .finally(() => setLoading(false));
     }
