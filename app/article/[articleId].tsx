@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -185,9 +185,17 @@ export default function NewsDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Article Header */}
         <View style={styles.articleHeader}>
-          <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
-            <Text style={{ fontSize: 72 }}>{article.imageEmoji}</Text>
-          </View>
+          {article.imageUrl ? (
+            <Image
+              source={{ uri: article.imageUrl }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
+              <Text style={{ fontSize: 72 }}>{article.imageEmoji}</Text>
+            </View>
+          )}
           <Text style={[styles.articleTitle, { color: t.text }]}>{article.title}</Text>
           <View style={styles.metaRow}>
             <Text style={[styles.metaText, { color: t.textSecondary }]}>{article.source}</Text>
@@ -330,6 +338,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     borderRadius: 12,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },

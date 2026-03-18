@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { spacing, fontSize, radii } from '../../constants/theme';
@@ -28,9 +28,17 @@ export default function NewsCard({ article, onPress, onShare }: NewsCardProps) {
       activeOpacity={0.7}
     >
       {/* Hero image area */}
-      <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
-        <Text style={styles.heroEmoji}>{article.imageEmoji}</Text>
-      </View>
+      {article.imageUrl ? (
+        <Image
+          source={{ uri: article.imageUrl }}
+          style={styles.heroImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
+          <Text style={styles.heroEmoji}>{article.imageEmoji}</Text>
+        </View>
+      )}
 
       {/* Title */}
       <Text style={[styles.title, { color: t.text }]} numberOfLines={2}>
@@ -76,6 +84,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     borderRadius: 12,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },

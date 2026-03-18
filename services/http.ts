@@ -1,11 +1,4 @@
-import { Platform } from 'react-native';
-
-// Dev: real device uses LAN IP, web uses localhost
-const DEV_HOST = Platform.OS === 'web' ? 'localhost' : '192.168.31.219';
-
-export const API_BASE_URL = __DEV__
-  ? `http://${DEV_HOST}:7001`
-  : 'https://api.yuujin.cc';
+export const API_BASE_URL = 'https://api.yuujin.cc';
 
 let _token: string | null = null;
 let _refreshToken: string | null = null;
