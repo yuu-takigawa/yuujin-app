@@ -66,12 +66,11 @@ export default function ChatListScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
-      <Animated.View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.border }, {
+      <Animated.View style={[styles.header, {
         opacity: headerAnim,
         transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }],
       }]}>
-        <View style={{ width: 28 }} />
-        <Text style={[styles.logo, { color: t.brand }]}>Yuujin</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]}>チャット</Text>
         <Text
           style={[styles.addButton, { color: t.brand }]}
           onPress={() => router.push('/add-friend')}
@@ -126,12 +125,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
   },
-  logo: {
-    fontFamily: 'ShipporiMincho_700Bold',
-    fontSize: 24,
-    letterSpacing: 1,
+  headerTitle: {
+    fontSize: fontSize.title,
+    fontWeight: '700',
   },
   addButton: {
     fontSize: 28,

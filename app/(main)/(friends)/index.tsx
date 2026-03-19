@@ -194,13 +194,12 @@ export default function FriendsScreen() {
           <Text style={[styles.title, { color: t.text }]}>友達</Text>
           <Text style={[styles.titleCount, { color: t.textSecondary }]}>{characters.length}</Text>
         </View>
-        <TouchableOpacity
-          style={[styles.addButton, { borderColor: t.border }]}
+        <Text
+          style={[styles.addButton, { color: t.brand }]}
           onPress={() => router.push('/create-character')}
-          hitSlop={8}
         >
-          <Text style={[styles.addIcon, { color: t.brand }]}>＋</Text>
-        </TouchableOpacity>
+          ＋
+        </Text>
       </View>
 
       {/* Fan-shaped Card Carousel */}
@@ -278,11 +277,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    height: 56,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
   },
   titleRow: {
     flexDirection: 'row',
@@ -298,15 +297,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addIcon: {
-    fontSize: 20,
+    fontSize: 28,
+    fontWeight: '300',
   },
   swiperContainer: {
     flex: 1,

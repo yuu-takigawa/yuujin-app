@@ -13,7 +13,6 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { spacing, fontSize } from '../../../constants/theme';
@@ -108,13 +107,10 @@ export default function NewsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
-        <View style={{ width: 28 }} />
+      <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: t.text }]}>ニュース</Text>
         {showScrollTop ? (
-          <TouchableOpacity onPress={scrollToTop} style={styles.headerAction}>
-            <Ionicons name="arrow-up" size={20} color={t.brand} />
-          </TouchableOpacity>
+          <Text style={[styles.scrollTopBtn, { color: t.brand }]} onPress={scrollToTop}>↑</Text>
         ) : (
           <View style={{ width: 28 }} />
         )}
@@ -212,17 +208,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.title,
+    fontWeight: '700',
   },
-  headerAction: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+  scrollTopBtn: {
+    fontSize: 28,
+    fontWeight: '300',
   },
   tabScroll: {
     flexGrow: 0,

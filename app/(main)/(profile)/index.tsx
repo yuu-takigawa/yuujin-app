@@ -125,8 +125,11 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header bar */}
-      <View style={[styles.headerBar, { borderBottomColor: t.border, backgroundColor: t.surface }]}>
+      <View style={styles.headerBar}>
         <Text style={[styles.headerTitle, { color: t.text }]}>マイページ</Text>
+        <TouchableOpacity onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={22} color={t.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -338,9 +341,10 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   headerBar: {
     height: 56,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
   headerTitle: { fontSize: 24, fontWeight: '700' },
   scroll: { padding: 16, gap: 16 },
