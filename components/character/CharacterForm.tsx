@@ -127,6 +127,7 @@ export default function CharacterForm({
         <View style={[styles.field, { flex: 1 }]}>
           <View style={styles.fieldHeader}>
             <Text style={[styles.label, { color: t.text }]}>性別</Text>
+            <View style={{ width: 36, height: 36 }} />
           </View>
           <View style={styles.genderRow}>
             {['女性', '男性'].map((g, i) => (
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 28,
+    minHeight: 36,
     marginBottom: spacing.xs,
   },
   label: {

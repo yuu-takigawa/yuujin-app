@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, TextInput, StyleSheet, Platform, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,8 +43,12 @@ export default function NewsDetailScreen() {
   const [annotations, setAnnotations] = useState<AnnotationCache>({});
   const [rubyCache, setRubyCache] = useState<RubyCache>({});
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
   const commentInputRef = useRef<TextInput>(null);
+  const commentSectionRef = useRef<View>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const cancelRef = useRef<(() => void) | null>(null);
+  const commentSectionY = useRef(0);
 
   const loadComments = async (id: string) => {
     try {
@@ -231,7 +235,7 @@ export default function NewsDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scroll}>
         {/* Article Header */}
         <View style={styles.articleHeader}>
           {article.imageUrl ? (
@@ -256,47 +260,52 @@ export default function NewsDetailScreen() {
           const explKey = `${index}:explanation`;
           const trans = annotations[transKey];
           const expl = annotations[explKey];
+          const showTooltip = tooltipIndex === index;
 
           return (
             <View key={index} style={styles.paragraph}>
-              {renderRubyText(text, index)}
+              {/* Tooltip 气泡工具栏 */}
+              {showTooltip && (
+                <View style={[styles.tooltip, { backgroundColor: t.surface, shadowColor: '#000' }]}>
+                  <TouchableOpacity
+                    style={styles.tooltipBtn}
+                    onPress={() => { handleSpeak(index, text); setTooltipIndex(null); }}
+                  >
+                    <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
+                    <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+                  <TouchableOpacity
+                    style={styles.tooltipBtn}
+                    onPress={() => { handleAnnotate(index, 'translation'); setTooltipIndex(null); }}
+                  >
+                    <Ionicons name="language-outline" size={18} color={t.brand} />
+                    <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+                  <TouchableOpacity
+                    style={styles.tooltipBtn}
+                    onPress={() => { handleAnnotate(index, 'explanation'); setTooltipIndex(null); }}
+                  >
+                    <Ionicons name="school-outline" size={18} color={t.brand} />
+                    <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-              {/* Action buttons */}
-              <View style={styles.paraActions}>
-                <TouchableOpacity
-                  style={[styles.paraBtn, { borderColor: t.border, backgroundColor: speakingIndex === index ? t.brandLight : t.surface }]}
-                  onPress={() => handleSpeak(index, text)}
-                >
-                  <Ionicons
-                    name={speakingIndex === index ? 'stop' : 'volume-medium-outline'}
-                    size={14}
-                    color={speakingIndex === index ? t.brand : t.textSecondary}
-                  />
-                  <Text style={[styles.paraBtnText, { color: speakingIndex === index ? t.brand : t.textSecondary }]}>
-                    {speakingIndex === index ? '停止' : '朗読'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.paraBtn, { borderColor: t.border, backgroundColor: trans ? t.brandLight : t.surface }]}
-                  onPress={() => handleAnnotate(index, 'translation')}
-                >
-                  {trans?.loading && <ActivityIndicator size={10} color={t.brand} />}
-                  <Text style={[styles.paraBtnText, { color: trans ? t.brand : t.textSecondary }]}>翻訳</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.paraBtn, { borderColor: t.border, backgroundColor: expl ? t.brandLight : t.surface }]}
-                  onPress={() => handleAnnotate(index, 'explanation')}
-                >
-                  {expl?.loading && <ActivityIndicator size={10} color={t.brand} />}
-                  <Text style={[styles.paraBtnText, { color: expl ? t.brand : t.textSecondary }]}>解説</Text>
-                </TouchableOpacity>
-              </View>
+              <Pressable
+                onLongPress={() => setTooltipIndex(showTooltip ? null : index)}
+                onPress={() => tooltipIndex !== null ? setTooltipIndex(null) : undefined}
+                delayLongPress={300}
+              >
+                {renderRubyText(text, index)}
+              </Pressable>
 
               {/* Translation */}
               {trans && (
                 <View style={[styles.expandedBox, { backgroundColor: t.surface, borderColor: t.border }]}>
                   <Text style={[styles.expandedText, { color: t.text }]}>
-                    {trans.text || (trans.loading ? '' : 'Loading...')}
+                    {trans.text || (trans.loading ? '' : '')}
                   </Text>
                   {trans.loading && <ActivityIndicator size="small" color={t.brand} style={{ marginTop: 4 }} />}
                 </View>
@@ -306,7 +315,7 @@ export default function NewsDetailScreen() {
               {expl && (
                 <View style={[styles.expandedBox, { backgroundColor: t.brandLight, borderColor: t.brand + '30' }]}>
                   <Text style={[styles.expandedText, { color: t.text }]}>
-                    {expl.text || (expl.loading ? '' : 'Loading...')}
+                    {expl.text || (expl.loading ? '' : '')}
                   </Text>
                   {expl.loading && <ActivityIndicator size="small" color={t.brand} style={{ marginTop: 4 }} />}
                 </View>
@@ -322,36 +331,53 @@ export default function NewsDetailScreen() {
         )}
 
         {/* Comments Section */}
-        <View style={[styles.commentsSection, { borderTopColor: t.border }]}>
-          <Text style={[styles.commentsTitle, { color: t.text }]}>コメント</Text>
-
+        <View
+          style={[styles.commentsSection, { borderTopColor: t.border }]}
+          onLayout={(e) => { commentSectionY.current = e.nativeEvent.layout.y; }}
+        >
+          <Text style={[styles.commentsTitle, { color: t.text }]}>
+            コメント{comments.length > 0 ? ` (${comments.length})` : ''}
+          </Text>
           {comments.map((comment) => renderComment(comment))}
-
-          <View style={[styles.commentInput, { backgroundColor: t.surface, borderColor: t.border }]}>
-            <TextInput
-              ref={commentInputRef}
-              style={[styles.commentField, { color: t.text }]}
-              placeholder="コメントを書く..."
-              placeholderTextColor={t.textSecondary}
-              value={commentText}
-              onChangeText={setCommentText}
-              returnKeyType="send"
-              onSubmitEditing={handleSendComment}
-              blurOnSubmit={false}
-            />
-            <TouchableOpacity
-              style={[styles.commentSend, { backgroundColor: commentText.trim() && !sending ? t.brand : t.inputBg }]}
-              onPress={handleSendComment}
-              disabled={!commentText.trim() || sending}
-            >
-              {sending
-                ? <ActivityIndicator size={12} color={t.textSecondary} />
-                : <Ionicons name="arrow-up" size={16} color={commentText.trim() ? '#FFFFFF' : t.textSecondary} />
-              }
-            </TouchableOpacity>
-          </View>
+          {comments.length === 0 && (
+            <Text style={{ color: t.textSecondary, fontSize: 13 }}>まだコメントはありません</Text>
+          )}
         </View>
+        <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* Fixed bottom input bar */}
+      <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border }]}>
+        <TouchableOpacity
+          style={styles.bottomScrollBtn}
+          onPress={() => scrollViewRef.current?.scrollTo({ y: commentSectionY.current - 60, animated: true })}
+        >
+          <Ionicons name="chatbubble-outline" size={20} color={t.brand} />
+        </TouchableOpacity>
+        <View style={[styles.bottomInput, { backgroundColor: t.inputBg }]}>
+          <TextInput
+            ref={commentInputRef}
+            style={[styles.bottomField, { color: t.text }]}
+            placeholder="コメントを書く..."
+            placeholderTextColor={t.textSecondary}
+            value={commentText}
+            onChangeText={setCommentText}
+            returnKeyType="send"
+            onSubmitEditing={handleSendComment}
+            blurOnSubmit={false}
+          />
+        </View>
+        <TouchableOpacity
+          style={[styles.bottomSend, { backgroundColor: commentText.trim() && !sending ? t.brand : t.inputBg }]}
+          onPress={handleSendComment}
+          disabled={!commentText.trim() || sending}
+        >
+          {sending
+            ? <ActivityIndicator size={12} color={t.textSecondary} />
+            : <Ionicons name="arrow-up" size={16} color={commentText.trim() ? '#FFFFFF' : t.textSecondary} />
+          }
+        </TouchableOpacity>
+      </View>
 
       <ShareModal
         visible={shareVisible}
@@ -374,7 +400,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerBack: {
-    width: 68,
+    width: 40,
     height: 40,
     justifyContent: 'center',
   },
@@ -393,9 +419,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerRight: {
+    width: 40,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'flex-end',
   },
   headerIconBtn: {
     width: 32,
@@ -464,23 +491,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 28,
   },
-  paraActions: {
+  tooltip: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
+    alignSelf: 'center',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    marginBottom: 6,
   },
-  paraBtn: {
-    flexDirection: 'row',
+  tooltipBtn: {
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
     paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
+    gap: 2,
   },
-  paraBtnText: {
-    fontSize: 12,
+  tooltipText: {
+    fontSize: 11,
     fontWeight: '500',
+  },
+  tooltipDivider: {
+    width: 1,
+    marginVertical: 2,
   },
   expandedBox: {
     padding: 12,
@@ -530,27 +565,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  commentInput: {
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingBottom: 16,
+    gap: 8,
+    borderTopWidth: 1,
+  },
+  bottomScrollBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomInput: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 20,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  commentField: {
+  bottomField: {
     flex: 1,
     fontSize: 14,
-    paddingVertical: 4,
     ...Platform.select({
       web: { outlineStyle: 'none' } as any,
     }),
   },
-  commentSend: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  bottomSend: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

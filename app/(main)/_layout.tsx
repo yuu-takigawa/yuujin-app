@@ -41,7 +41,8 @@ export default function MainLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  const tabBarHeight = 52 + insets.bottom;
+  const safeBottom = Math.max(insets.bottom, 16);
+  const tabBarHeight = 52 + safeBottom;
 
   return (
     <Tabs
@@ -56,7 +57,7 @@ export default function MainLayout() {
           elevation: 0,
           shadowOpacity: 0,
           height: tabBarHeight,
-          paddingBottom: insets.bottom,
+          paddingBottom: safeBottom,
         },
         tabBarItemStyle: {
           paddingTop: 6,

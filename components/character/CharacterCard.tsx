@@ -34,7 +34,7 @@ export default function CharacterCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: t.cardBackground, borderColor: t.border }]}
+      style={[styles.card, { backgroundColor: t.cardBackground }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
@@ -113,12 +113,11 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 28,
     alignItems: 'center',
-    borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 30,
+    elevation: 12,
   },
   typeBadge: {
     paddingHorizontal: 10,

@@ -10,6 +10,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import type { JpLevel } from '../../../services/api';
 import { updateProfile } from '../../../services/api';
 import ModelSelectorModal from '../../../components/chat/ModelSelectorModal';
+import HalfScreenModal from '../../../components/common/HalfScreenModal';
 
 const JP_LEVELS: { value: JpLevel; label: string; desc: string }[] = [
   { value: 'none', label: '無経験', desc: '日本語が全然わからない' },
@@ -149,28 +150,11 @@ export default function SettingsScreen() {
             right={
               <View style={styles.valueRow}>
                 <Text style={[styles.valueText, { color: t.brand }]}>{currentLevel.label}</Text>
-                <Ionicons name={jpLevelPickerVisible ? 'chevron-down' : 'chevron-forward'} size={16} color={t.textSecondary} />
+                <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
               </View>
             }
             onPress={handleJpLevelChange}
           />
-          {jpLevelPickerVisible && (
-            <View style={styles.levelPicker}>
-              {JP_LEVELS.map((l) => (
-                <TouchableOpacity
-                  key={l.value}
-                  style={[styles.levelOption, { backgroundColor: jpLevel === l.value ? t.brandLight : 'transparent' }]}
-                  onPress={() => handleJpLevelSelect(l.value)}
-                >
-                  <Text style={[styles.levelOptionLabel, { color: jpLevel === l.value ? t.brand : t.text }]}>
-                    {l.label}
-                  </Text>
-                  <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{l.desc}</Text>
-                  {jpLevel === l.value && <Ionicons name="checkmark" size={18} color={t.brand} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
 
         {/* 外観 */}
@@ -287,6 +271,25 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <ModelSelectorModal visible={modelModalVisible} onClose={() => setModelModalVisible(false)} />
+
+      <HalfScreenModal visible={jpLevelPickerVisible} onClose={() => setJpLevelPickerVisible(false)} height={420}>
+        <View style={styles.levelModal}>
+          <Text style={[styles.levelModalTitle, { color: t.text }]}>日本語レベルを選択</Text>
+          {JP_LEVELS.map((l) => (
+            <TouchableOpacity
+              key={l.value}
+              style={[styles.levelOption, { backgroundColor: jpLevel === l.value ? t.brandLight : 'transparent' }]}
+              onPress={() => handleJpLevelSelect(l.value)}
+            >
+              <Text style={[styles.levelOptionLabel, { color: jpLevel === l.value ? t.brand : t.text }]}>
+                {l.label}
+              </Text>
+              <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{l.desc}</Text>
+              {jpLevel === l.value && <Ionicons name="checkmark" size={18} color={t.brand} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </HalfScreenModal>
     </View>
   );
 }
@@ -340,9 +343,10 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1, fontSize: 16 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   valueText: { fontSize: 14 },
-  levelPicker: { paddingHorizontal: 8, paddingBottom: 8 },
-  levelOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, gap: 8 },
-  levelOptionLabel: { fontSize: 15, fontWeight: '600', width: 70 },
+  levelModal: { paddingHorizontal: 16, paddingTop: 8 },
+  levelModalTitle: { fontSize: 17, fontWeight: '700', marginBottom: 12 },
+  levelOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, gap: 8, marginBottom: 2 },
+  levelOptionLabel: { fontSize: 15, fontWeight: '600', width: 80 },
   levelOptionDesc: { flex: 1, fontSize: 13 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
 });
