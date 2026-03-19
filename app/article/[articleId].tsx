@@ -44,7 +44,9 @@ export default function NewsDetailScreen() {
   const [rubyCache, setRubyCache] = useState<RubyCache>({});
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [selectableIndex, setSelectableIndex] = useState<number | null>(null);
+  const scrollOffsetRef = useRef(0);
   const commentInputRef = useRef<TextInput>(null);
   const commentSectionRef = useRef<View>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -238,7 +240,12 @@ export default function NewsDetailScreen() {
         </View>
       </View>
 
-      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scroll}
+        onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
         {/* Article Header */}
         <View style={styles.articleHeader}>
           {article.imageUrl ? (
@@ -280,67 +287,23 @@ export default function NewsDetailScreen() {
                 styles.paragraph,
                 (showTooltip || selectableIndex === index) && { backgroundColor: t.brandLight, borderRadius: 8 },
               ]}
-              onLongPress={() => { setSelectableIndex(null); setTooltipIndex(showTooltip ? null : index); }}
+              onLongPress={(e) => {
+                setSelectableIndex(null);
+                if (showTooltip) {
+                  setTooltipIndex(null);
+                } else {
+                  const pageY = (e.nativeEvent as any).pageY || (e.nativeEvent as any).clientY || 0;
+                  const pageX = (e.nativeEvent as any).pageX || (e.nativeEvent as any).clientX || 0;
+                  setTooltipPos({ x: pageX, y: pageY - 60 });
+                  setTooltipIndex(index);
+                }
+              }}
               onPress={() => {
                 if (tooltipIndex !== null) setTooltipIndex(null);
                 if (selectableIndex !== null && selectableIndex !== index) setSelectableIndex(null);
               }}
               delayLongPress={300}
             >
-              {/* Tooltip 浮动气泡 */}
-              {showTooltip && (
-                <View style={styles.tooltipAnchor}>
-                  <View style={[styles.tooltip, { backgroundColor: t.surface, shadowColor: '#000' }]}>
-                    <TouchableOpacity
-                      style={styles.tooltipBtn}
-                      onPress={() => { handleSpeak(index, text); setTooltipIndex(null); }}
-                    >
-                      <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
-                      <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
-                    </TouchableOpacity>
-                    <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-                    <TouchableOpacity
-                      style={styles.tooltipBtn}
-                      onPress={() => { handleAnnotate(index, 'translation'); setTooltipIndex(null); }}
-                    >
-                      <Ionicons name="language-outline" size={18} color={t.brand} />
-                      <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
-                    </TouchableOpacity>
-                    <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-                    <TouchableOpacity
-                      style={styles.tooltipBtn}
-                      onPress={() => { handleAnnotate(index, 'explanation'); setTooltipIndex(null); }}
-                    >
-                      <Ionicons name="school-outline" size={18} color={t.brand} />
-                      <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
-                    </TouchableOpacity>
-                    <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-                    <TouchableOpacity
-                      style={styles.tooltipBtn}
-                      onPress={() => {
-                        setTooltipIndex(null);
-                        setSelectableIndex(index);
-                        // 自动选中该段落文本
-                        setTimeout(() => {
-                          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                            const el = document.querySelector(`[data-paragraph="${index}"]`);
-                            if (el) {
-                              const range = document.createRange();
-                              range.selectNodeContents(el);
-                              const sel = window.getSelection();
-                              sel?.removeAllRanges();
-                              sel?.addRange(range);
-                            }
-                          }
-                        }, 50);
-                      }}
-                    >
-                      <Ionicons name="text-outline" size={18} color={t.brand} />
-                      <Text style={[styles.tooltipText, { color: t.text }]}>選択</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
 
               <View {...(Platform.OS === 'web' ? { 'data-paragraph': index } as any : {})}>
                 {renderRubyText(text, index)}
@@ -416,6 +379,64 @@ export default function NewsDetailScreen() {
         </View>
         <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* Floating tooltip */}
+      {tooltipIndex !== null && (
+        <View style={[styles.tooltipOverlay]} pointerEvents="box-none">
+          <View style={[
+            styles.tooltip,
+            { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x - 120 },
+          ]}>
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
+            >
+              <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
+            </TouchableOpacity>
+            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
+            >
+              <Ionicons name="language-outline" size={18} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
+            </TouchableOpacity>
+            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
+            >
+              <Ionicons name="school-outline" size={18} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
+            </TouchableOpacity>
+            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => {
+                const idx = tooltipIndex;
+                setTooltipIndex(null);
+                setSelectableIndex(idx);
+                setTimeout(() => {
+                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    const el = document.querySelector(`[data-paragraph="${idx}"]`);
+                    if (el) {
+                      const range = document.createRange();
+                      range.selectNodeContents(el);
+                      const sel = window.getSelection();
+                      sel?.removeAllRanges();
+                      sel?.addRange(range);
+                    }
+                  }
+                }, 50);
+              }}
+            >
+              <Ionicons name="text-outline" size={18} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>選択</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Fixed bottom input bar */}
       <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border }]}>
@@ -563,15 +584,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 28,
   },
-  tooltipAnchor: {
+  tooltipOverlay: {
     position: 'absolute',
-    top: -48,
+    top: 0,
     left: 0,
     right: 0,
-    zIndex: 100,
-    alignItems: 'center',
+    bottom: 0,
+    zIndex: 1000,
   },
   tooltip: {
+    position: 'absolute',
     flexDirection: 'row',
     borderRadius: 12,
     paddingVertical: 8,
