@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable, TextInput, StyleSheet, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, TextInput, StyleSheet, Platform, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +34,7 @@ export default function NewsDetailScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
 
+  const { width: screenWidth } = useWindowDimensions();
   const [shareVisible, setShareVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [article, setArticle] = useState<NewsArticleDetail | null>(null);
@@ -243,7 +244,10 @@ export default function NewsDetailScreen() {
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scroll}
-        onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
+        onScroll={(e) => {
+          scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+          if (tooltipIndex !== null) setTooltipIndex(null);
+        }}
         scrollEventThrottle={16}
       >
         {/* Article Header */}
@@ -294,7 +298,10 @@ export default function NewsDetailScreen() {
                 } else {
                   const pageY = (e.nativeEvent as any).pageY || (e.nativeEvent as any).clientY || 0;
                   const pageX = (e.nativeEvent as any).pageX || (e.nativeEvent as any).clientX || 0;
-                  setTooltipPos({ x: pageX, y: pageY - 60 });
+                  const tooltipW = 260;
+                  const clampedX = Math.max(8, Math.min(pageX - tooltipW / 2, screenWidth - tooltipW - 8));
+                  const clampedY = Math.max(56, pageY - 60);
+                  setTooltipPos({ x: clampedX, y: clampedY });
                   setTooltipIndex(index);
                 }
               }}
@@ -382,10 +389,11 @@ export default function NewsDetailScreen() {
 
       {/* Floating tooltip */}
       {tooltipIndex !== null && (
-        <View style={[styles.tooltipOverlay]} pointerEvents="box-none">
+        <View style={styles.tooltipOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setTooltipIndex(null)} />
           <View style={[
             styles.tooltip,
-            { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x - 120 },
+            { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
           ]}>
             <TouchableOpacity
               style={styles.tooltipBtn}
