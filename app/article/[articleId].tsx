@@ -44,6 +44,7 @@ export default function NewsDetailScreen() {
   const [rubyCache, setRubyCache] = useState<RubyCache>({});
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
+  const [selectableIndex, setSelectableIndex] = useState<number | null>(null);
   const commentInputRef = useRef<TextInput>(null);
   const commentSectionRef = useRef<View>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -262,65 +263,117 @@ export default function NewsDetailScreen() {
           const expl = annotations[explKey];
           const showTooltip = tooltipIndex === index;
 
+          const dismissAnnotation = (key: string) => {
+            setAnnotations(prev => {
+              const copy = { ...prev };
+              delete copy[key];
+              return copy;
+            });
+          };
+
           return (
-            <View key={index} style={styles.paragraph}>
-              {/* Tooltip 气泡工具栏 */}
+            <Pressable
+              key={index}
+              style={[
+                styles.paragraph,
+                showTooltip && { backgroundColor: t.brandLight, borderRadius: 8 },
+                selectableIndex === index && { backgroundColor: t.brandLight + '60', borderRadius: 8 },
+                Platform.OS === 'web' && selectableIndex !== index && ({ userSelect: 'none', WebkitUserSelect: 'none' } as any),
+              ]}
+              onLongPress={() => { setSelectableIndex(null); setTooltipIndex(showTooltip ? null : index); }}
+              onPress={() => {
+                if (tooltipIndex !== null) setTooltipIndex(null);
+                if (selectableIndex !== null && selectableIndex !== index) setSelectableIndex(null);
+              }}
+              delayLongPress={300}
+            >
+              {/* Tooltip 浮动气泡 */}
               {showTooltip && (
-                <View style={[styles.tooltip, { backgroundColor: t.surface, shadowColor: '#000' }]}>
-                  <TouchableOpacity
-                    style={styles.tooltipBtn}
-                    onPress={() => { handleSpeak(index, text); setTooltipIndex(null); }}
-                  >
-                    <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
-                    <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
-                  </TouchableOpacity>
-                  <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-                  <TouchableOpacity
-                    style={styles.tooltipBtn}
-                    onPress={() => { handleAnnotate(index, 'translation'); setTooltipIndex(null); }}
-                  >
-                    <Ionicons name="language-outline" size={18} color={t.brand} />
-                    <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
-                  </TouchableOpacity>
-                  <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-                  <TouchableOpacity
-                    style={styles.tooltipBtn}
-                    onPress={() => { handleAnnotate(index, 'explanation'); setTooltipIndex(null); }}
-                  >
-                    <Ionicons name="school-outline" size={18} color={t.brand} />
-                    <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
-                  </TouchableOpacity>
+                <View style={styles.tooltipAnchor}>
+                  <View style={[styles.tooltip, { backgroundColor: t.surface, shadowColor: '#000' }]}>
+                    <TouchableOpacity
+                      style={styles.tooltipBtn}
+                      onPress={() => { handleSpeak(index, text); setTooltipIndex(null); }}
+                    >
+                      <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
+                      <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+                    <TouchableOpacity
+                      style={styles.tooltipBtn}
+                      onPress={() => { handleAnnotate(index, 'translation'); setTooltipIndex(null); }}
+                    >
+                      <Ionicons name="language-outline" size={18} color={t.brand} />
+                      <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+                    <TouchableOpacity
+                      style={styles.tooltipBtn}
+                      onPress={() => { handleAnnotate(index, 'explanation'); setTooltipIndex(null); }}
+                    >
+                      <Ionicons name="school-outline" size={18} color={t.brand} />
+                      <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+                    <TouchableOpacity
+                      style={styles.tooltipBtn}
+                      onPress={() => { setTooltipIndex(null); setSelectableIndex(index); }}
+                    >
+                      <Ionicons name="text-outline" size={18} color={t.brand} />
+                      <Text style={[styles.tooltipText, { color: t.text }]}>選択</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
 
-              <Pressable
-                onLongPress={() => setTooltipIndex(showTooltip ? null : index)}
-                onPress={() => tooltipIndex !== null ? setTooltipIndex(null) : undefined}
-                delayLongPress={300}
-              >
-                {renderRubyText(text, index)}
-              </Pressable>
+              {renderRubyText(text, index)}
 
               {/* Translation */}
-              {trans && (
-                <View style={[styles.expandedBox, { backgroundColor: t.surface, borderColor: t.border }]}>
-                  <Text style={[styles.expandedText, { color: t.text }]}>
-                    {trans.text || (trans.loading ? '' : '')}
-                  </Text>
-                  {trans.loading && <ActivityIndicator size="small" color={t.brand} style={{ marginTop: 4 }} />}
+              {trans && !trans.loading && trans.text ? (
+                <TouchableOpacity
+                  style={[styles.annotationBox, { backgroundColor: t.surface, borderLeftColor: t.brand }]}
+                  onPress={() => dismissAnnotation(transKey)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.annotationHeader}>
+                    <Text style={[styles.annotationLabel, { color: t.brand }]}>翻訳</Text>
+                    <Ionicons name="close" size={14} color={t.textSecondary} />
+                  </View>
+                  <Text style={[styles.annotationText, { color: t.text }]}>{trans.text}</Text>
+                </TouchableOpacity>
+              ) : trans?.loading ? (
+                <View style={[styles.annotationBox, { backgroundColor: t.surface, borderLeftColor: t.brand }]}>
+                  <View style={styles.annotationLoading}>
+                    <ActivityIndicator size="small" color={t.brand} />
+                    <Text style={{ color: t.textSecondary, fontSize: 13, marginLeft: 8 }}>翻訳中...</Text>
+                  </View>
+                  {trans.text ? <Text style={[styles.annotationText, { color: t.text }]}>{trans.text}</Text> : null}
                 </View>
-              )}
+              ) : null}
 
               {/* Explanation */}
-              {expl && (
-                <View style={[styles.expandedBox, { backgroundColor: t.brandLight, borderColor: t.brand + '30' }]}>
-                  <Text style={[styles.expandedText, { color: t.text }]}>
-                    {expl.text || (expl.loading ? '' : '')}
-                  </Text>
-                  {expl.loading && <ActivityIndicator size="small" color={t.brand} style={{ marginTop: 4 }} />}
+              {expl && !expl.loading && expl.text ? (
+                <TouchableOpacity
+                  style={[styles.annotationBox, { backgroundColor: t.brandLight, borderLeftColor: t.brand }]}
+                  onPress={() => dismissAnnotation(explKey)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.annotationHeader}>
+                    <Text style={[styles.annotationLabel, { color: t.brand }]}>解説</Text>
+                    <Ionicons name="close" size={14} color={t.textSecondary} />
+                  </View>
+                  <Text style={[styles.annotationText, { color: t.text }]}>{expl.text}</Text>
+                </TouchableOpacity>
+              ) : expl?.loading ? (
+                <View style={[styles.annotationBox, { backgroundColor: t.brandLight, borderLeftColor: t.brand }]}>
+                  <View style={styles.annotationLoading}>
+                    <ActivityIndicator size="small" color={t.brand} />
+                    <Text style={{ color: t.textSecondary, fontSize: 13, marginLeft: 8 }}>解説中...</Text>
+                  </View>
+                  {expl.text ? <Text style={[styles.annotationText, { color: t.text }]}>{expl.text}</Text> : null}
                 </View>
-              )}
-            </View>
+              ) : null}
+            </Pressable>
           );
         })}
 
@@ -463,8 +516,9 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
+    paddingVertical: 10,
+    marginBottom: 8,
+    gap: 6,
   },
   bodyText: {
     fontSize: 16,
@@ -491,17 +545,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 28,
   },
+  tooltipAnchor: {
+    position: 'absolute',
+    top: -48,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    alignItems: 'center',
+  },
   tooltip: {
     flexDirection: 'row',
-    alignSelf: 'center',
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 4,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    marginBottom: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 12,
   },
   tooltipBtn: {
     alignItems: 'center',
@@ -517,14 +577,31 @@ const styles = StyleSheet.create({
     width: 1,
     marginVertical: 2,
   },
-  expandedBox: {
+  annotationBox: {
+    marginTop: 6,
     padding: 12,
     borderRadius: 8,
-    borderWidth: 1,
+    borderLeftWidth: 3,
   },
-  expandedText: {
+  annotationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  annotationLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  annotationText: {
     fontSize: 14,
     lineHeight: 22,
+  },
+  annotationLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   commentsSection: {
     marginTop: 16,
