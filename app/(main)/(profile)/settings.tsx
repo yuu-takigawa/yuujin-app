@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../../stores/settingsStore';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
 import type { JpLevel } from '../../../services/api';
+import { updateProfile } from '../../../services/api';
 import ModelSelectorModal from '../../../components/chat/ModelSelectorModal';
 
 const JP_LEVELS: { value: JpLevel; label: string; desc: string }[] = [
@@ -77,6 +78,7 @@ export default function SettingsScreen() {
   const selectedModelId = useCreditStore((s) => s.selectedModelId);
   const loadModels = useCreditStore((s) => s.loadModels);
   const [modelModalVisible, setModelModalVisible] = useState(false);
+  const [jpLevelPickerVisible, setJpLevelPickerVisible] = useState(false);
 
   useEffect(() => {
     if (models.length === 0) loadModels();
@@ -115,16 +117,15 @@ export default function SettingsScreen() {
   };
 
   const handleJpLevelChange = () => {
-    const labels = JP_LEVELS.map((l) => `${l.label} — ${l.desc}`);
-    // On native would use ActionSheet; for web fallback use Alert.alert with limited buttons
-    Alert.alert('日本語レベルを選択', '', [
-      ...JP_LEVELS.map((l) => ({
-        text: `${l.label}${jpLevel === l.value ? ' ✓' : ''}`,
-        onPress: () => setJpLevel(l.value),
-      })),
-      { text: 'キャンセル', style: 'cancel' },
-    ]);
-    void labels; // suppress unused warning
+    setJpLevelPickerVisible(!jpLevelPickerVisible);
+  };
+
+  const handleJpLevelSelect = async (level: JpLevel) => {
+    setJpLevel(level);
+    setJpLevelPickerVisible(false);
+    try {
+      await updateUser({ jpLevel: level });
+    } catch { /* silent */ }
   };
 
   return (
@@ -148,11 +149,28 @@ export default function SettingsScreen() {
             right={
               <View style={styles.valueRow}>
                 <Text style={[styles.valueText, { color: t.brand }]}>{currentLevel.label}</Text>
-                <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
+                <Ionicons name={jpLevelPickerVisible ? 'chevron-down' : 'chevron-forward'} size={16} color={t.textSecondary} />
               </View>
             }
             onPress={handleJpLevelChange}
           />
+          {jpLevelPickerVisible && (
+            <View style={styles.levelPicker}>
+              {JP_LEVELS.map((l) => (
+                <TouchableOpacity
+                  key={l.value}
+                  style={[styles.levelOption, { backgroundColor: jpLevel === l.value ? t.brandLight : 'transparent' }]}
+                  onPress={() => handleJpLevelSelect(l.value)}
+                >
+                  <Text style={[styles.levelOptionLabel, { color: jpLevel === l.value ? t.brand : t.text }]}>
+                    {l.label}
+                  </Text>
+                  <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{l.desc}</Text>
+                  {jpLevel === l.value && <Ionicons name="checkmark" size={18} color={t.brand} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* 外観 */}
@@ -322,5 +340,9 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1, fontSize: 16 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   valueText: { fontSize: 14 },
+  levelPicker: { paddingHorizontal: 8, paddingBottom: 8 },
+  levelOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, gap: 8 },
+  levelOptionLabel: { fontSize: 15, fontWeight: '600', width: 70 },
+  levelOptionDesc: { flex: 1, fontSize: 13 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
 });

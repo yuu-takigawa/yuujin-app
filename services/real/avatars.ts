@@ -27,11 +27,19 @@ export async function uploadAvatar(
 ): Promise<string> {
   const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
   const formData = new FormData();
-  formData.append('file', {
-    uri,
-    type: mimeType,
-    name: `avatar.${ext}`,
-  } as unknown as Blob);
+
+  // Web: uri 是 blob/data URL，需要 fetch 转 Blob
+  // Native: 使用 RN 专用的 { uri, type, name } 格式
+  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+    const blob = await fetch(uri).then(r => r.blob());
+    formData.append('file', blob, `avatar.${ext}`);
+  } else {
+    formData.append('file', {
+      uri,
+      type: mimeType,
+      name: `avatar.${ext}`,
+    } as unknown as Blob);
+  }
   formData.append('target', target);
   formData.append('targetId', targetId);
 

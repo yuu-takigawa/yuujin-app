@@ -238,7 +238,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.caption,
     fontWeight: '600',
-    marginBottom: spacing.xs,
   },
   input: {
     borderRadius: 12,
