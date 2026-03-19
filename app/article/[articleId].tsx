@@ -69,16 +69,8 @@ export default function NewsDetailScreen() {
 
   const paragraphs = article?.content?.split('\n').filter(p => p.trim().length > 0) || [];
 
-  // 自动加载振り仮名
-  useEffect(() => {
-    if (!articleId || paragraphs.length === 0) return;
-    paragraphs.forEach((_, index) => {
-      if (rubyCache[index]) return;
-      getNewsFurigana(articleId, index).then((ruby) => {
-        setRubyCache(prev => ({ ...prev, [index]: ruby }));
-      }).catch(() => { /* silent */ });
-    });
-  }, [articleId, paragraphs.length]);
+  // 振り仮名: kuromoji サーバー版は OOM のため一時無効
+  // TODO: 軽量な代替手段を検討（Web版 kuromoji.js / WASM など）
 
   // Ruby 文本渲染
   const renderRubyText = (text: string, index: number) => {
