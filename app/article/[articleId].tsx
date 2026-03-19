@@ -83,12 +83,17 @@ export default function NewsDetailScreen() {
     }
   }, [article]);
 
-  // Ruby 文本渲染
-  const renderRubyText = (text: string, index: number) => {
+  // Ruby 文本渲染（含末尾问号 icon）
+  const renderRubyText = (text: string, index: number, helpBtn: React.ReactNode) => {
     const ruby = rubyCache[index];
 
     if (!ruby || ruby.length === 0) {
-      return <Text style={[styles.bodyText, { color: t.text }]}>{text}</Text>;
+      return (
+        <Text style={[styles.bodyText, { color: t.text }]}>
+          {text}
+          {' '}{helpBtn}
+        </Text>
+      );
     }
 
     const segments: { text: string; reading?: string }[] = [];
@@ -114,6 +119,7 @@ export default function NewsDetailScreen() {
             <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
           )
         ))}
+        {helpBtn}
       </View>
     );
   };
@@ -290,11 +296,9 @@ export default function NewsDetailScreen() {
                 showTooltip && { backgroundColor: t.brandLight, borderRadius: 8 },
               ]}
             >
-              <View style={styles.paraBody}>
-                <View style={styles.paraTextWrap}>
-                  {renderRubyText(text, index)}
-                </View>
+              {renderRubyText(text, index,
                 <TouchableOpacity
+                  key="help"
                   style={[styles.helpIcon, { borderColor: t.brand }]}
                   onPress={(e) => {
                     if (showTooltip) {
@@ -313,7 +317,7 @@ export default function NewsDetailScreen() {
                 >
                   <Text style={[styles.helpIconText, { color: t.brand }]}>?</Text>
                 </TouchableOpacity>
-              </View>
+              )}
 
               {/* Translation */}
               {trans && !trans.loading && trans.text ? (
@@ -543,28 +547,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 6,
   },
-  paraBody: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  paraTextWrap: {
-    flex: 1,
-  },
   helpIcon: {
-    width: 16,
-    height: 16,
+    width: 15,
+    height: 15,
     borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-    flexShrink: 0,
+    marginLeft: 3,
+    marginBottom: 3,
   },
   helpIconText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    lineHeight: 12,
+    lineHeight: 11,
   },
   bodyText: {
     fontSize: 16,
