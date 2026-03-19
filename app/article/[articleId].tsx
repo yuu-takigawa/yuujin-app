@@ -7,7 +7,7 @@ import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
-import { getNewsDetail, getNewsComments, postNewsComment, getNewsFurigana, annotateNewsParagraph } from '../../services/api';
+import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph } from '../../services/api';
 import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent } from '../../services/api';
 
 function formatCommentTime(dateStr: string): string {
@@ -69,8 +69,12 @@ export default function NewsDetailScreen() {
 
   const paragraphs = article?.content?.split('\n').filter(p => p.trim().length > 0) || [];
 
-  // 振り仮名: kuromoji サーバー版は OOM のため一時無効
-  // TODO: 軽量な代替手段を検討（Web版 kuromoji.js / WASM など）
+  // 振り仮名: 文章入库时预计算（子进程 kuromoji），存在 article.furigana 中
+  useEffect(() => {
+    if (article?.furigana) {
+      setRubyCache(article.furigana as unknown as RubyCache);
+    }
+  }, [article]);
 
   // Ruby 文本渲染
   const renderRubyText = (text: string, index: number) => {

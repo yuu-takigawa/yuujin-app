@@ -40,6 +40,7 @@ interface ServerNewsArticle {
   annotations: string | {
     imageEmoji?: string;
     cache?: Record<string, Record<string, string>>;
+    furigana?: Record<string, [string, string][]>;
   };
   publishedAt: string;
   isRead?: boolean;
@@ -57,11 +58,13 @@ function timeAgo(dateStr: string): string {
 function parseAnnotations(a: ServerNewsArticle['annotations']): {
   imageEmoji: string;
   cache: Record<string, Record<string, string>>;
+  furigana: Record<string, [string, string][]>;
 } {
   const parsed = typeof a === 'string' ? JSON.parse(a) : (a || {});
   return {
     imageEmoji: parsed.imageEmoji || '📰',
     cache: parsed.cache || {},
+    furigana: parsed.furigana || {},
   };
 }
 
@@ -82,9 +85,11 @@ function mapArticle(s: ServerNewsArticle): NewsArticle {
 
 function mapArticleDetail(s: ServerNewsArticle): NewsArticleDetail {
   const base = mapArticle(s);
+  const ann = parseAnnotations(s.annotations);
   return {
     ...base,
     content: s.content || '',
+    furigana: ann.furigana,
     paragraphs: [],
     comments: [],
   };

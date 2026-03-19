@@ -90,6 +90,7 @@ export interface NewsComment {
 
 export interface NewsArticleDetail extends NewsArticle {
   content: string;
+  furigana?: Record<string, [string, string][]>;
   paragraphs: NewsParagraph[];
   comments: NewsComment[];
 }
