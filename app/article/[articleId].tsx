@@ -84,8 +84,10 @@ export default function NewsDetailScreen() {
   // Ruby 文本渲染
   const renderRubyText = (text: string, index: number) => {
     const ruby = rubyCache[index];
+    const isSelectable = selectableIndex === index;
+
     if (!ruby || ruby.length === 0) {
-      return <Text style={[styles.bodyText, { color: t.text }]}>{text}</Text>;
+      return <Text selectable={isSelectable} style={[styles.bodyText, { color: t.text }]}>{text}</Text>;
     }
 
     const segments: { text: string; reading?: string }[] = [];
@@ -104,11 +106,11 @@ export default function NewsDetailScreen() {
         {segments.map((seg, i) => (
           seg.reading ? (
             <View key={i} style={styles.rubyUnit}>
-              <Text style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
-              <Text style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
+              <Text selectable={isSelectable} style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
+              <Text selectable={isSelectable} style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
             </View>
           ) : (
-            <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
+            <Text key={i} selectable={isSelectable} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
           )
         ))}
       </View>
@@ -276,9 +278,7 @@ export default function NewsDetailScreen() {
               key={index}
               style={[
                 styles.paragraph,
-                showTooltip && { backgroundColor: t.brandLight, borderRadius: 8 },
-                selectableIndex === index && { backgroundColor: t.brandLight + '60', borderRadius: 8 },
-                Platform.OS === 'web' && selectableIndex !== index && ({ userSelect: 'none', WebkitUserSelect: 'none' } as any),
+                (showTooltip || selectableIndex === index) && { backgroundColor: t.brandLight, borderRadius: 8 },
               ]}
               onLongPress={() => { setSelectableIndex(null); setTooltipIndex(showTooltip ? null : index); }}
               onPress={() => {
