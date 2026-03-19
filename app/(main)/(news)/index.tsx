@@ -8,10 +8,12 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { spacing, fontSize } from '../../../constants/theme';
@@ -44,6 +46,8 @@ export default function NewsScreen() {
   const [shareVisible, setShareVisible] = useState(false);
   const [shareArticle, setShareArticle] = useState<NewsArticle | null>(null);
   const loadingMoreRef = useRef(false);
+  const flatListRef = useRef<FlatList>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const loadArticles = useCallback(async (offset = 0, replace = false, cat?: string) => {
     try {
@@ -80,13 +84,21 @@ export default function NewsScreen() {
   }, [hasMore, articles.length, loadArticles]);
 
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (Platform.OS !== 'web') return;
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
-    if (distanceFromBottom < 300) {
-      handleLoadMore();
+    // 回到顶部按钮：滚动超过 800px 显示
+    setShowScrollTop(contentOffset.y > 800);
+    // Web: onScroll 触发无限滚动
+    if (Platform.OS === 'web') {
+      const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+      if (distanceFromBottom < 300) {
+        handleLoadMore();
+      }
     }
   }, [handleLoadMore]);
+
+  const scrollToTop = useCallback(() => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const handleShare = (article: NewsArticle) => {
     setShareArticle(article);
@@ -96,19 +108,16 @@ export default function NewsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: t.text }]}>ニュース</Text>
-        <TouchableOpacity
-          style={[styles.refreshBtn, { backgroundColor: t.inputBg }]}
-          onPress={handleRefresh}
-          disabled={refreshing}
-        >
-          {refreshing ? (
-            <ActivityIndicator size="small" color={t.brand} />
-          ) : (
-            <Text style={[styles.refreshIcon, { color: t.brand }]}>↻</Text>
-          )}
-        </TouchableOpacity>
+      <View style={[styles.header, { borderBottomColor: t.border }]}>
+        <View style={{ width: 28 }} />
+        <Text style={[styles.headerTitle, { color: t.text }]}>ニュース</Text>
+        {showScrollTop ? (
+          <TouchableOpacity onPress={scrollToTop} style={styles.headerAction}>
+            <Ionicons name="arrow-up" size={20} color={t.brand} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 28 }} />
+        )}
       </View>
 
       {/* Category Tabs */}
@@ -151,6 +160,7 @@ export default function NewsScreen() {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={articles}
           keyExtractor={(item: NewsArticle) => item.id}
           contentContainerStyle={styles.list}
@@ -161,10 +171,13 @@ export default function NewsScreen() {
               onShare={() => handleShare(item)}
             />
           )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.brand} colors={[t.brand]} />
+          }
           onEndReached={Platform.OS !== 'web' ? handleLoadMore : undefined}
           onEndReachedThreshold={0.3}
-          onScroll={Platform.OS === 'web' ? handleScroll : undefined}
-          scrollEventThrottle={Platform.OS === 'web' ? 200 : undefined}
+          onScroll={handleScroll}
+          scrollEventThrottle={200}
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footerWrap}>
@@ -193,27 +206,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerRow: {
+  header: {
+    height: 56,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
   },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: '700',
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
   },
-  refreshBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  headerAction: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  refreshIcon: {
-    fontSize: 22,
-    fontWeight: '700',
   },
   tabScroll: {
     flexGrow: 0,
