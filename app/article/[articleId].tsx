@@ -244,6 +244,7 @@ export default function NewsDetailScreen() {
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scroll}
+        style={Platform.OS === 'web' ? ({ userSelect: 'none', WebkitUserSelect: 'none' } as any) : undefined}
         onScroll={(e) => {
           scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
           if (tooltipIndex !== null) setTooltipIndex(null);
@@ -312,7 +313,10 @@ export default function NewsDetailScreen() {
               delayLongPress={300}
             >
 
-              <View {...(Platform.OS === 'web' ? { 'data-paragraph': index } as any : {})}>
+              <View
+                {...(Platform.OS === 'web' ? { 'data-paragraph': index } as any : {})}
+                style={selectableIndex === index && Platform.OS === 'web' ? ({ userSelect: 'text', WebkitUserSelect: 'text' } as any) : undefined}
+              >
                 {renderRubyText(text, index)}
               </View>
 
