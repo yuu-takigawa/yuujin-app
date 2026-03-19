@@ -14,8 +14,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { radii, spacing, fontSize } from '../../constants/theme';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('demo@yuujin.app');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const login = useAuthStore((s) => s.login);
   const isLoading = useAuthStore((s) => s.isLoading);
