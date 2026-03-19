@@ -24,7 +24,8 @@ export default function RootLayout() {
     ShipporiMincho_700Bold,
   });
 
-  if (!fontsLoaded) return null;
+  // 字体未加载时不阻塞渲染（ShipporiMincho 8.5MB，会 fallback 到系统字体）
+  // if (!fontsLoaded) return null;
 
   return (
     <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
