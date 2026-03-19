@@ -304,13 +304,25 @@ export default function NewsDetailScreen() {
                     if (showTooltip) {
                       setTooltipIndex(null);
                     } else {
-                      const pageY = (e.nativeEvent as any).pageY || (e.nativeEvent as any).clientY || 0;
-                      const pageX = (e.nativeEvent as any).pageX || (e.nativeEvent as any).clientX || 0;
-                      const tooltipW = 200;
-                      const clampedX = Math.max(8, Math.min(pageX - tooltipW / 2, screenWidth - tooltipW - 8));
-                      const clampedY = Math.max(56, pageY - 58);
-                      setTooltipPos({ x: clampedX, y: clampedY });
-                      setTooltipIndex(index);
+                      // 用 target 元素的位置（icon 本身）
+                      const target = e.currentTarget || e.target;
+                      if (target && typeof (target as any).measure === 'function') {
+                        (target as any).measure((_x: number, _y: number, _w: number, _h: number, px: number, py: number) => {
+                          const tooltipW = 200;
+                          const clampedX = Math.max(8, Math.min(px - tooltipW + 30, screenWidth - tooltipW - 8));
+                          setTooltipPos({ x: clampedX, y: py - 52 });
+                          setTooltipIndex(index);
+                        });
+                      } else {
+                        // Web fallback: getBoundingClientRect
+                        const rect = (e.nativeEvent?.target as any)?.getBoundingClientRect?.();
+                        if (rect) {
+                          const tooltipW = 200;
+                          const clampedX = Math.max(8, Math.min(rect.left - tooltipW + 30, screenWidth - tooltipW - 8));
+                          setTooltipPos({ x: clampedX, y: rect.top - 52 });
+                          setTooltipIndex(index);
+                        }
+                      }
                     }
                   }}
                   activeOpacity={0.7}
@@ -555,7 +567,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 3,
-    marginBottom: 3,
+    alignSelf: 'flex-end',
+    marginBottom: 7,
   },
   helpIconText: {
     fontSize: 9,
@@ -609,7 +622,7 @@ const styles = StyleSheet.create({
   tooltipArrow: {
     position: 'absolute',
     bottom: -6,
-    right: 20,
+    right: 14,
     width: 0,
     height: 0,
     borderLeftWidth: 6,
