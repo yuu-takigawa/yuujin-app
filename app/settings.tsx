@@ -58,7 +58,7 @@ export default function SettingsScreen() {
                   { color: jpLevel === lv ? '#FFF' : t.text },
                 ]}
               >
-                {lv === 'none' ? '🔰' : lv === 'native' ? '🇯🇵' : lv}
+                {lv === 'none' ? '🔰' : lv === 'native' ? '母語' : lv}
               </Text>
             </TouchableOpacity>
           ))}

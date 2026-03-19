@@ -45,7 +45,7 @@ export default function NewsDetailScreen() {
   const [rubyCache, setRubyCache] = useState<RubyCache>({});
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number; arrowLeft: number }>({ x: 0, y: 0, arrowLeft: 100 });
   const scrollOffsetRef = useRef(0);
   const commentInputRef = useRef<TextInput>(null);
   const commentSectionRef = useRef<View>(null);
@@ -83,15 +83,44 @@ export default function NewsDetailScreen() {
     }
   }, [article]);
 
-  // Ruby 文本渲染（含末尾问号 icon）
-  const renderRubyText = (text: string, index: number, helpBtn: React.ReactNode) => {
+  // Ruby 文本渲染（含末尾内联问号）
+  const renderParagraph = (text: string, index: number) => {
     const ruby = rubyCache[index];
+    const helpMark = (
+      <Text
+        key="help"
+        onPress={() => {
+          if (tooltipIndex === index) { setTooltipIndex(null); return; }
+          if (Platform.OS === 'web') {
+            // 遍历 DOM 找到第 index 个 ⓘ 的 span 元素
+            const spans = document.querySelectorAll('span');
+            let count = 0;
+            for (const span of spans) {
+              if (span.textContent === 'ⓘ' && span.children.length === 0) {
+                if (count === index) {
+                  const rect = span.getBoundingClientRect();
+                  const tooltipW = 200;
+                  const iconCenter = rect.left + rect.width / 2;
+                  const idealLeft = iconCenter - tooltipW / 2;
+                  const cx = Math.max(8, Math.min(idealLeft, screenWidth - tooltipW - 8));
+                  const cy = Math.max(56, rect.top - 52);
+                  setTooltipPos({ x: cx, y: cy, arrowLeft: iconCenter - cx });
+                  setTooltipIndex(index);
+                  return;
+                }
+                count++;
+              }
+            }
+          }
+        }}
+        style={[styles.helpInline, { color: t.brand }]}
+      >{'ⓘ'}</Text>
+    );
 
     if (!ruby || ruby.length === 0) {
       return (
         <Text style={[styles.bodyText, { color: t.text }]}>
-          {text}
-          {' '}{helpBtn}
+          {text}{helpMark}
         </Text>
       );
     }
@@ -109,17 +138,20 @@ export default function NewsDetailScreen() {
 
     return (
       <View style={styles.rubyContainer}>
-        {segments.map((seg, i) => (
-          seg.reading ? (
-            <View key={i} style={styles.rubyUnit}>
-              <Text style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
-              <Text style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
-            </View>
-          ) : (
-            <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
-          )
-        ))}
-        {helpBtn}
+        {segments.map((seg, i) => {
+          const isLast = i === segments.length - 1;
+          if (seg.reading) {
+            return (
+              <View key={i} style={styles.rubyUnit}>
+                <Text style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
+                <Text style={[styles.rubyKanji, { color: t.text }]}>{seg.text}{isLast ? helpMark : null}</Text>
+              </View>
+            );
+          }
+          return (
+            <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}{isLast ? helpMark : null}</Text>
+          );
+        })}
       </View>
     );
   };
@@ -296,28 +328,7 @@ export default function NewsDetailScreen() {
                 showTooltip && { backgroundColor: t.brandLight, borderRadius: 8 },
               ]}
             >
-              {renderRubyText(text, index,
-                <TouchableOpacity
-                  key="help"
-                  style={[styles.helpIcon, { borderColor: t.brand }]}
-                  onPress={(e) => {
-                    if (showTooltip) {
-                      setTooltipIndex(null);
-                    } else {
-                      const px = (e.nativeEvent as any).pageX ?? (e.nativeEvent as any).clientX ?? 0;
-                      const py = (e.nativeEvent as any).pageY ?? (e.nativeEvent as any).clientY ?? 0;
-                      const tooltipW = 200;
-                      // tooltip 右侧对齐到点击点（问号位置）
-                      const clampedX = Math.max(8, Math.min(px - tooltipW + 20, screenWidth - tooltipW - 8));
-                      setTooltipPos({ x: clampedX, y: py - 52 });
-                      setTooltipIndex(index);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.helpIconText, { color: t.brand }]}>?</Text>
-                </TouchableOpacity>
-              )}
+              {renderParagraph(text, index)}
 
               {/* Translation */}
               {trans && !trans.loading && trans.text ? (
@@ -421,7 +432,7 @@ export default function NewsDetailScreen() {
               <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
             </TouchableOpacity>
             {/* 三角箭头 */}
-            <View style={[styles.tooltipArrow, { borderTopColor: t.surface }]} />
+            <View style={[styles.tooltipArrow, { borderTopColor: t.surface, left: tooltipPos.arrowLeft - 6 }]} />
           </View>
         </View>
       )}
@@ -429,10 +440,10 @@ export default function NewsDetailScreen() {
       {/* Fixed bottom input bar */}
       <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border }]}>
         <TouchableOpacity
-          style={styles.bottomScrollBtn}
+          style={[styles.bottomScrollBtn, { borderColor: t.border }]}
           onPress={() => scrollViewRef.current?.scrollTo({ y: commentSectionY.current - 60, animated: true })}
         >
-          <Ionicons name="chatbubble-outline" size={20} color={t.brand} />
+          <Ionicons name="chatbubble-outline" size={18} color={t.brand} />
         </TouchableOpacity>
         <View style={[styles.bottomInput, { backgroundColor: t.inputBg }]}>
           <TextInput
@@ -547,21 +558,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 6,
   },
-  helpIcon: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 3,
-    alignSelf: 'flex-end',
-    marginBottom: 7,
-  },
-  helpIconText: {
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+  helpInline: {
+    fontSize: 15,
+    lineHeight: 28,
   },
   bodyText: {
     fontSize: 16,
@@ -610,7 +609,6 @@ const styles = StyleSheet.create({
   tooltipArrow: {
     position: 'absolute',
     bottom: -6,
-    right: 14,
     width: 0,
     height: 0,
     borderLeftWidth: 6,
@@ -715,6 +713,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

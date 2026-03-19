@@ -3,6 +3,7 @@ import {
   View,
   Modal,
   StyleSheet,
+  Platform,
   useWindowDimensions,
   TouchableWithoutFeedback,
   Animated,
@@ -126,8 +127,9 @@ export default function HalfScreenModal({ visible, onClose, height, children }: 
               styles.overlay,
               {
                 opacity: overlayAnim,
-                backgroundColor: 'rgba(0,0,0,0.4)',
+                backgroundColor: 'rgba(0,0,0,0.3)',
               },
+              Platform.OS === 'web' && ({ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' } as any),
             ]}
           />
         </TouchableWithoutFeedback>

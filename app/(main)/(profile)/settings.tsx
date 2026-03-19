@@ -19,7 +19,7 @@ const JP_LEVELS: { value: JpLevel; label: string; desc: string }[] = [
   { value: 'N3', label: 'N3', desc: '日常会話がある程度できる' },
   { value: 'N2', label: 'N2', desc: 'ほぼ自然に話せる' },
   { value: 'N1', label: 'N1', desc: 'ネイティブに近いレベル' },
-  { value: 'native', label: '🇯🇵 母語話者', desc: 'ネイティブレベル' },
+  { value: 'native', label: '母語', desc: 'ネイティブレベル' },
 ];
 
 function SectionHeader({ title }: { title: string }) {
