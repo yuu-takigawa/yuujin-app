@@ -217,7 +217,8 @@ const styles = StyleSheet.create({
   },
   tabScroll: {
     flexGrow: 0,
-    marginBottom: 4,
+    flexShrink: 0,
+    paddingBottom: 12,
   },
   tabRow: {
     paddingHorizontal: spacing.md,
