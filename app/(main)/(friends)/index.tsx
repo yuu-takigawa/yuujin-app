@@ -190,10 +190,7 @@ export default function FriendsScreen() {
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: t.brand }]}>友達</Text>
-          <Text style={[styles.titleCount, { color: t.textSecondary }]}>{characters.length}</Text>
-        </View>
+        <Text style={[styles.title, { color: t.brand }]}>友達</Text>
         <Text
           style={[styles.addButton, { color: t.brand }]}
           onPress={() => router.push('/create-character')}
@@ -283,18 +280,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
-  },
   title: {
     fontSize: fontSize.title,
     fontWeight: '700',
-  },
-  titleCount: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   addButton: {
     fontSize: 28,
