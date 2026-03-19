@@ -1,5 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+  TouchableOpacity,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
@@ -22,6 +32,7 @@ export default function NewsScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [shareVisible, setShareVisible] = useState(false);
   const [shareArticle, setShareArticle] = useState<NewsArticle | null>(null);
+  const loadingMoreRef = useRef(false);
 
   const loadArticles = useCallback(async (offset = 0, replace = false) => {
     try {
@@ -36,17 +47,30 @@ export default function NewsScreen() {
   }, [loadArticles]);
 
   const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
     setRefreshing(true);
     await loadArticles(0, true);
     setRefreshing(false);
-  }, [loadArticles]);
+  }, [loadArticles, refreshing]);
 
   const handleLoadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     await loadArticles(articles.length);
     setLoadingMore(false);
-  }, [loadingMore, hasMore, articles.length, loadArticles]);
+    loadingMoreRef.current = false;
+  }, [hasMore, articles.length, loadArticles]);
+
+  // Web: 使用 onScroll 检测滚动到底部触发加载更多
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (Platform.OS !== 'web') return;
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 300) {
+      handleLoadMore();
+    }
+  }, [handleLoadMore]);
 
   const handleShare = (article: NewsArticle) => {
     setShareArticle(article);
@@ -59,7 +83,20 @@ export default function NewsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
-      <Text style={[styles.title, { color: t.text }]}>ニュース</Text>
+      <View style={styles.headerRow}>
+        <Text style={[styles.title, { color: t.text }]}>ニュース</Text>
+        <TouchableOpacity
+          style={[styles.refreshBtn, { backgroundColor: t.inputBg }]}
+          onPress={handleRefresh}
+          disabled={refreshing}
+        >
+          {refreshing ? (
+            <ActivityIndicator size="small" color={t.brand} />
+          ) : (
+            <Text style={[styles.refreshIcon, { color: t.brand }]}>↻</Text>
+          )}
+        </TouchableOpacity>
+      </View>
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={t.brand} />
@@ -82,20 +119,20 @@ export default function NewsScreen() {
               onShare={() => handleShare(item)}
             />
           )}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={t.brand}
-              colors={[t.brand]}
-            />
-          }
-          onEndReached={handleLoadMore}
+          onEndReached={Platform.OS !== 'web' ? handleLoadMore : undefined}
           onEndReachedThreshold={0.3}
+          onScroll={Platform.OS === 'web' ? handleScroll : undefined}
+          scrollEventThrottle={Platform.OS === 'web' ? 200 : undefined}
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footerWrap}>
                 <ActivityIndicator size="small" color={t.brand} />
+              </View>
+            ) : !hasMore && articles.length > 0 ? (
+              <View style={styles.footerWrap}>
+                <Text style={[styles.footerText, { color: t.textSecondary }]}>
+                  すべてのニュースを読みました
+                </Text>
               </View>
             ) : null
           }
@@ -114,11 +151,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
   title: {
     fontSize: fontSize.title,
     fontWeight: '700',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+  },
+  refreshBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshIcon: {
+    fontSize: 22,
+    fontWeight: '700',
   },
   list: {
     paddingBottom: spacing.xl,
@@ -139,5 +192,8 @@ const styles = StyleSheet.create({
   footerWrap: {
     paddingVertical: spacing.md,
     alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 13,
   },
 });
