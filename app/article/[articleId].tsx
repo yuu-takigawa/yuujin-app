@@ -304,25 +304,13 @@ export default function NewsDetailScreen() {
                     if (showTooltip) {
                       setTooltipIndex(null);
                     } else {
-                      // 用 target 元素的位置（icon 本身）
-                      const target = e.currentTarget || e.target;
-                      if (target && typeof (target as any).measure === 'function') {
-                        (target as any).measure((_x: number, _y: number, _w: number, _h: number, px: number, py: number) => {
-                          const tooltipW = 200;
-                          const clampedX = Math.max(8, Math.min(px - tooltipW + 30, screenWidth - tooltipW - 8));
-                          setTooltipPos({ x: clampedX, y: py - 52 });
-                          setTooltipIndex(index);
-                        });
-                      } else {
-                        // Web fallback: getBoundingClientRect
-                        const rect = (e.nativeEvent?.target as any)?.getBoundingClientRect?.();
-                        if (rect) {
-                          const tooltipW = 200;
-                          const clampedX = Math.max(8, Math.min(rect.left - tooltipW + 30, screenWidth - tooltipW - 8));
-                          setTooltipPos({ x: clampedX, y: rect.top - 52 });
-                          setTooltipIndex(index);
-                        }
-                      }
+                      const px = (e.nativeEvent as any).pageX ?? (e.nativeEvent as any).clientX ?? 0;
+                      const py = (e.nativeEvent as any).pageY ?? (e.nativeEvent as any).clientY ?? 0;
+                      const tooltipW = 200;
+                      // tooltip 右侧对齐到点击点（问号位置）
+                      const clampedX = Math.max(8, Math.min(px - tooltipW + 20, screenWidth - tooltipW - 8));
+                      setTooltipPos({ x: clampedX, y: py - 52 });
+                      setTooltipIndex(index);
                     }
                   }}
                   activeOpacity={0.7}
