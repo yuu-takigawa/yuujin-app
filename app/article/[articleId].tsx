@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable, TextInput, StyleSheet, Platform, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,7 +46,6 @@ export default function NewsDetailScreen() {
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [selectableIndex, setSelectableIndex] = useState<number | null>(null);
   const scrollOffsetRef = useRef(0);
   const commentInputRef = useRef<TextInput>(null);
   const commentSectionRef = useRef<View>(null);
@@ -87,10 +86,9 @@ export default function NewsDetailScreen() {
   // Ruby 文本渲染
   const renderRubyText = (text: string, index: number) => {
     const ruby = rubyCache[index];
-    const isSelectable = selectableIndex === index;
 
     if (!ruby || ruby.length === 0) {
-      return <Text selectable={isSelectable} style={[styles.bodyText, { color: t.text }]}>{text}</Text>;
+      return <Text style={[styles.bodyText, { color: t.text }]}>{text}</Text>;
     }
 
     const segments: { text: string; reading?: string }[] = [];
@@ -109,11 +107,11 @@ export default function NewsDetailScreen() {
         {segments.map((seg, i) => (
           seg.reading ? (
             <View key={i} style={styles.rubyUnit}>
-              <Text selectable={isSelectable} style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
-              <Text selectable={isSelectable} style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
+              <Text style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
+              <Text style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
             </View>
           ) : (
-            <Text key={i} selectable={isSelectable} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
+            <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
           )
         ))}
       </View>
@@ -244,7 +242,6 @@ export default function NewsDetailScreen() {
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scroll}
-        style={Platform.OS === 'web' ? ({ userSelect: 'none', WebkitUserSelect: 'none' } as any) : undefined}
         onScroll={(e) => {
           scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
           if (tooltipIndex !== null) setTooltipIndex(null);
@@ -286,38 +283,34 @@ export default function NewsDetailScreen() {
           };
 
           return (
-            <Pressable
+            <View
               key={index}
               style={[
                 styles.paragraph,
-                (showTooltip || selectableIndex === index) && { backgroundColor: t.brandLight, borderRadius: 8 },
+                showTooltip && { backgroundColor: t.brandLight, borderRadius: 8 },
               ]}
-              onLongPress={(e) => {
-                setSelectableIndex(null);
-                if (showTooltip) {
-                  setTooltipIndex(null);
-                } else {
-                  const pageY = (e.nativeEvent as any).pageY || (e.nativeEvent as any).clientY || 0;
-                  const pageX = (e.nativeEvent as any).pageX || (e.nativeEvent as any).clientX || 0;
-                  const tooltipW = 260;
-                  const clampedX = Math.max(8, Math.min(pageX - tooltipW / 2, screenWidth - tooltipW - 8));
-                  const clampedY = Math.max(56, pageY - 60);
-                  setTooltipPos({ x: clampedX, y: clampedY });
-                  setTooltipIndex(index);
-                }
-              }}
-              onPress={() => {
-                if (tooltipIndex !== null) setTooltipIndex(null);
-                if (selectableIndex !== null && selectableIndex !== index) setSelectableIndex(null);
-              }}
-              delayLongPress={300}
             >
-
-              <View
-                {...(Platform.OS === 'web' ? { 'data-paragraph': index } as any : {})}
-                style={selectableIndex === index && Platform.OS === 'web' ? ({ userSelect: 'text', WebkitUserSelect: 'text' } as any) : undefined}
-              >
+              <View style={styles.paraBody}>
                 {renderRubyText(text, index)}
+                <TouchableOpacity
+                  style={[styles.helpIcon, { borderColor: t.brand }]}
+                  onPress={(e) => {
+                    if (showTooltip) {
+                      setTooltipIndex(null);
+                    } else {
+                      const pageY = (e.nativeEvent as any).pageY || (e.nativeEvent as any).clientY || 0;
+                      const pageX = (e.nativeEvent as any).pageX || (e.nativeEvent as any).clientX || 0;
+                      const tooltipW = 220;
+                      const clampedX = Math.max(8, Math.min(pageX - tooltipW / 2, screenWidth - tooltipW - 8));
+                      const clampedY = Math.max(56, pageY - 50);
+                      setTooltipPos({ x: clampedX, y: clampedY });
+                      setTooltipIndex(index);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.helpIconText, { color: t.brand }]}>?</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Translation */}
@@ -365,7 +358,7 @@ export default function NewsDetailScreen() {
                   {expl.text ? <Text style={[styles.annotationText, { color: t.text }]}>{expl.text}</Text> : null}
                 </View>
               ) : null}
-            </Pressable>
+            </View>
           );
         })}
 
@@ -394,7 +387,7 @@ export default function NewsDetailScreen() {
       {/* Floating tooltip */}
       {tooltipIndex !== null && (
         <View style={styles.tooltipOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setTooltipIndex(null)} />
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setTooltipIndex(null)} activeOpacity={1} />
           <View style={[
             styles.tooltip,
             { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
@@ -421,30 +414,6 @@ export default function NewsDetailScreen() {
             >
               <Ionicons name="school-outline" size={18} color={t.brand} />
               <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
-            </TouchableOpacity>
-            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-            <TouchableOpacity
-              style={styles.tooltipBtn}
-              onPress={() => {
-                const idx = tooltipIndex;
-                setTooltipIndex(null);
-                setSelectableIndex(idx);
-                setTimeout(() => {
-                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    const el = document.querySelector(`[data-paragraph="${idx}"]`);
-                    if (el) {
-                      const range = document.createRange();
-                      range.selectNodeContents(el);
-                      const sel = window.getSelection();
-                      sel?.removeAllRanges();
-                      sel?.addRange(range);
-                    }
-                  }
-                }, 50);
-              }}
-            >
-              <Ionicons name="text-outline" size={18} color={t.brand} />
-              <Text style={[styles.tooltipText, { color: t.text }]}>選択</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -570,6 +539,26 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 8,
     gap: 6,
+  },
+  paraBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  helpIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    flexShrink: 0,
+  },
+  helpIconText: {
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
   },
   bodyText: {
     fontSize: 16,
