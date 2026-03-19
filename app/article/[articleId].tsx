@@ -317,7 +317,23 @@ export default function NewsDetailScreen() {
                     <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
                     <TouchableOpacity
                       style={styles.tooltipBtn}
-                      onPress={() => { setTooltipIndex(null); setSelectableIndex(index); }}
+                      onPress={() => {
+                        setTooltipIndex(null);
+                        setSelectableIndex(index);
+                        // 自动选中该段落文本
+                        setTimeout(() => {
+                          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                            const el = document.querySelector(`[data-paragraph="${index}"]`);
+                            if (el) {
+                              const range = document.createRange();
+                              range.selectNodeContents(el);
+                              const sel = window.getSelection();
+                              sel?.removeAllRanges();
+                              sel?.addRange(range);
+                            }
+                          }
+                        }, 50);
+                      }}
                     >
                       <Ionicons name="text-outline" size={18} color={t.brand} />
                       <Text style={[styles.tooltipText, { color: t.text }]}>選択</Text>
@@ -326,7 +342,9 @@ export default function NewsDetailScreen() {
                 </View>
               )}
 
-              {renderRubyText(text, index)}
+              <View {...(Platform.OS === 'web' ? { 'data-paragraph': index } as any : {})}>
+                {renderRubyText(text, index)}
+              </View>
 
               {/* Translation */}
               {trans && !trans.loading && trans.text ? (
