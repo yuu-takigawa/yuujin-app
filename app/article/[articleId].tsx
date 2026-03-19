@@ -242,9 +242,9 @@ export default function NewsDetailScreen() {
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scroll}
+        onScrollBeginDrag={() => { if (tooltipIndex !== null) setTooltipIndex(null); }}
         onScroll={(e) => {
           scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
-          if (tooltipIndex !== null) setTooltipIndex(null);
         }}
         scrollEventThrottle={16}
       >
@@ -291,7 +291,9 @@ export default function NewsDetailScreen() {
               ]}
             >
               <View style={styles.paraBody}>
-                {renderRubyText(text, index)}
+                <View style={styles.paraTextWrap}>
+                  {renderRubyText(text, index)}
+                </View>
                 <TouchableOpacity
                   style={[styles.helpIcon, { borderColor: t.brand }]}
                   onPress={(e) => {
@@ -300,9 +302,9 @@ export default function NewsDetailScreen() {
                     } else {
                       const pageY = (e.nativeEvent as any).pageY || (e.nativeEvent as any).clientY || 0;
                       const pageX = (e.nativeEvent as any).pageX || (e.nativeEvent as any).clientX || 0;
-                      const tooltipW = 220;
+                      const tooltipW = 200;
                       const clampedX = Math.max(8, Math.min(pageX - tooltipW / 2, screenWidth - tooltipW - 8));
-                      const clampedY = Math.max(56, pageY - 50);
+                      const clampedY = Math.max(56, pageY - 58);
                       setTooltipPos({ x: clampedX, y: clampedY });
                       setTooltipIndex(index);
                     }
@@ -386,8 +388,7 @@ export default function NewsDetailScreen() {
 
       {/* Floating tooltip */}
       {tooltipIndex !== null && (
-        <View style={styles.tooltipOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setTooltipIndex(null)} activeOpacity={1} />
+        <View style={styles.tooltipOverlay} pointerEvents="box-none">
           <View style={[
             styles.tooltip,
             { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
@@ -396,7 +397,7 @@ export default function NewsDetailScreen() {
               style={styles.tooltipBtn}
               onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
             >
-              <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
+              <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
               <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
@@ -404,7 +405,7 @@ export default function NewsDetailScreen() {
               style={styles.tooltipBtn}
               onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
             >
-              <Ionicons name="language-outline" size={18} color={t.brand} />
+              <Ionicons name="language-outline" size={16} color={t.brand} />
               <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
@@ -412,9 +413,11 @@ export default function NewsDetailScreen() {
               style={styles.tooltipBtn}
               onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
             >
-              <Ionicons name="school-outline" size={18} color={t.brand} />
+              <Ionicons name="school-outline" size={16} color={t.brand} />
               <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
             </TouchableOpacity>
+            {/* 三角箭头 */}
+            <View style={[styles.tooltipArrow, { borderTopColor: t.surface }]} />
           </View>
         </View>
       )}
@@ -543,22 +546,25 @@ const styles = StyleSheet.create({
   paraBody: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 4,
+  },
+  paraTextWrap: {
+    flex: 1,
   },
   helpIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
     flexShrink: 0,
   },
   helpIconText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    lineHeight: 14,
+    lineHeight: 12,
   },
   bodyText: {
     fontSize: 16,
@@ -596,22 +602,34 @@ const styles = StyleSheet.create({
   tooltip: {
     position: 'absolute',
     flexDirection: 'row',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 12,
   },
+  tooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    right: 20,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
   tooltipBtn: {
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    gap: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+    gap: 1,
   },
   tooltipText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   tooltipDivider: {
