@@ -191,7 +191,7 @@ export default function FriendsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: t.text }]}>友達</Text>
+          <Text style={[styles.title, { color: t.brand }]}>友達</Text>
           <Text style={[styles.titleCount, { color: t.textSecondary }]}>{characters.length}</Text>
         </View>
         <Text

@@ -108,7 +108,7 @@ export default function NewsScreen() {
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: t.text }]}>ニュース</Text>
+        <Text style={[styles.headerTitle, { color: t.brand }]}>ニュース</Text>
         {showScrollTop ? (
           <Text style={[styles.scrollTopBtn, { color: t.brand }]} onPress={scrollToTop}>↑</Text>
         ) : (
@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
   tabScroll: {
     flexGrow: 0,
     flexShrink: 0,
+    paddingTop: 4,
     paddingBottom: 12,
   },
   tabRow: {

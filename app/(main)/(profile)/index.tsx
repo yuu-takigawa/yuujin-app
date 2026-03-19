@@ -126,7 +126,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header bar */}
       <View style={styles.headerBar}>
-        <Text style={[styles.headerTitle, { color: t.text }]}>マイページ</Text>
+        <Text style={[styles.headerTitle, { color: t.brand }]}>マイページ</Text>
         <TouchableOpacity onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={22} color={t.textSecondary} />
         </TouchableOpacity>

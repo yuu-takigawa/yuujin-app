@@ -70,7 +70,7 @@ export default function ChatListScreen() {
         opacity: headerAnim,
         transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }],
       }]}>
-        <Text style={[styles.headerTitle, { color: t.text }]}>チャット</Text>
+        <Text style={[styles.headerTitle, { color: t.brand }]}>チャット</Text>
         <Text
           style={[styles.addButton, { color: t.brand }]}
           onPress={() => router.push('/add-friend')}
