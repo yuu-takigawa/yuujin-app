@@ -44,7 +44,8 @@ export {
 } from './real/friends';
 
 // ─── News ───
-export { getNewsArticles, getNewsDetail, markNewsAsRead, getNewsComments, postNewsComment } from './real/news';
+export { getNewsArticles, getNewsDetail, markNewsAsRead, getNewsComments, postNewsComment, annotateNewsParagraph } from './real/news';
+export type { AnnotateSSEEvent } from './real/news';
 
 // ─── Topics ───
 export { drawTopics } from './real/topics';

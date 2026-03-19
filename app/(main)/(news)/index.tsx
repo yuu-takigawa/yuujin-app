@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Platform,
   TouchableOpacity,
+  ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -21,6 +22,15 @@ import type { NewsArticle } from '../../../services/api';
 
 const PAGE_SIZE = 20;
 
+const CATEGORIES = [
+  { key: '', label: 'すべて' },
+  { key: 'ai', label: 'AI・IT' },
+  { key: 'music', label: '音楽' },
+  { key: 'comic', label: '漫画' },
+  { key: 'tech', label: 'テクノロジー' },
+  { key: 'lifestyle', label: '暮らし' },
+];
+
 export default function NewsScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -30,21 +40,28 @@ export default function NewsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [category, setCategory] = useState('');
   const [shareVisible, setShareVisible] = useState(false);
   const [shareArticle, setShareArticle] = useState<NewsArticle | null>(null);
   const loadingMoreRef = useRef(false);
 
-  const loadArticles = useCallback(async (offset = 0, replace = false) => {
+  const loadArticles = useCallback(async (offset = 0, replace = false, cat?: string) => {
     try {
-      const res = await getNewsArticles({ limit: PAGE_SIZE, offset });
+      const res = await getNewsArticles({
+        limit: PAGE_SIZE,
+        offset,
+        category: cat !== undefined ? cat : category || undefined,
+      });
       setArticles(prev => replace ? res.articles : [...prev, ...res.articles]);
       setHasMore(res.hasMore);
     } catch { /* ignore */ }
-  }, []);
+  }, [category]);
 
   useEffect(() => {
-    loadArticles(0, true).finally(() => setLoading(false));
-  }, [loadArticles]);
+    setLoading(true);
+    setArticles([]);
+    loadArticles(0, true, category || undefined).finally(() => setLoading(false));
+  }, [category]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
@@ -62,7 +79,6 @@ export default function NewsScreen() {
     loadingMoreRef.current = false;
   }, [hasMore, articles.length, loadArticles]);
 
-  // Web: 使用 onScroll 检测滚动到底部触发加载更多
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (Platform.OS !== 'web') return;
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -77,12 +93,9 @@ export default function NewsScreen() {
     setShareVisible(true);
   };
 
-  const handleShareSend = (conversationId: string) => {
-    setShareVisible(false);
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: t.text }]}>ニュース</Text>
         <TouchableOpacity
@@ -97,6 +110,35 @@ export default function NewsScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Category Tabs */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabRow}
+        style={styles.tabScroll}
+      >
+        {CATEGORIES.map((cat) => {
+          const active = category === cat.key;
+          return (
+            <TouchableOpacity
+              key={cat.key}
+              style={[
+                styles.tabChip,
+                { backgroundColor: active ? t.brand : t.surface, borderColor: active ? t.brand : t.border },
+              ]}
+              onPress={() => setCategory(cat.key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabText, { color: active ? '#FFFFFF' : t.textSecondary }]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Articles */}
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={t.brand} />
@@ -141,7 +183,7 @@ export default function NewsScreen() {
       <ShareModal
         visible={shareVisible}
         onClose={() => setShareVisible(false)}
-        onShare={handleShareSend}
+        onShare={() => setShareVisible(false)}
       />
     </View>
   );
@@ -172,6 +214,24 @@ const styles = StyleSheet.create({
   refreshIcon: {
     fontSize: 22,
     fontWeight: '700',
+  },
+  tabScroll: {
+    flexGrow: 0,
+    marginBottom: 4,
+  },
+  tabRow: {
+    paddingHorizontal: spacing.md,
+    gap: 8,
+  },
+  tabChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   list: {
     paddingBottom: spacing.xl,

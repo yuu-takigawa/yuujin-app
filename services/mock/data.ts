@@ -65,18 +65,15 @@ export interface NewsArticle {
   imageEmoji: string;
   imageUrl?: string;
   url: string;
-  difficulty?: string; // N5 / N4 / N3 / N2 / N1
+  category?: string;
+  difficulty?: string;
 }
 
 export interface NewsParagraph {
   id: string;
-  /** Original Japanese text with kanji */
   text: string;
-  /** Ruby annotations: array of [kanji, reading] pairs */
   ruby: [string, string][];
-  /** Chinese translation */
   translation: string;
-  /** Grammar/vocab explanation */
   explanation: string;
 }
 
@@ -92,6 +89,7 @@ export interface NewsComment {
 }
 
 export interface NewsArticleDetail extends NewsArticle {
+  content: string;
   paragraphs: NewsParagraph[];
   comments: NewsComment[];
 }

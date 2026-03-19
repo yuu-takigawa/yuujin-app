@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
-import { radii } from '../../constants/theme';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
-import { getNewsDetail, getNewsComments, postNewsComment } from '../../services/api';
-import type { NewsArticleDetail, NewsParagraph, NewsComment } from '../../services/api';
+import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph } from '../../services/api';
+import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent } from '../../services/api';
 
 function formatCommentTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -23,6 +23,9 @@ function formatCommentTime(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+// 段落注释缓存：key = "index:type"
+type AnnotationCache = Record<string, { text: string; loading: boolean }>;
+
 export default function NewsDetailScreen() {
   const { articleId } = useLocalSearchParams<{ articleId: string }>();
   const router = useRouter();
@@ -30,14 +33,15 @@ export default function NewsDetailScreen() {
   const t = useTheme();
 
   const [shareVisible, setShareVisible] = useState(false);
-  const [expandedTranslation, setExpandedTranslation] = useState<Set<string>>(new Set());
-  const [expandedExplanation, setExpandedExplanation] = useState<Set<string>>(new Set());
   const [commentText, setCommentText] = useState('');
   const [article, setArticle] = useState<NewsArticleDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<NewsComment[]>([]);
   const [sending, setSending] = useState(false);
+  const [annotations, setAnnotations] = useState<AnnotationCache>({});
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const commentInputRef = useRef<TextInput>(null);
+  const cancelRef = useRef<(() => void) | null>(null);
 
   const loadComments = async (id: string) => {
     try {
@@ -54,7 +58,70 @@ export default function NewsDetailScreen() {
       setLoading(false);
     }).catch(() => setLoading(false));
     loadComments(articleId);
+    return () => {
+      cancelRef.current?.();
+      Speech.stop();
+    };
   }, [articleId]);
+
+  const paragraphs = article?.content?.split('\n').filter(p => p.trim().length > 0) || [];
+
+  const handleAnnotate = useCallback((index: number, type: 'translation' | 'explanation') => {
+    if (!articleId) return;
+    const key = `${index}:${type}`;
+
+    // 已有缓存且不在加载中 → toggle 展示/隐藏
+    if (annotations[key] && !annotations[key].loading) {
+      setAnnotations(prev => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+      return;
+    }
+
+    // 已在加载中，忽略
+    if (annotations[key]?.loading) return;
+
+    // 发起 SSE 请求
+    setAnnotations(prev => ({ ...prev, [key]: { text: '', loading: true } }));
+
+    cancelRef.current?.();
+    cancelRef.current = annotateNewsParagraph(articleId, index, type, (event: AnnotateSSEEvent) => {
+      if (event.type === 'delta' && event.content) {
+        setAnnotations(prev => ({
+          ...prev,
+          [key]: { text: (prev[key]?.text || '') + event.content!, loading: true },
+        }));
+      } else if (event.type === 'done') {
+        setAnnotations(prev => ({
+          ...prev,
+          [key]: { ...prev[key], loading: false },
+        }));
+      } else if (event.type === 'error') {
+        setAnnotations(prev => ({
+          ...prev,
+          [key]: { text: prev[key]?.text || `エラー: ${event.error}`, loading: false },
+        }));
+      }
+    });
+  }, [articleId, annotations]);
+
+  const handleSpeak = useCallback((index: number, text: string) => {
+    if (speakingIndex === index) {
+      Speech.stop();
+      setSpeakingIndex(null);
+      return;
+    }
+    Speech.stop();
+    setSpeakingIndex(index);
+    Speech.speak(text, {
+      language: 'ja-JP',
+      onDone: () => setSpeakingIndex(null),
+      onStopped: () => setSpeakingIndex(null),
+      onError: () => setSpeakingIndex(null),
+    });
+  }, [speakingIndex]);
 
   const handleSendComment = async () => {
     if (!commentText.trim() || !articleId || sending) return;
@@ -85,60 +152,6 @@ export default function NewsDetailScreen() {
     );
   }
 
-  const toggleTranslation = (id: string) => {
-    setExpandedTranslation((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleExplanation = (id: string) => {
-    setExpandedExplanation((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const renderRubyText = (paragraph: NewsParagraph) => {
-    if (paragraph.ruby.length === 0) {
-      return <Text style={[styles.bodyText, { color: t.text }]}>{paragraph.text}</Text>;
-    }
-
-    // Build segments: split text around kanji that have ruby annotations
-    const segments: { text: string; reading?: string }[] = [];
-    let remaining = paragraph.text;
-
-    for (const [kanji, reading] of paragraph.ruby) {
-      const idx = remaining.indexOf(kanji);
-      if (idx === -1) continue;
-      if (idx > 0) {
-        segments.push({ text: remaining.substring(0, idx) });
-      }
-      segments.push({ text: kanji, reading });
-      remaining = remaining.substring(idx + kanji.length);
-    }
-    if (remaining) {
-      segments.push({ text: remaining });
-    }
-
-    return (
-      <View style={styles.rubyContainer}>
-        {segments.map((seg, i) => (
-          seg.reading ? (
-            <View key={i} style={styles.rubyUnit}>
-              <Text style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
-              <Text style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
-            </View>
-          ) : (
-            <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
-          )
-        ))}
-      </View>
-    );
-  };
-
   const renderComment = (comment: NewsComment, isReply = false) => (
     <View key={comment.id}>
       <View style={[styles.commentRow, isReply && styles.replyRow]}>
@@ -151,16 +164,11 @@ export default function NewsDetailScreen() {
             </Text>
           </View>
           <Text style={[styles.commentText, { color: t.text }]}>{comment.content}</Text>
-          <TouchableOpacity>
-            <Text style={[styles.replyButton, { color: t.textSecondary }]}>返信</Text>
-          </TouchableOpacity>
         </View>
       </View>
       {comment.replies?.map((reply) => renderComment(reply, true))}
     </View>
   );
-
-  const paragraphs = article.paragraphs || [];
 
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
@@ -173,9 +181,6 @@ export default function NewsDetailScreen() {
           <Text style={[styles.headerTitle, { color: t.text }]}>記事</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn} hitSlop={8}>
-            <Ionicons name="volume-medium-outline" size={22} color={t.text} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.headerIconBtn} hitSlop={8} onPress={() => setShareVisible(true)}>
             <Ionicons name="share-outline" size={20} color={t.text} />
           </TouchableOpacity>
@@ -186,11 +191,7 @@ export default function NewsDetailScreen() {
         {/* Article Header */}
         <View style={styles.articleHeader}>
           {article.imageUrl ? (
-            <Image
-              source={{ uri: article.imageUrl }}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: article.imageUrl }} style={styles.heroImage} resizeMode="cover" />
           ) : (
             <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
               <Text style={{ fontSize: 72 }}>{article.imageEmoji}</Text>
@@ -206,38 +207,69 @@ export default function NewsDetailScreen() {
         </View>
 
         {/* Paragraphs */}
-        {paragraphs.map((para) => (
-          <View key={para.id} style={styles.paragraph}>
-            {renderRubyText(para)}
+        {paragraphs.map((text, index) => {
+          const transKey = `${index}:translation`;
+          const explKey = `${index}:explanation`;
+          const trans = annotations[transKey];
+          const expl = annotations[explKey];
 
-            <View style={styles.paraActions}>
-              <TouchableOpacity
-                style={[styles.paraBtn, { borderColor: t.border, backgroundColor: expandedTranslation.has(para.id) ? t.brandLight : t.surface }]}
-                onPress={() => toggleTranslation(para.id)}
-              >
-                <Text style={[styles.paraBtnText, { color: expandedTranslation.has(para.id) ? t.brand : t.textSecondary }]}>翻訳</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.paraBtn, { borderColor: t.border, backgroundColor: expandedExplanation.has(para.id) ? t.brandLight : t.surface }]}
-                onPress={() => toggleExplanation(para.id)}
-              >
-                <Text style={[styles.paraBtnText, { color: expandedExplanation.has(para.id) ? t.brand : t.textSecondary }]}>解説</Text>
-              </TouchableOpacity>
+          return (
+            <View key={index} style={styles.paragraph}>
+              <Text style={[styles.bodyText, { color: t.text }]}>{text}</Text>
+
+              {/* Action buttons */}
+              <View style={styles.paraActions}>
+                <TouchableOpacity
+                  style={[styles.paraBtn, { borderColor: t.border, backgroundColor: speakingIndex === index ? t.brandLight : t.surface }]}
+                  onPress={() => handleSpeak(index, text)}
+                >
+                  <Ionicons
+                    name={speakingIndex === index ? 'stop' : 'volume-medium-outline'}
+                    size={14}
+                    color={speakingIndex === index ? t.brand : t.textSecondary}
+                  />
+                  <Text style={[styles.paraBtnText, { color: speakingIndex === index ? t.brand : t.textSecondary }]}>
+                    {speakingIndex === index ? '停止' : '朗読'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.paraBtn, { borderColor: t.border, backgroundColor: trans ? t.brandLight : t.surface }]}
+                  onPress={() => handleAnnotate(index, 'translation')}
+                >
+                  {trans?.loading && <ActivityIndicator size={10} color={t.brand} />}
+                  <Text style={[styles.paraBtnText, { color: trans ? t.brand : t.textSecondary }]}>翻訳</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.paraBtn, { borderColor: t.border, backgroundColor: expl ? t.brandLight : t.surface }]}
+                  onPress={() => handleAnnotate(index, 'explanation')}
+                >
+                  {expl?.loading && <ActivityIndicator size={10} color={t.brand} />}
+                  <Text style={[styles.paraBtnText, { color: expl ? t.brand : t.textSecondary }]}>解説</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Translation */}
+              {trans && (
+                <View style={[styles.expandedBox, { backgroundColor: t.surface, borderColor: t.border }]}>
+                  <Text style={[styles.expandedText, { color: t.text }]}>
+                    {trans.text || (trans.loading ? '' : 'Loading...')}
+                  </Text>
+                  {trans.loading && <ActivityIndicator size="small" color={t.brand} style={{ marginTop: 4 }} />}
+                </View>
+              )}
+
+              {/* Explanation */}
+              {expl && (
+                <View style={[styles.expandedBox, { backgroundColor: t.brandLight, borderColor: t.brand + '30' }]}>
+                  <Text style={[styles.expandedText, { color: t.text }]}>
+                    {expl.text || (expl.loading ? '' : 'Loading...')}
+                  </Text>
+                  {expl.loading && <ActivityIndicator size="small" color={t.brand} style={{ marginTop: 4 }} />}
+                </View>
+              )}
             </View>
-
-            {expandedTranslation.has(para.id) && (
-              <View style={[styles.expandedBox, { backgroundColor: t.surface, borderColor: t.border }]}>
-                <Text style={[styles.expandedText, { color: t.text }]}>{para.translation}</Text>
-              </View>
-            )}
-
-            {expandedExplanation.has(para.id) && (
-              <View style={[styles.expandedBox, { backgroundColor: t.brandLight, borderColor: t.brand + '30' }]}>
-                <Text style={[styles.expandedText, { color: t.text }]}>{para.explanation}</Text>
-              </View>
-            )}
-          </View>
-        ))}
+          );
+        })}
 
         {paragraphs.length === 0 && (
           <View style={styles.paragraph}>
@@ -363,28 +395,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 8,
   },
-  // Inline ruby styles
-  rubyContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-  },
-  rubyUnit: {
-    alignItems: 'center',
-  },
-  rubyReading: {
-    fontSize: 9,
-    fontWeight: '500',
-    lineHeight: 12,
-  },
-  rubyKanji: {
-    fontSize: 16,
-    lineHeight: 28,
-  },
-  rubyPlain: {
-    fontSize: 16,
-    lineHeight: 28,
-  },
   bodyText: {
     fontSize: 16,
     lineHeight: 28,
@@ -395,7 +405,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   paraBtn: {
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
@@ -451,10 +464,6 @@ const styles = StyleSheet.create({
   commentText: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  replyButton: {
-    fontSize: 12,
-    marginTop: 2,
   },
   commentInput: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
-import { get, post } from '../http';
-import type { NewsArticle, NewsArticleDetail, NewsParagraph, NewsComment } from '../mock/data';
+import { get, post, API_BASE_URL, getToken } from '../http';
+import type { NewsArticle, NewsArticleDetail, NewsComment } from '../mock/data';
 
 interface ServerComment {
   id: string;
@@ -39,14 +39,7 @@ interface ServerNewsArticle {
   difficulty: string;
   annotations: string | {
     imageEmoji?: string;
-    paragraphs?: NewsParagraph[];
-    comments?: Array<{
-      id: string;
-      characterId: string;
-      characterName: string;
-      characterEmoji: string;
-      content: string;
-    }>;
+    cache?: Record<string, Record<string, string>>;
   };
   publishedAt: string;
   isRead?: boolean;
@@ -63,18 +56,12 @@ function timeAgo(dateStr: string): string {
 
 function parseAnnotations(a: ServerNewsArticle['annotations']): {
   imageEmoji: string;
-  paragraphs: NewsParagraph[];
-  comments: NewsComment[];
+  cache: Record<string, Record<string, string>>;
 } {
   const parsed = typeof a === 'string' ? JSON.parse(a) : (a || {});
   return {
     imageEmoji: parsed.imageEmoji || '📰',
-    paragraphs: parsed.paragraphs || [],
-    comments: (parsed.comments || []).map((c: Record<string, string>) => ({
-      ...c,
-      articleId: '',
-      createdAt: new Date().toISOString(),
-    })),
+    cache: parsed.cache || {},
   };
 }
 
@@ -89,24 +76,25 @@ function mapArticle(s: ServerNewsArticle): NewsArticle {
     imageEmoji: ann.imageEmoji,
     imageUrl: s.imageUrl || undefined,
     url: s.sourceUrl || '',
-    difficulty: s.difficulty || undefined,
+    category: s.category || undefined,
   };
 }
 
 function mapArticleDetail(s: ServerNewsArticle): NewsArticleDetail {
   const base = mapArticle(s);
-  const ann = parseAnnotations(s.annotations);
   return {
     ...base,
-    paragraphs: ann.paragraphs,
-    comments: ann.comments.map((c) => ({ ...c, articleId: s.id })),
+    content: s.content || '',
+    paragraphs: [],
+    comments: [],
   };
 }
 
 export async function getNewsArticles(
-  options?: { limit?: number; offset?: number },
+  options?: { category?: string; limit?: number; offset?: number },
 ): Promise<{ articles: NewsArticle[]; hasMore: boolean }> {
   const params = new URLSearchParams();
+  if (options?.category) params.set('category', options.category);
   if (options?.limit) params.set('limit', String(options.limit));
   if (options?.offset) params.set('offset', String(options.offset));
   const qs = params.toString();
@@ -143,4 +131,79 @@ export async function postNewsComment(
   parentId?: string,
 ): Promise<{ id: string }> {
   return post<{ id: string }>(`/news/${newsId}/comments`, { content, parentId });
+}
+
+// ─── SSE 段落注释 ───
+
+export interface AnnotateSSEEvent {
+  type: 'start' | 'delta' | 'done' | 'error';
+  content?: string;
+  cached?: boolean;
+  error?: string;
+}
+
+function parseSSELines(text: string, onEvent: (e: AnnotateSSEEvent) => void): void {
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('data: ')) {
+      try {
+        const event = JSON.parse(trimmed.slice(6)) as AnnotateSSEEvent;
+        onEvent(event);
+      } catch { /* ignore malformed */ }
+    }
+  }
+}
+
+/**
+ * 请求段落注释（翻译/解说），通过 SSE 流式返回。
+ * 返回取消函数。
+ */
+export function annotateNewsParagraph(
+  newsId: string,
+  paragraphIndex: number,
+  type: 'translation' | 'explanation',
+  onEvent: (event: AnnotateSSEEvent) => void,
+): () => void {
+  let cancelled = false;
+
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/news/${newsId}/annotate`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  const token = getToken();
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  }
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      const newText = xhr.responseText.substring(lastIndex);
+      lastIndex = xhr.responseText.length;
+      if (newText) {
+        parseSSELines(newText, (event) => {
+          if (!cancelled) onEvent(event);
+        });
+      }
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Network error' });
+  };
+
+  xhr.timeout = 30000;
+  xhr.ontimeout = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Request timeout' });
+  };
+
+  xhr.send(JSON.stringify({ paragraphIndex, type }));
+
+  return () => {
+    cancelled = true;
+    xhr.abort();
+  };
 }
