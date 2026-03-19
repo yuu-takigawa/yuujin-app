@@ -133,6 +133,16 @@ export async function postNewsComment(
   return post<{ id: string }>(`/news/${newsId}/comments`, { content, parentId });
 }
 
+// ─── 振り仮名（kuromoji 辞書、AI不要） ───
+
+export async function getNewsFurigana(
+  newsId: string,
+  paragraphIndex: number,
+): Promise<[string, string][]> {
+  const res = await post<{ ruby: [string, string][] }>(`/news/${newsId}/furigana`, { paragraphIndex });
+  return res.ruby;
+}
+
 // ─── SSE 段落注释 ───
 
 export interface AnnotateSSEEvent {

@@ -7,7 +7,7 @@ import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
-import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph } from '../../services/api';
+import { getNewsDetail, getNewsComments, postNewsComment, getNewsFurigana, annotateNewsParagraph } from '../../services/api';
 import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent } from '../../services/api';
 
 function formatCommentTime(dateStr: string): string {
@@ -25,6 +25,8 @@ function formatCommentTime(dateStr: string): string {
 
 // 段落注释缓存：key = "index:type"
 type AnnotationCache = Record<string, { text: string; loading: boolean }>;
+// 振り仮名缓存：key = paragraphIndex
+type RubyCache = Record<number, [string, string][]>;
 
 export default function NewsDetailScreen() {
   const { articleId } = useLocalSearchParams<{ articleId: string }>();
@@ -39,6 +41,7 @@ export default function NewsDetailScreen() {
   const [comments, setComments] = useState<NewsComment[]>([]);
   const [sending, setSending] = useState(false);
   const [annotations, setAnnotations] = useState<AnnotationCache>({});
+  const [rubyCache, setRubyCache] = useState<RubyCache>({});
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const commentInputRef = useRef<TextInput>(null);
   const cancelRef = useRef<(() => void) | null>(null);
@@ -65,6 +68,51 @@ export default function NewsDetailScreen() {
   }, [articleId]);
 
   const paragraphs = article?.content?.split('\n').filter(p => p.trim().length > 0) || [];
+
+  // 自动加载振り仮名
+  useEffect(() => {
+    if (!articleId || paragraphs.length === 0) return;
+    paragraphs.forEach((_, index) => {
+      if (rubyCache[index]) return;
+      getNewsFurigana(articleId, index).then((ruby) => {
+        setRubyCache(prev => ({ ...prev, [index]: ruby }));
+      }).catch(() => { /* silent */ });
+    });
+  }, [articleId, paragraphs.length]);
+
+  // Ruby 文本渲染
+  const renderRubyText = (text: string, index: number) => {
+    const ruby = rubyCache[index];
+    if (!ruby || ruby.length === 0) {
+      return <Text style={[styles.bodyText, { color: t.text }]}>{text}</Text>;
+    }
+
+    const segments: { text: string; reading?: string }[] = [];
+    let remaining = text;
+    for (const [kanji, reading] of ruby) {
+      const idx = remaining.indexOf(kanji);
+      if (idx === -1) continue;
+      if (idx > 0) segments.push({ text: remaining.substring(0, idx) });
+      segments.push({ text: kanji, reading });
+      remaining = remaining.substring(idx + kanji.length);
+    }
+    if (remaining) segments.push({ text: remaining });
+
+    return (
+      <View style={styles.rubyContainer}>
+        {segments.map((seg, i) => (
+          seg.reading ? (
+            <View key={i} style={styles.rubyUnit}>
+              <Text style={[styles.rubyReading, { color: t.brand }]}>{seg.reading}</Text>
+              <Text style={[styles.rubyKanji, { color: t.text }]}>{seg.text}</Text>
+            </View>
+          ) : (
+            <Text key={i} style={[styles.rubyPlain, { color: t.text }]}>{seg.text}</Text>
+          )
+        ))}
+      </View>
+    );
+  };
 
   const handleAnnotate = useCallback((index: number, type: 'translation' | 'explanation') => {
     if (!articleId) return;
@@ -215,7 +263,7 @@ export default function NewsDetailScreen() {
 
           return (
             <View key={index} style={styles.paragraph}>
-              <Text style={[styles.bodyText, { color: t.text }]}>{text}</Text>
+              {renderRubyText(text, index)}
 
               {/* Action buttons */}
               <View style={styles.paraActions}>
@@ -396,6 +444,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bodyText: {
+    fontSize: 16,
+    lineHeight: 28,
+  },
+  rubyContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  rubyUnit: {
+    alignItems: 'center',
+  },
+  rubyReading: {
+    fontSize: 9,
+    fontWeight: '500',
+    lineHeight: 12,
+  },
+  rubyKanji: {
+    fontSize: 16,
+    lineHeight: 28,
+  },
+  rubyPlain: {
     fontSize: 16,
     lineHeight: 28,
   },
