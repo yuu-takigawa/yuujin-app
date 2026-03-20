@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,15 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import DiceButton from './DiceButton';
-import Avatar from '../common/Avatar';
 import ImageCropper from '../common/ImageCropper';
 import { useTheme } from '../../hooks/useTheme';
 import { spacing, fontSize } from '../../constants/theme';
-import { uploadAvatar, generateBio } from '../../services/api';
+import { uploadAvatar, streamGenerateBio } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import {
   PRESET_AVATARS,
@@ -60,6 +61,8 @@ export default function CharacterForm({
 }: CharacterFormProps) {
   const t = useTheme();
   const user = useAuthStore((s) => s.user);
+  const { width: screenW } = useWindowDimensions();
+  const AVATAR_SIZE = Math.floor((screenW - spacing.md * 2 - 8 * 4) / 5); // 5列
 
   const [name, setName] = useState(initialData?.name || '');
   const [avatarUrl, setAvatarUrl] = useState(initialData?.avatarUrl || '');
@@ -75,6 +78,7 @@ export default function CharacterForm({
   const [generatingBio, setGeneratingBio] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [cropperImage, setCropperImage] = useState<string | null>(null);
+  const bioCancel = useRef<(() => void) | null>(null);
 
   const validate = (): boolean => {
     const errs: Record<string, boolean> = {};
@@ -121,8 +125,7 @@ export default function CharacterForm({
     setErrors({});
   };
 
-  const handleGenerateBio = async () => {
-    // 校验必要字段
+  const handleGenerateBio = () => {
     const missing: string[] = [];
     if (!name.trim()) missing.push('名前');
     if (!occupation.trim()) missing.push('職業');
@@ -134,8 +137,12 @@ export default function CharacterForm({
       return;
     }
     setGeneratingBio(true);
-    try {
-      const result = await generateBio({
+    setBio('');
+    setErrors((p) => ({ ...p, bio: false }));
+
+    let accumulated = '';
+    bioCancel.current = streamGenerateBio(
+      {
         name: name.trim(),
         age: parseInt(age) || 25,
         gender,
@@ -143,14 +150,17 @@ export default function CharacterForm({
         personality: personality.split('、').filter(Boolean),
         hobbies: hobbies.split('、').filter(Boolean),
         location: location.trim(),
-      });
-      setBio(result);
-      setErrors((prev) => ({ ...prev, bio: false }));
-    } catch {
-      Alert.alert('生成失敗', 'もう一度お試しください');
-    } finally {
-      setGeneratingBio(false);
-    }
+      },
+      (delta) => {
+        accumulated += delta;
+        setBio(accumulated);
+      },
+      () => setGeneratingBio(false),
+      (err) => {
+        setGeneratingBio(false);
+        Alert.alert('生成失敗', err);
+      },
+    );
   };
 
   const handlePickImage = async () => {
@@ -182,7 +192,7 @@ export default function CharacterForm({
     try {
       const url = await uploadAvatar(uri, mimeType, 'character', user?.id || '');
       setAvatarUrl(url);
-      setErrors((prev) => ({ ...prev, avatar: false }));
+      setErrors((p) => ({ ...p, avatar: false }));
     } catch (err) {
       Alert.alert('アップロード失敗', (err as Error).message);
     } finally {
@@ -190,45 +200,50 @@ export default function CharacterForm({
     }
   };
 
+  const isCustomAvatar = avatarUrl && !PRESET_AVATARS.includes(avatarUrl);
   const errBorder = (field: string) => errors[field] ? { borderColor: t.error, borderWidth: 2 } : {};
   const inputStyle = [styles.input, { backgroundColor: t.surface, borderColor: t.border, color: t.text }];
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.background }]} keyboardShouldPersistTaps="handled">
       {/* 全てランダム */}
-      <TouchableOpacity
-        style={[styles.randomAllButton, { backgroundColor: t.brandLight }]}
-        onPress={handleRandomizeAll}
-      >
+      <TouchableOpacity style={[styles.randomAllButton, { backgroundColor: t.brandLight }]} onPress={handleRandomizeAll}>
         <Text style={[styles.randomAllText, { color: t.brand }]}>🎲 全てランダム</Text>
       </TouchableOpacity>
 
-      {/* アバター選択 */}
+      {/* アバター選択 (5列) */}
       <View style={styles.field}>
-        <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>アバター <Text style={{ color: t.error }}>*</Text></Text>
-          <TouchableOpacity onPress={handlePickImage} disabled={uploadingAvatar}>
-            <Text style={{ color: t.brand, fontSize: 13, fontWeight: '600' }}>
-              {uploadingAvatar ? 'アップロード中...' : '写真をアップロード'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.avatarGrid, errors.avatar ? { borderColor: t.error, borderWidth: 2, borderRadius: 12, padding: 8 } : {}]}>
+        <Text style={[styles.label, { color: t.text, marginBottom: 8 }]}>アバター <Text style={{ color: t.error }}>*</Text></Text>
+        <View style={[styles.avatarGrid, errors.avatar ? { borderColor: t.error, borderWidth: 2, borderRadius: 12, padding: 6 } : {}]}>
           {PRESET_AVATARS.map((url) => (
             <TouchableOpacity
               key={url}
-              style={[styles.avatarCell, avatarUrl === url && { borderColor: t.brand, borderWidth: 2 }]}
+              style={[styles.avatarCell, { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }, avatarUrl === url && { borderColor: t.brand, borderWidth: 2 }]}
               onPress={() => { setAvatarUrl(url); setErrors((p) => ({ ...p, avatar: false })); }}
             >
-              <Image source={{ uri: url }} style={styles.avatarCellImg} />
+              <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} />
             </TouchableOpacity>
           ))}
-          {/* 自定义上传的头像（如果不在预设列表中） */}
-          {avatarUrl && !PRESET_AVATARS.includes(avatarUrl) && (
-            <View style={[styles.avatarCell, { borderColor: t.brand, borderWidth: 2 }]}>
-              <Image source={{ uri: avatarUrl }} style={styles.avatarCellImg} />
-            </View>
-          )}
+          {/* 第15格：自定义上传 / 预览 */}
+          <TouchableOpacity
+            style={[styles.avatarCell, {
+              width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
+              backgroundColor: isCustomAvatar ? undefined : t.surface,
+              borderColor: isCustomAvatar ? t.brand : t.border,
+              borderWidth: isCustomAvatar ? 2 : 1,
+              borderStyle: isCustomAvatar ? 'solid' : 'dashed',
+            }]}
+            onPress={handlePickImage}
+            disabled={uploadingAvatar}
+          >
+            {uploadingAvatar ? (
+              <ActivityIndicator size="small" color={t.brand} />
+            ) : isCustomAvatar ? (
+              <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <Ionicons name="camera-outline" size={AVATAR_SIZE * 0.4} color={t.textSecondary} />
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -309,7 +324,7 @@ export default function CharacterForm({
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
           <Text style={[styles.label, { color: t.text }]}>自己紹介 <Text style={{ color: t.error }}>*</Text></Text>
-          <TouchableOpacity onPress={handleGenerateBio} disabled={generatingBio} style={styles.aiButton}>
+          <TouchableOpacity onPress={handleGenerateBio} disabled={generatingBio} style={[styles.aiButton, { backgroundColor: t.brandLight, borderRadius: 8 }]}>
             {generatingBio ? (
               <ActivityIndicator size={14} color={t.brand} />
             ) : (
@@ -330,8 +345,8 @@ export default function CharacterForm({
 
       {/* ボタン */}
       <View style={styles.buttons}>
-        <TouchableOpacity style={[styles.cancelButton, { borderColor: t.border }]} onPress={onCancel}>
-          <Text style={[styles.cancelText, { color: t.text }]}>キャンセル</Text>
+        <TouchableOpacity style={[styles.cancelButton, { backgroundColor: t.surface, borderColor: t.border }]} onPress={onCancel}>
+          <Text style={[styles.cancelText, { color: t.textSecondary }]}>キャンセル</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.submitButton, { backgroundColor: t.brand, opacity: isLoading ? 0.6 : 1 }]}
@@ -342,7 +357,6 @@ export default function CharacterForm({
         </TouchableOpacity>
       </View>
 
-      {/* 圆形裁剪器 */}
       {cropperImage && (
         <ImageCropper
           imageUri={cropperImage}
@@ -370,12 +384,11 @@ const styles = StyleSheet.create({
   genderRight: { borderTopRightRadius: 12, borderBottomRightRadius: 12 },
   genderText: { fontSize: fontSize.caption, fontWeight: '500' },
   avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  avatarCell: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
-  avatarCellImg: { width: '100%', height: '100%' },
-  aiButton: { height: 36, paddingHorizontal: 12, justifyContent: 'center' },
+  avatarCell: { overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
+  aiButton: { height: 32, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center' },
   buttons: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.xl },
   cancelButton: { flex: 1, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  cancelText: { fontSize: fontSize.body, fontWeight: '500' },
+  cancelText: { fontSize: fontSize.body, fontWeight: '600' },
   submitButton: { flex: 1, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   submitText: { color: '#FFFFFF', fontSize: fontSize.body, fontWeight: '600' },
 });

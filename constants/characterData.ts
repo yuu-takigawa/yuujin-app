@@ -167,5 +167,4 @@ export const PRESET_AVATARS = [
   `${PRESET_AVATAR_BASE}/girl-05.png`,
   `${PRESET_AVATAR_BASE}/girl-06.png`,
   `${PRESET_AVATAR_BASE}/girl-07.png`,
-  `${PRESET_AVATAR_BASE}/girl-08.png`,
 ];

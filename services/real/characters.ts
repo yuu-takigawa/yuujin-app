@@ -1,4 +1,4 @@
-import { get, post, put, del } from '../http';
+import { get, post, put, del, API_BASE_URL, getToken } from '../http';
 import type { Character } from '../mock/data';
 import {
   generateRandomCharacter as mockGenerate,
@@ -97,11 +97,43 @@ export const generateRandomCharacter = mockGenerate;
 export const randomizeField = mockRandomizeField;
 export const randomizeArrayField = mockRandomizeArrayField;
 
-/** AI 生成自我介绍 */
-export async function generateBio(data: {
-  name: string; age: number; gender: string;
-  occupation: string; personality: string[]; hobbies: string[]; location: string;
-}): Promise<string> {
-  const res = await post<{ bio: string }>('/characters/generate-bio', data);
-  return res.bio;
+/** AI 流式生成自我介绍（SSE），返回取消函数 */
+export function streamGenerateBio(
+  data: { name: string; age: number; gender: string; occupation: string; personality: string[]; hobbies: string[]; location: string },
+  onDelta: (text: string) => void,
+  onDone: () => void,
+  onError: (err: string) => void,
+): () => void {
+  let cancelled = false;
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/characters/generate-bio`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  const token = getToken();
+  if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      const newText = xhr.responseText.substring(lastIndex);
+      lastIndex = xhr.responseText.length;
+      for (const line of newText.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        try {
+          const ev = JSON.parse(trimmed.slice(6));
+          if (ev.type === 'delta' && ev.content) onDelta(ev.content);
+          else if (ev.type === 'done') onDone();
+          else if (ev.type === 'error') onError(ev.error || 'Unknown error');
+        } catch { /* ignore */ }
+      }
+    }
+  };
+  xhr.onerror = () => { if (!cancelled) onError('Network error'); };
+  xhr.timeout = 30000;
+  xhr.ontimeout = () => { if (!cancelled) onError('Timeout'); };
+  xhr.send(JSON.stringify(data));
+
+  return () => { cancelled = true; xhr.abort(); };
 }

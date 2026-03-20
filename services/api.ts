@@ -26,7 +26,7 @@ export {
   createCharacter,
   updateCharacter,
   deleteCharacter,
-  generateBio,
+  streamGenerateBio,
 } from './real/characters';
 
 // Client-side randomization utilities (no backend needed)
