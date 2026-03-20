@@ -127,13 +127,16 @@ export default function CharacterForm({
 
   const handleGenerateBio = () => {
     const missing: string[] = [];
-    if (!name.trim()) missing.push('名前');
-    if (!occupation.trim()) missing.push('職業');
-    if (!personality.trim()) missing.push('性格');
-    if (!hobbies.trim()) missing.push('趣味');
-    if (!location.trim()) missing.push('住所');
+    const errs: Record<string, boolean> = {};
+    if (!avatarUrl) { missing.push('アバター'); errs.avatar = true; }
+    if (!name.trim()) { missing.push('名前'); errs.name = true; }
+    if (!occupation.trim()) { missing.push('職業'); errs.occupation = true; }
+    if (!personality.trim()) { missing.push('性格'); errs.personality = true; }
+    if (!hobbies.trim()) { missing.push('趣味'); errs.hobbies = true; }
+    if (!location.trim()) { missing.push('住所'); errs.location = true; }
     if (missing.length > 0) {
-      Alert.alert('情報不足', `先に以下を入力してください：${missing.join('、')}`);
+      setErrors((prev) => ({ ...prev, ...errs }));
+      Alert.alert('情報不足', `先に以下を入力してください：\n${missing.join('、')}`);
       return;
     }
     setGeneratingBio(true);
