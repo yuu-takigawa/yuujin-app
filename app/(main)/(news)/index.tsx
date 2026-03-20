@@ -296,11 +296,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     borderRadius: 12,
-    opacity: 0.4,
+    opacity: 0.7,
   },
   skeletonLine: {
     borderRadius: 6,
-    opacity: 0.35,
+    opacity: 0.6,
   },
   skeletonMeta: {
     flexDirection: 'row',

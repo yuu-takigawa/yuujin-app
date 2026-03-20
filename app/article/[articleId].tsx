@@ -478,7 +478,7 @@ export default function NewsDetailScreen() {
         {loading ? (
           <View style={styles.skeletonWrap}>
             {[1, 0.9, 0.75, 1, 0.6, 0.85, 1, 0.7].map((w, i) => (
-              <View key={i} style={[styles.skeletonLine, { width: `${w * 100}%` as any, backgroundColor: t.border, opacity: 0.5 }]} />
+              <View key={i} style={[styles.skeletonLine, { width: `${w * 100}%` as any, backgroundColor: t.border, opacity: 0.7 }]} />
             ))}
           </View>
         ) : null}
