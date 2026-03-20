@@ -90,6 +90,7 @@ export default function ChatListScreen() {
           return (
             <SwipeableRow onDelete={() => handleDelete(item)}>
               <ConversationCard
+                conversationId={item.id}
                 name={char.name}
                 avatarEmoji={char.avatarEmoji}
                 lastMessage={item.lastMessage}

@@ -163,7 +163,7 @@ export default function NewsScreen() {
           renderItem={({ item }) => (
             <NewsCard
               article={item}
-              onPress={() => router.push(`/article/${item.id}`)}
+              onPress={() => router.push({ pathname: `/article/${item.id}`, params: { imageUrl: item.imageUrl || '', imageEmoji: item.imageEmoji || '📰' } })}
               onShare={() => handleShare(item)}
             />
           )}

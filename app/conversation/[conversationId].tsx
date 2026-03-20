@@ -233,6 +233,7 @@ export default function ConversationScreen() {
       style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}
     >
       <CharacterHeader
+        conversationId={conversationId}
         name={character?.name || ''}
         avatarEmoji={character?.avatarEmoji || '👤'}
         onMenuPress={() => setMenuVisible(true)}

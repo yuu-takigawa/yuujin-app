@@ -35,12 +35,12 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(main)" />
-          <Stack.Screen name="conversation/[conversationId]" />
+          <Stack.Screen name="conversation/[conversationId]" options={{ animation: 'fade' }} />
           <Stack.Screen name="add-friend" />
           <Stack.Screen name="character/[characterId]" />
           <Stack.Screen name="create-character" />
           <Stack.Screen name="edit-character" />
-          <Stack.Screen name="article/[articleId]" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="article/[articleId]" options={{ animation: 'fade' }} />
           <Stack.Screen name="settings" />
           <Stack.Screen name="membership" />
         </Stack>

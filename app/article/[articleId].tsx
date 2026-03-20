@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback, TextInput, StyleSheet, Platform, ActivityIndicator, Image, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Alert, useWindowDimensions } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +30,7 @@ type AnnotationCache = Record<string, { text: string; loading: boolean }>;
 type RubyCache = Record<number, [string, string][]>;
 
 export default function NewsDetailScreen() {
-  const { articleId } = useLocalSearchParams<{ articleId: string }>();
+  const { articleId, imageUrl: paramImageUrl, imageEmoji: paramImageEmoji } = useLocalSearchParams<{ articleId: string; imageUrl?: string; imageEmoji?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -231,8 +232,32 @@ export default function NewsDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={t.brand} />
+      <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
+        <View style={[styles.header, { borderBottomColor: t.border }]}>
+          <TouchableOpacity style={styles.headerBack} onPress={() => router.back()}>
+            <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
+          </TouchableOpacity>
+          <View style={styles.headerCenter}><Text style={[styles.headerTitle, { color: t.text }]}>記事</Text></View>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.articleHeader}>
+          {paramImageUrl ? (
+            <Animated.Image
+              source={{ uri: paramImageUrl }}
+              style={styles.heroImage}
+              resizeMode="cover"
+              sharedTransitionTag={`news-image-${articleId}`}
+            />
+          ) : (
+            <Animated.View
+              style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}
+              sharedTransitionTag={`news-image-${articleId}`}
+            >
+              <Text style={{ fontSize: 72 }}>{paramImageEmoji || '📰'}</Text>
+            </Animated.View>
+          )}
+        </View>
+        <ActivityIndicator size="large" color={t.brand} style={{ marginTop: 24 }} />
       </View>
     );
   }
@@ -291,12 +316,20 @@ export default function NewsDetailScreen() {
       >
         {/* Article Header */}
         <View style={styles.articleHeader}>
-          {article.imageUrl ? (
-            <Image source={{ uri: article.imageUrl }} style={styles.heroImage} resizeMode="cover" />
+          {(article?.imageUrl || paramImageUrl) ? (
+            <Animated.Image
+              source={{ uri: article?.imageUrl || paramImageUrl }}
+              style={styles.heroImage}
+              resizeMode="cover"
+              sharedTransitionTag={`news-image-${articleId}`}
+            />
           ) : (
-            <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
-              <Text style={{ fontSize: 72 }}>{article.imageEmoji}</Text>
-            </View>
+            <Animated.View
+              style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}
+              sharedTransitionTag={`news-image-${articleId}`}
+            >
+              <Text style={{ fontSize: 72 }}>{article?.imageEmoji || paramImageEmoji || '📰'}</Text>
+            </Animated.View>
           )}
           <Text style={[styles.articleTitle, { color: t.text }]}>{article.title}</Text>
           <View style={styles.metaRow}>
@@ -406,40 +439,38 @@ export default function NewsDetailScreen() {
 
       {/* Floating tooltip */}
       {tooltipIndex !== null && (
-        <TouchableWithoutFeedback onPress={() => setTooltipIndex(null)}>
-          <View style={styles.tooltipOverlay}>
-            <View style={[
-              styles.tooltip,
-              { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
-            ]}>
-              <TouchableOpacity
-                style={styles.tooltipBtn}
-                onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
-              >
-                <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
-                <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
-              </TouchableOpacity>
-              <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-              <TouchableOpacity
-                style={styles.tooltipBtn}
-                onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
-              >
-                <Ionicons name="language-outline" size={16} color={t.brand} />
-                <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
-              </TouchableOpacity>
-              <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-              <TouchableOpacity
-                style={styles.tooltipBtn}
-                onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
-              >
-                <Ionicons name="school-outline" size={16} color={t.brand} />
-                <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
-              </TouchableOpacity>
-              {/* 三角箭头 */}
-              <View style={[styles.tooltipArrow, { borderTopColor: t.surface, left: tooltipPos.arrowLeft - 6 }]} />
-            </View>
+        <View style={styles.tooltipOverlay} onTouchStart={() => setTooltipIndex(null)}>
+          <View style={[
+            styles.tooltip,
+            { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
+          ]} onTouchStart={(e) => e.stopPropagation()}>
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
+            >
+              <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
+            </TouchableOpacity>
+            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
+            >
+              <Ionicons name="language-outline" size={16} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
+            </TouchableOpacity>
+            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
+            >
+              <Ionicons name="school-outline" size={16} color={t.brand} />
+              <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
+            </TouchableOpacity>
+            {/* 三角箭头 */}
+            <View style={[styles.tooltipArrow, { borderTopColor: t.surface, left: tooltipPos.arrowLeft - 6 }]} />
           </View>
-        </TouchableWithoutFeedback>
+        </View>
       )}
 
       {/* Fixed bottom input bar */}
