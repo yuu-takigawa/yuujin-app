@@ -101,14 +101,13 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
 
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) => {
-      // 只在水平滑动时拦截
       if (Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 10) return true;
       // 纵向滑动时，如果已打开则关闭
-      if (Math.abs(gs.dy) > 10 && isOpen.current) {
-        close();
-      }
+      if (Math.abs(gs.dy) > 10 && isOpen.current) close();
       return false;
     },
+    // 一旦开始水平滑动，不允许 FlatList 抢走手势（禁止上下滚动）
+    onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: () => {
       notifyOpen(close);
     },
@@ -121,7 +120,6 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
     onPanResponderRelease: (_, gs) => {
       snapOrClose(gs);
     },
-    // 手势被滚动等抢走时，也要收回
     onPanResponderTerminate: (_, gs) => {
       snapOrClose(gs);
     },
