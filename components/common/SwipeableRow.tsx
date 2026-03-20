@@ -1,4 +1,4 @@
-import { useRef, useMemo, createContext, useContext, useCallback } from 'react';
+import { useRef, useMemo, useEffect, createContext, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   PanResponder,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -68,6 +69,25 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
   const { notifyOpen } = useContext(SwipeContext);
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
+  const swiping = useRef(false);
+  const rowRef = useRef<View>(null);
+
+  // Web: 左滑过程中阻止浏览器原生垂直滚动
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const preventScroll = (e: Event) => {
+      if (swiping.current) e.preventDefault();
+    };
+    // 延迟获取 DOM 节点
+    const timer = setTimeout(() => {
+      const el = (rowRef.current as any);
+      if (el?.addEventListener) {
+        el.addEventListener('touchmove', preventScroll, { passive: false });
+        return;
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // 关闭（带动画）
   const close = useCallback(() => {
@@ -109,6 +129,7 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
     // 一旦开始水平滑动，不允许 FlatList 抢走手势（禁止上下滚动）
     onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: () => {
+      swiping.current = true;
       notifyOpen(close);
     },
     onPanResponderMove: (_, gs) => {
@@ -118,15 +139,17 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
       }
     },
     onPanResponderRelease: (_, gs) => {
+      swiping.current = false;
       snapOrClose(gs);
     },
     onPanResponderTerminate: (_, gs) => {
+      swiping.current = false;
       snapOrClose(gs);
     },
   }), [translateX, close, notifyOpen, snapOrClose]);
 
   return (
-    <View style={styles.container}>
+    <View ref={rowRef} style={styles.container}>
       <View style={[styles.actionsContainer, { right: 0 }]}>
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: '#34C759', width: ACTION_WIDTH }]}
