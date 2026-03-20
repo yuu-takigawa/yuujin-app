@@ -34,10 +34,12 @@ export default function NewsDetailScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
 
-  // 入场动画
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  // 入场动画（Web 用 JS driver，Native 用 native driver）
+  const isWeb = Platform.OS === 'web';
+  const fadeAnim = useRef(new Animated.Value(isWeb ? 1 : 0)).current;
+  const slideAnim = useRef(new Animated.Value(isWeb ? 0 : 30)).current;
   useEffect(() => {
+    if (isWeb) return; // Web 端跳过动画，避免 opacity 卡在 0
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
