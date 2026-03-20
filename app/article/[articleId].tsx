@@ -473,10 +473,12 @@ export default function NewsDetailScreen() {
           <View style={[styles.separator, { backgroundColor: t.border }]} />
         </View>
 
-        {/* Paragraphs — show loading if content not ready */}
+        {/* Skeleton while loading */}
         {loading ? (
-          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={t.brand} />
+          <View style={styles.skeletonWrap}>
+            {[1, 0.9, 0.75, 1, 0.6, 0.85, 1, 0.7].map((w, i) => (
+              <View key={i} style={[styles.skeletonLine, { width: `${w * 100}%` as any, backgroundColor: t.border, opacity: 0.5 }]} />
+            ))}
           </View>
         ) : null}
 
@@ -958,5 +960,14 @@ const styles = StyleSheet.create({
   mentionName: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  skeletonWrap: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 14,
+  },
+  skeletonLine: {
+    height: 14,
+    borderRadius: 7,
   },
 });
