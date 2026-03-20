@@ -324,7 +324,7 @@ export default function CharacterForm({
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
           <Text style={[styles.label, { color: t.text }]}>自己紹介 <Text style={{ color: t.error }}>*</Text></Text>
-          <TouchableOpacity onPress={handleGenerateBio} disabled={generatingBio} style={[styles.aiButton, { backgroundColor: t.brandLight, borderRadius: 8 }]}>
+          <TouchableOpacity onPress={handleGenerateBio} disabled={generatingBio} style={styles.aiButton}>
             {generatingBio ? (
               <ActivityIndicator size={14} color={t.brand} />
             ) : (
