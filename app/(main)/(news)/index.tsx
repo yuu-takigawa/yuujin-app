@@ -158,8 +158,19 @@ export default function NewsScreen() {
 
       {/* Articles */}
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={t.brand} />
+        <View style={styles.skeletonList}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={[styles.skeletonCard, { borderBottomColor: t.border }]}>
+              <View style={[styles.skeletonImage, { backgroundColor: t.border }]} />
+              <View style={[styles.skeletonLine, { width: '85%', height: 16, backgroundColor: t.border }]} />
+              <View style={[styles.skeletonLine, { width: '100%', height: 12, backgroundColor: t.border }]} />
+              <View style={[styles.skeletonLine, { width: '60%', height: 12, backgroundColor: t.border }]} />
+              <View style={styles.skeletonMeta}>
+                <View style={[styles.skeletonLine, { width: 48, height: 10, backgroundColor: t.border }]} />
+                <View style={[styles.skeletonLine, { width: 60, height: 10, backgroundColor: t.border }]} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : articles.length === 0 ? (
         <View style={styles.emptyWrap}>
@@ -272,5 +283,28 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
+  },
+  skeletonList: {
+    flex: 1,
+  },
+  skeletonCard: {
+    padding: spacing.md,
+    gap: 12,
+    borderBottomWidth: 1,
+  },
+  skeletonImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
+    opacity: 0.4,
+  },
+  skeletonLine: {
+    borderRadius: 6,
+    opacity: 0.35,
+  },
+  skeletonMeta: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
   },
 });
