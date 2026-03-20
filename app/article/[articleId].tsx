@@ -11,6 +11,7 @@ import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph,
 import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent, AIReplySSEEvent } from '../../services/api';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useFriendStore } from '../../stores/friendStore';
+import { useAuthStore } from '../../stores/authStore';
 
 function formatCommentTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -37,6 +38,7 @@ export default function NewsDetailScreen() {
   const t = useTheme();
   const characters = useCharacterStore((s) => s.characters);
   const friends = useFriendStore((s) => s.friends);
+  const user = useAuthStore((s) => s.user);
 
   // 入场动画（Web 用 JS driver，Native 用 native driver）
   const isWeb = Platform.OS === 'web';
@@ -58,8 +60,15 @@ export default function NewsDetailScreen() {
   const [comments, setComments] = useState<NewsComment[]>([]);
   const [sending, setSending] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = picker hidden
-  // 回复目标：parentId + 被回复者名字
-  const [replyTarget, setReplyTarget] = useState<{ id: string; name: string; isReply: boolean } | null>(null);
+  // 回复目标
+  const [replyTarget, setReplyTarget] = useState<{
+    id: string;           // 被回复评论的 ID
+    name: string;         // 被回复者名
+    isReply: boolean;     // 是否是二级评论
+    parentId?: string;    // 二级评论所属的一级评论 ID
+    characterId?: string; // 被回复者的角色 ID（如果是 AI）
+    isAi?: boolean;       // 被回复者是否是 AI
+  } | null>(null);
   // 流式 AI 回复：key = tempId, value = streaming reply data
   const [streamingReplies, setStreamingReplies] = useState<Record<string, {
     parentId: string;
@@ -248,16 +257,23 @@ export default function NewsDetailScreen() {
     if (!commentText.trim() || !articleId || sending) return;
     setSending(true);
     try {
-      // 回复二级评论时自动加 @name 前缀
       let content = commentText.trim();
       let parentId: string | undefined;
+      // replyTarget.parentId: 对于二级评论回复，指向一级评论
+      let actualParentId: string | undefined;
       if (replyTarget) {
-        parentId = replyTarget.id;
-        // 回复二级评论（isReply=true）时，parentId 保持为一级评论的 ID，内容加 @name
-        if (replyTarget.isReply && !content.startsWith(`@${replyTarget.name}`)) {
-          content = `@${replyTarget.name} ${content}`;
+        if (replyTarget.isReply) {
+          // 回复二级评论 → parentId 指向一级评论（replyTarget.parentId）
+          parentId = replyTarget.parentId;
+          if (!content.startsWith(`@${replyTarget.name}`)) {
+            content = `@${replyTarget.name} ${content}`;
+          }
+        } else {
+          // 回复一级评论
+          parentId = replyTarget.id;
         }
       }
+      const savedReplyTarget = replyTarget;
       const result = await postNewsComment(articleId, content, parentId);
       setCommentText('');
       setMentionQuery(null);
@@ -265,25 +281,34 @@ export default function NewsDetailScreen() {
       commentInputRef.current?.blur();
       await loadComments(articleId);
 
-      // 对每个 @提及的 AI 角色，触发流式回复
+      // 触发 AI 流式回复的角色集合
+      const aiCharIdsToReply = new Set<string>();
+
+      // 1. @提及的 AI 角色
       const mentionedChars = (result.mentions || []).filter((m) => m.type === 'character');
-      for (const mention of mentionedChars) {
-        const tempId = `streaming-${mention.id}-${Date.now()}`;
-        // 找到角色信息
-        const charInfo = mentionableCharacters.find((c) => c.id === mention.id);
+      for (const m of mentionedChars) aiCharIdsToReply.add(m.id);
+
+      // 2. 回复 AI 角色的一级评论时，该角色也自动回复（不晾用户）
+      if (savedReplyTarget && !savedReplyTarget.isReply && savedReplyTarget.isAi && savedReplyTarget.characterId) {
+        aiCharIdsToReply.add(savedReplyTarget.characterId);
+      }
+
+      for (const charId of aiCharIdsToReply) {
+        const tempId = `streaming-${charId}-${Date.now()}`;
+        const charInfo = mentionableCharacters.find((c) => c.id === charId);
 
         setStreamingReplies((prev) => ({
           ...prev,
           [tempId]: {
             parentId: result.id,
-            characterName: charInfo?.name || mention.name,
+            characterName: charInfo?.name || charId,
             characterEmoji: charInfo?.emoji || '🤖',
             content: '',
             done: false,
           },
         }));
 
-        const cancel = requestAIReply(articleId, result.id, mention.id, (event: AIReplySSEEvent) => {
+        const cancel = requestAIReply(articleId, result.id, charId, (event: AIReplySSEEvent) => {
           if (event.type === 'start' && event.character) {
             setStreamingReplies((prev) => prev[tempId] ? {
               ...prev,
@@ -417,32 +442,41 @@ export default function NewsDetailScreen() {
     </View>
   );
 
-  const handleReply = (comment: NewsComment, isReply: boolean) => {
+  const handleReply = (comment: NewsComment, isReply: boolean, parentCommentId?: string) => {
     if (isReply) {
-      // 回复二级评论：parentId 指向其所属的一级评论，但这里简化为指向该二级评论
-      // 后端会处理层级关系
-      setReplyTarget({ id: comment.id, name: comment.characterName, isReply: true });
+      // 回复二级评论 → parentId 指向一级评论
+      setReplyTarget({
+        id: comment.id,
+        name: comment.characterName,
+        isReply: true,
+        parentId: parentCommentId,
+        characterId: comment.characterId,
+        isAi: comment.isAi,
+      });
       setCommentText(`@${comment.characterName} `);
     } else {
       // 回复一级评论
-      setReplyTarget({ id: comment.id, name: comment.characterName, isReply: false });
+      setReplyTarget({
+        id: comment.id,
+        name: comment.characterName,
+        isReply: false,
+        characterId: comment.characterId,
+        isAi: comment.isAi,
+      });
       setCommentText('');
     }
     commentInputRef.current?.focus();
   };
 
-  const renderComment = (comment: NewsComment, isReply = false) => {
+  const renderComment = (comment: NewsComment, isReply = false, parentCommentId?: string) => {
     const streamingForThis = Object.entries(streamingReplies).filter(
       ([, r]) => r.parentId === comment.id,
     );
+    const isOwn = comment.characterId === user?.id;
 
     return (
       <View key={comment.id}>
-        <TouchableOpacity
-          style={[styles.commentRow, isReply && styles.replyRow]}
-          onPress={() => handleReply(comment, isReply)}
-          activeOpacity={0.7}
-        >
+        <View style={[styles.commentRow, isReply && styles.replyRow]}>
           <Avatar name={comment.characterName} size={isReply ? 28 : 36} />
           <View style={styles.commentBody}>
             <View style={styles.commentHeader}>
@@ -452,10 +486,14 @@ export default function NewsDetailScreen() {
               </Text>
             </View>
             {renderCommentContent(comment.content)}
-            <Text style={[styles.replyBtn, { color: t.textSecondary }]}>返信</Text>
+            {!isOwn && (
+              <TouchableOpacity onPress={() => handleReply(comment, isReply, parentCommentId || comment.id)}>
+                <Text style={[styles.replyBtn, { color: t.textSecondary }]}>返信</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </TouchableOpacity>
-        {comment.replies?.map((reply) => renderComment(reply, true))}
+        </View>
+        {comment.replies?.map((reply) => renderComment(reply, true, comment.id))}
         {streamingForThis.map(([tempId, r]) => renderStreamingReply(tempId, r))}
       </View>
     );
@@ -665,20 +703,22 @@ export default function NewsDetailScreen() {
         </View>
       )}
 
-      {/* Reply indicator */}
-      {replyTarget && (
-        <View style={[styles.replyIndicator, { backgroundColor: t.surface, borderTopColor: t.border, bottom: 56 + Math.max(insets.bottom, 8) + 8 }]}>
-          <Text style={{ color: t.textSecondary, fontSize: 13, flex: 1 }}>
-            {replyTarget.name} に返信
-          </Text>
-          <TouchableOpacity onPress={() => { setReplyTarget(null); setCommentText(''); }}>
-            <Ionicons name="close" size={18} color={t.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Fixed bottom: reply indicator + input bar */}
+      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+        {/* Reply indicator */}
+        {replyTarget && (
+          <View style={[styles.replyIndicator, { borderBottomColor: t.border }]}>
+            <Text style={{ color: t.textSecondary, fontSize: 13, flex: 1 }}>
+              {replyTarget.name} に返信
+            </Text>
+            <TouchableOpacity onPress={() => { setReplyTarget(null); setCommentText(''); }}>
+              <Ionicons name="close" size={18} color={t.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {/* Fixed bottom input bar */}
-      <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+        {/* Input bar */}
+        <View style={styles.bottomBar}>
         <TouchableOpacity
           style={[styles.bottomScrollBtn, { borderColor: t.border }]}
           onPress={() => scrollViewRef.current?.scrollTo({ y: commentSectionY.current - 60, animated: true })}
@@ -714,6 +754,7 @@ export default function NewsDetailScreen() {
             : <Ionicons name="arrow-up" size={16} color={commentText.trim() ? '#FFFFFF' : t.textSecondary} />
           }
         </TouchableOpacity>
+        </View>
       </View>
 
       <ShareModal
@@ -942,17 +983,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  bottomBar: {
+  bottomContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    borderTopWidth: 1,
+  },
+  bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 8,
-    borderTopWidth: 1,
   },
   bottomScrollBtn: {
     width: 36,
@@ -1016,14 +1059,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   replyIndicator: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderTopWidth: 1,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
   },
   skeletonWrap: {
     paddingHorizontal: 20,

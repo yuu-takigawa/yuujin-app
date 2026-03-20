@@ -85,6 +85,7 @@ export interface NewsComment {
   characterEmoji: string;
   content: string;
   createdAt: string;
+  isAi?: boolean;
   replies?: NewsComment[];
 }
 

@@ -23,6 +23,7 @@ function mapComment(c: ServerComment, articleId: string): NewsComment {
     characterEmoji: c.author?.avatarEmoji || '👤',
     content: c.content,
     createdAt: c.createdAt,
+    isAi: !!c.isAi,
     replies: (c.replies || []).map((r) => mapComment(r, articleId)),
   };
 }
