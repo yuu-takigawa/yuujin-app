@@ -45,6 +45,7 @@ interface ServerNewsArticle {
   };
   publishedAt: string;
   isRead?: boolean;
+  commentCount?: number;
 }
 
 function timeAgo(dateStr: string): string {
@@ -81,6 +82,7 @@ function mapArticle(s: ServerNewsArticle): NewsArticle {
     imageUrl: s.imageUrl || undefined,
     url: s.sourceUrl || '',
     category: s.category || undefined,
+    commentCount: s.commentCount || 0,
   };
 }
 

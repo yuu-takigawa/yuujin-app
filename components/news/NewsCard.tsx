@@ -59,11 +59,19 @@ export default function NewsCard({ article, onPress, onShare }: NewsCardProps) {
           <Text style={[styles.dot, { color: t.textSecondary }]}>·</Text>
           <Text style={[styles.time, { color: t.textSecondary }]}>{article.timeAgo}</Text>
         </View>
-        {onShare && (
-          <TouchableOpacity onPress={onShare} hitSlop={8}>
-            <Ionicons name="share-outline" size={16} color={t.textSecondary} />
-          </TouchableOpacity>
-        )}
+        <View style={styles.metaRight}>
+          {(article.commentCount ?? 0) > 0 && (
+            <View style={styles.commentBadge}>
+              <Ionicons name="chatbubble-outline" size={12} color={t.textSecondary} />
+              <Text style={[styles.commentCount, { color: t.textSecondary }]}>{article.commentCount}</Text>
+            </View>
+          )}
+          {onShare && (
+            <TouchableOpacity onPress={onShare} hitSlop={8}>
+              <Ionicons name="share-outline" size={16} color={t.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -122,6 +130,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   time: {
+    fontSize: 12,
+  },
+  metaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  commentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  commentCount: {
     fontSize: 12,
   },
 });

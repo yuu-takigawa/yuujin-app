@@ -67,6 +67,7 @@ export interface NewsArticle {
   url: string;
   category?: string;
   difficulty?: string;
+  commentCount?: number;
 }
 
 export interface NewsParagraph {
