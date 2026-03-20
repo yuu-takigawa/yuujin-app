@@ -1,5 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { spacing, fontSize, radii } from '../../constants/theme';
@@ -30,19 +29,15 @@ export default function NewsCard({ article, onPress, onShare }: NewsCardProps) {
       activeOpacity={0.7}
     >
       {article.imageUrl ? (
-        <Animated.Image
+        <Image
           source={{ uri: article.imageUrl }}
           style={styles.heroImage}
           resizeMode="cover"
-          sharedTransitionTag={`news-image-${article.id}`}
         />
       ) : (
-        <Animated.View
-          style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}
-          sharedTransitionTag={`news-image-${article.id}`}
-        >
+        <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
           <Text style={styles.heroEmoji}>{article.imageEmoji}</Text>
-        </Animated.View>
+        </View>
       )}
 
       <Text style={[styles.title, { color: t.text }]} numberOfLines={2}>

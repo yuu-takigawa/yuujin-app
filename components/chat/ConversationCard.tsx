@@ -1,12 +1,10 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated from 'react-native-reanimated';
 import Avatar from '../common/Avatar';
 import UnreadDot from '../common/UnreadDot';
 import { useTheme } from '../../hooks/useTheme';
 import { fontSize } from '../../constants/theme';
 
 interface ConversationCardProps {
-  conversationId: string;
   name: string;
   avatarEmoji: string;
   lastMessage: string;
@@ -34,7 +32,6 @@ function formatTime(dateStr: string): string {
 }
 
 export default function ConversationCard({
-  conversationId,
   name,
   avatarEmoji,
   lastMessage,
@@ -55,9 +52,7 @@ export default function ConversationCard({
       onPress={onPress}
       activeOpacity={0.6}
     >
-      <Animated.View sharedTransitionTag={`conv-avatar-${conversationId}`}>
-        <Avatar emoji={avatarEmoji} size={52} />
-      </Animated.View>
+      <Avatar emoji={avatarEmoji} size={52} />
       <View style={styles.content}>
         <View style={styles.topRow}>
           <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>

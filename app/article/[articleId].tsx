@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Alert, useWindowDimensions } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image, Alert, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +29,7 @@ type AnnotationCache = Record<string, { text: string; loading: boolean }>;
 type RubyCache = Record<number, [string, string][]>;
 
 export default function NewsDetailScreen() {
-  const { articleId, imageUrl: paramImageUrl, imageEmoji: paramImageEmoji } = useLocalSearchParams<{ articleId: string; imageUrl?: string; imageEmoji?: string }>();
+  const { articleId } = useLocalSearchParams<{ articleId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -232,32 +231,8 @@ export default function NewsDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
-        <View style={[styles.header, { borderBottomColor: t.border }]}>
-          <TouchableOpacity style={styles.headerBack} onPress={() => router.back()}>
-            <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
-          </TouchableOpacity>
-          <View style={styles.headerCenter}><Text style={[styles.headerTitle, { color: t.text }]}>記事</Text></View>
-          <View style={styles.headerRight} />
-        </View>
-        <View style={styles.articleHeader}>
-          {paramImageUrl ? (
-            <Animated.Image
-              source={{ uri: paramImageUrl }}
-              style={styles.heroImage}
-              resizeMode="cover"
-              sharedTransitionTag={`news-image-${articleId}`}
-            />
-          ) : (
-            <Animated.View
-              style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}
-              sharedTransitionTag={`news-image-${articleId}`}
-            >
-              <Text style={{ fontSize: 72 }}>{paramImageEmoji || '📰'}</Text>
-            </Animated.View>
-          )}
-        </View>
-        <ActivityIndicator size="large" color={t.brand} style={{ marginTop: 24 }} />
+      <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={t.brand} />
       </View>
     );
   }
@@ -316,20 +291,12 @@ export default function NewsDetailScreen() {
       >
         {/* Article Header */}
         <View style={styles.articleHeader}>
-          {(article?.imageUrl || paramImageUrl) ? (
-            <Animated.Image
-              source={{ uri: article?.imageUrl || paramImageUrl }}
-              style={styles.heroImage}
-              resizeMode="cover"
-              sharedTransitionTag={`news-image-${articleId}`}
-            />
+          {article.imageUrl ? (
+            <Image source={{ uri: article.imageUrl }} style={styles.heroImage} resizeMode="cover" />
           ) : (
-            <Animated.View
-              style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}
-              sharedTransitionTag={`news-image-${articleId}`}
-            >
-              <Text style={{ fontSize: 72 }}>{article?.imageEmoji || paramImageEmoji || '📰'}</Text>
-            </Animated.View>
+            <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
+              <Text style={{ fontSize: 72 }}>{article.imageEmoji}</Text>
+            </View>
           )}
           <Text style={[styles.articleTitle, { color: t.text }]}>{article.title}</Text>
           <View style={styles.metaRow}>

@@ -1,12 +1,10 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
 
 interface CharacterHeaderProps {
-  conversationId?: string;
   name: string;
   avatarEmoji: string;
   onMenuPress: () => void;
@@ -14,7 +12,6 @@ interface CharacterHeaderProps {
 }
 
 export default function CharacterHeader({
-  conversationId,
   name,
   avatarEmoji,
   onMenuPress,
@@ -30,9 +27,7 @@ export default function CharacterHeader({
       </TouchableOpacity>
 
       <View style={styles.center}>
-        <Animated.View sharedTransitionTag={conversationId ? `conv-avatar-${conversationId}` : undefined}>
-          <Avatar emoji={avatarEmoji} size={32} />
-        </Animated.View>
+        <Avatar emoji={avatarEmoji} size={32} />
         <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>
           {name}
         </Text>
