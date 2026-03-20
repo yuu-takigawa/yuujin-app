@@ -9,6 +9,8 @@ import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
 import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph, requestAIReply } from '../../services/api';
 import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent, AIReplySSEEvent } from '../../services/api';
+import { useCharacterStore } from '../../stores/characterStore';
+import { useFriendStore } from '../../stores/friendStore';
 
 function formatCommentTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -33,6 +35,8 @@ export default function NewsDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const characters = useCharacterStore((s) => s.characters);
+  const friends = useFriendStore((s) => s.friends);
 
   // 入场动画（Web 用 JS driver，Native 用 native driver）
   const isWeb = Platform.OS === 'web';
@@ -303,26 +307,21 @@ export default function NewsDetailScreen() {
     }
   };
 
-  // 从评论中提取可@的角色（去重）
+  // 好友角色列表（可@提及）
   const mentionableCharacters = (() => {
-    const seen = new Set<string>();
-    const result: { id: string; name: string; emoji: string }[] = [];
-    const collect = (list: NewsComment[]) => {
-      for (const c of list) {
-        if (c.characterId && !seen.has(c.characterId)) {
-          seen.add(c.characterId);
-          result.push({ id: c.characterId, name: c.characterName, emoji: c.characterEmoji });
-        }
-        if (c.replies) collect(c.replies);
-      }
-    };
-    collect(comments);
-    return result;
+    const friendCharIds = new Set(friends.map((f) => f.characterId));
+    return characters
+      .filter((c) => friendCharIds.has(c.id))
+      .map((c) => ({ id: c.id, name: c.name, emoji: c.avatarEmoji || '🤖' }));
   })();
 
-  // 根据 mentionQuery 过滤候选角色
+  // 根据 mentionQuery 模糊匹配候选角色
   const filteredMentions = mentionQuery !== null
-    ? mentionableCharacters.filter(c => c.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+    ? mentionableCharacters.filter(c => {
+        if (!mentionQuery) return true; // @ 后没输入字符时显示全部
+        const q = mentionQuery.toLowerCase();
+        return c.name.toLowerCase().includes(q);
+      })
     : [];
 
   // 处理输入变化，检测 @ 触发
