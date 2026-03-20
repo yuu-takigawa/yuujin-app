@@ -58,6 +58,8 @@ export default function NewsDetailScreen() {
   const [comments, setComments] = useState<NewsComment[]>([]);
   const [sending, setSending] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = picker hidden
+  // 回复目标：parentId + 被回复者名字
+  const [replyTarget, setReplyTarget] = useState<{ id: string; name: string; isReply: boolean } | null>(null);
   // 流式 AI 回复：key = tempId, value = streaming reply data
   const [streamingReplies, setStreamingReplies] = useState<Record<string, {
     parentId: string;
@@ -246,9 +248,20 @@ export default function NewsDetailScreen() {
     if (!commentText.trim() || !articleId || sending) return;
     setSending(true);
     try {
-      const result = await postNewsComment(articleId, commentText.trim());
+      // 回复二级评论时自动加 @name 前缀
+      let content = commentText.trim();
+      let parentId: string | undefined;
+      if (replyTarget) {
+        parentId = replyTarget.id;
+        // 回复二级评论（isReply=true）时，parentId 保持为一级评论的 ID，内容加 @name
+        if (replyTarget.isReply && !content.startsWith(`@${replyTarget.name}`)) {
+          content = `@${replyTarget.name} ${content}`;
+        }
+      }
+      const result = await postNewsComment(articleId, content, parentId);
       setCommentText('');
       setMentionQuery(null);
+      setReplyTarget(null);
       commentInputRef.current?.blur();
       await loadComments(articleId);
 
@@ -404,15 +417,32 @@ export default function NewsDetailScreen() {
     </View>
   );
 
+  const handleReply = (comment: NewsComment, isReply: boolean) => {
+    if (isReply) {
+      // 回复二级评论：parentId 指向其所属的一级评论，但这里简化为指向该二级评论
+      // 后端会处理层级关系
+      setReplyTarget({ id: comment.id, name: comment.characterName, isReply: true });
+      setCommentText(`@${comment.characterName} `);
+    } else {
+      // 回复一级评论
+      setReplyTarget({ id: comment.id, name: comment.characterName, isReply: false });
+      setCommentText('');
+    }
+    commentInputRef.current?.focus();
+  };
+
   const renderComment = (comment: NewsComment, isReply = false) => {
-    // 找到属于这条评论的流式回复
     const streamingForThis = Object.entries(streamingReplies).filter(
       ([, r]) => r.parentId === comment.id,
     );
 
     return (
       <View key={comment.id}>
-        <View style={[styles.commentRow, isReply && styles.replyRow]}>
+        <TouchableOpacity
+          style={[styles.commentRow, isReply && styles.replyRow]}
+          onPress={() => handleReply(comment, isReply)}
+          activeOpacity={0.7}
+        >
           <Avatar name={comment.characterName} size={isReply ? 28 : 36} />
           <View style={styles.commentBody}>
             <View style={styles.commentHeader}>
@@ -422,8 +452,9 @@ export default function NewsDetailScreen() {
               </Text>
             </View>
             {renderCommentContent(comment.content)}
+            <Text style={[styles.replyBtn, { color: t.textSecondary }]}>返信</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         {comment.replies?.map((reply) => renderComment(reply, true))}
         {streamingForThis.map(([tempId, r]) => renderStreamingReply(tempId, r))}
       </View>
@@ -631,6 +662,18 @@ export default function NewsDetailScreen() {
               <Text style={[styles.mentionName, { color: t.text }]}>{char.name}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+      )}
+
+      {/* Reply indicator */}
+      {replyTarget && (
+        <View style={[styles.replyIndicator, { backgroundColor: t.surface, borderTopColor: t.border, bottom: 56 + Math.max(insets.bottom, 8) + 8 }]}>
+          <Text style={{ color: t.textSecondary, fontSize: 13, flex: 1 }}>
+            {replyTarget.name} に返信
+          </Text>
+          <TouchableOpacity onPress={() => { setReplyTarget(null); setCommentText(''); }}>
+            <Ionicons name="close" size={18} color={t.textSecondary} />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -967,6 +1010,20 @@ const styles = StyleSheet.create({
   mentionName: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  replyBtn: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  replyIndicator: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
   },
   skeletonWrap: {
     paddingHorizontal: 20,
