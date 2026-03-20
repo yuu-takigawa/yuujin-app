@@ -7,6 +7,7 @@ import { fontSize } from '../../constants/theme';
 interface ConversationCardProps {
   name: string;
   avatarEmoji: string;
+  avatarUrl?: string;
   lastMessage: string;
   time: string;
   hasUnread: boolean;
@@ -34,6 +35,7 @@ function formatTime(dateStr: string): string {
 export default function ConversationCard({
   name,
   avatarEmoji,
+  avatarUrl,
   lastMessage,
   time,
   hasUnread,
@@ -52,7 +54,7 @@ export default function ConversationCard({
       onPress={onPress}
       activeOpacity={0.6}
     >
-      <Avatar emoji={avatarEmoji} size={52} />
+      <Avatar emoji={avatarEmoji} imageUrl={avatarUrl} size={52} />
       <View style={styles.content}>
         <View style={styles.topRow}>
           <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>

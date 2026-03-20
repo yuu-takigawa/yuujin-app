@@ -1,27 +1,32 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { radii } from '../../constants/theme';
 
 interface AvatarProps {
-  emoji: string;
+  emoji?: string;
+  imageUrl?: string;
   size?: number;
 }
 
-export default function Avatar({ emoji, size = 48 }: AvatarProps) {
+export default function Avatar({ emoji, imageUrl, size = 48 }: AvatarProps) {
   const t = useTheme();
+  const containerStyle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    backgroundColor: imageUrl ? 'transparent' : t.brandLight,
+  };
+
+  if (imageUrl) {
+    return (
+      <View style={[styles.container, containerStyle, { overflow: 'hidden' as const }]}>
+        <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} />
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: t.brandLight,
-        },
-      ]}
-    >
-      <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
+    <View style={[styles.container, containerStyle]}>
+      <Text style={{ fontSize: size * 0.5 }}>{emoji || '👤'}</Text>
     </View>
   );
 }
