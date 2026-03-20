@@ -82,12 +82,21 @@ export default function NewsDetailScreen() {
     } catch { /* silent */ }
   };
 
+  const [contentReady, setContentReady] = useState(false);
+
   useEffect(() => {
     if (!articleId) return;
     setLoading(true);
+    setContentReady(false);
     getNewsDetail(articleId).then((detail) => {
+      // 同时设置 article 和 furigana，避免两次渲染导致注音闪烁
+      if (detail?.furigana) {
+        setRubyCache(detail.furigana as unknown as RubyCache);
+      }
       setArticle(detail);
       setLoading(false);
+      // 下一帧再显示内容，让布局先稳定
+      requestAnimationFrame(() => setContentReady(true));
     }).catch(() => setLoading(false));
     loadComments(articleId);
     return () => {
@@ -98,13 +107,6 @@ export default function NewsDetailScreen() {
   }, [articleId]);
 
   const paragraphs = article?.content?.split('\n').filter(p => p.trim().length > 0) || [];
-
-  // 振り仮名: 文章入库时预计算（子进程 kuromoji），存在 article.furigana 中
-  useEffect(() => {
-    if (article?.furigana) {
-      setRubyCache(article.furigana as unknown as RubyCache);
-    }
-  }, [article]);
 
   // Ruby 文本渲染（含末尾内联问号）
   const renderParagraph = (text: string, index: number) => {
@@ -478,7 +480,8 @@ export default function NewsDetailScreen() {
           </View>
         ) : null}
 
-        {/* Paragraphs */}
+        {/* Paragraphs — fade in after layout stabilizes */}
+        <View style={{ opacity: contentReady ? 1 : 0, ...(Platform.OS === 'web' ? { transition: 'opacity 0.3s ease-in' } as any : {}) }}>
         {paragraphs.map((text, index) => {
           const transKey = `${index}:translation`;
           const explKey = `${index}:explanation`;
@@ -558,6 +561,7 @@ export default function NewsDetailScreen() {
             <Text style={[styles.bodyText, { color: t.text }]}>{article.summary}</Text>
           </View>
         )}
+        </View>
 
         {/* Comments Section */}
         <View
