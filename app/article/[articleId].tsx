@@ -553,7 +553,7 @@ export default function NewsDetailScreen() {
           );
         })}
 
-        {paragraphs.length === 0 && (
+        {paragraphs.length === 0 && article && (
           <View style={styles.paragraph}>
             <Text style={[styles.bodyText, { color: t.text }]}>{article.summary}</Text>
           </View>
