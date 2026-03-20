@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +6,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useTheme } from '../../../hooks/useTheme';
-import { uploadAvatar } from '../../../services/api';
+import { uploadAvatar, getAvatarPresets } from '../../../services/api';
+import type { AvatarPreset } from '../../../services/api';
 import ImageCropper from '../../../components/common/ImageCropper';
 
 function safeDisplayName(username: string | undefined, email: string | undefined): string {
@@ -15,12 +16,7 @@ function safeDisplayName(username: string | undefined, email: string | undefined
   return hasGarbled ? (email?.split('@')[0] || '') : username;
 }
 
-const AVATAR_OPTIONS = [
-  '🐱', '🐶', '🐼', '🦊', '🐸', '🐮',
-  '🦁', '🐯', '🐺', '🦝', '🐷', '🐨',
-  '🦄', '🐲', '🌸', '🌺', '⭐', '🌙',
-  '🎵', '🎮', '📚', '🍣', '🎌', '🗾',
-];
+// emoji 已移除，改用いらすとや 预设头像
 
 export default function EditProfileScreen() {
   const user = useAuthStore((s) => s.user);
@@ -35,6 +31,11 @@ export default function EditProfileScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cropperImage, setCropperImage] = useState<string | null>(null);
+  const [presets, setPresets] = useState<AvatarPreset[]>([]);
+
+  useEffect(() => {
+    getAvatarPresets().then(setPresets).catch(() => {});
+  }, []);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -157,25 +158,33 @@ export default function EditProfileScreen() {
           <Text style={[styles.uploadHint, { color: t.textSecondary }]}>タップして写真を変更</Text>
         </View>
 
-        {/* Emoji grid */}
-        <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
-          <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>アバターを選択</Text>
-          <View style={styles.emojiGrid}>
-            {AVATAR_OPTIONS.map((emoji) => (
-              <TouchableOpacity
-                key={emoji}
-                style={[
-                  styles.emojiCell,
-                  selectedEmoji === emoji && { backgroundColor: t.brandLight, borderColor: t.brand, borderWidth: 2 },
-                ]}
-                onPress={() => setSelectedEmoji(emoji)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.emojiCellText}>{emoji}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* Preset avatar grid (いらすとや) */}
+        {presets.length > 0 && (
+          <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+            <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>アバターを選択</Text>
+            <View style={styles.presetGrid}>
+              {presets.map((preset) => {
+                const selected = avatarUrl === preset.url;
+                return (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[
+                      styles.presetCell,
+                      selected && { borderColor: t.brand, borderWidth: 2 },
+                    ]}
+                    onPress={() => {
+                      setAvatarUrl(preset.url);
+                      setSelectedEmoji('');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: preset.url }} style={styles.presetImage} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Username */}
         <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
@@ -266,19 +275,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  emojiGrid: {
+  presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
-  emojiCell: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  presetCell: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  emojiCellText: { fontSize: 26 },
+  presetImage: {
+    width: '100%',
+    height: '100%',
+  },
   input: {
     height: 44,
     borderRadius: 10,
