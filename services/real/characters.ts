@@ -96,3 +96,12 @@ export async function deleteCharacter(id: string): Promise<void> {
 export const generateRandomCharacter = mockGenerate;
 export const randomizeField = mockRandomizeField;
 export const randomizeArrayField = mockRandomizeArrayField;
+
+/** AI 生成自我介绍 */
+export async function generateBio(data: {
+  name: string; age: number; gender: string;
+  occupation: string; personality: string[]; hobbies: string[]; location: string;
+}): Promise<string> {
+  const res = await post<{ bio: string }>('/characters/generate-bio', data);
+  return res.bio;
+}

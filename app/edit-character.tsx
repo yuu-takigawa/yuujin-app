@@ -32,7 +32,7 @@ export default function EditCharacterScreen() {
 
   const handleSubmit = async (data: {
     name: string;
-    avatarEmoji: string;
+    avatarUrl: string;
     age: number;
     gender: string;
     occupation: string;
@@ -63,7 +63,7 @@ export default function EditCharacterScreen() {
       <CharacterForm
         initialData={{
           name: character.name,
-          avatarEmoji: character.avatarEmoji,
+          avatarUrl: character.avatarUrl,
           age: character.age,
           gender: character.gender,
           occupation: character.occupation,

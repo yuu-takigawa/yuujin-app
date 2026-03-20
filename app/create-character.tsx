@@ -19,7 +19,7 @@ export default function CreateCharacterScreen() {
 
   const handleSubmit = async (data: {
     name: string;
-    avatarEmoji: string;
+    avatarUrl: string;
     age: number;
     gender: string;
     occupation: string;
