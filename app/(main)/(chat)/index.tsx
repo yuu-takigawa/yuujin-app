@@ -6,7 +6,7 @@ import { useFriendStore } from '../../../stores/friendStore';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { useAuthStore } from '../../../stores/authStore';
 import ConversationCard from '../../../components/chat/ConversationCard';
-import SwipeableRow from '../../../components/common/SwipeableRow';
+import SwipeableRow, { SwipeableProvider } from '../../../components/common/SwipeableRow';
 import { useTheme } from '../../../hooks/useTheme';
 import { spacing, fontSize } from '../../../constants/theme';
 import type { Conversation } from '../../../services/api';
@@ -23,6 +23,7 @@ export default function ChatListScreen() {
   const fetchFriends = useFriendStore((s) => s.fetchFriends);
   const deleteConversation = useFriendStore((s) => s.deleteConversation);
   const removeFriend = useFriendStore((s) => s.removeFriend);
+  const togglePin = useFriendStore((s) => s.togglePin);
   const characters = useCharacterStore((s) => s.characters);
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters);
 
@@ -64,6 +65,12 @@ export default function ChatListScreen() {
     }
   };
 
+  const handlePin = async (conv: Conversation) => {
+    if (user) {
+      await togglePin(user.id, conv.characterId);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       <Animated.View style={[styles.header, {
@@ -79,6 +86,7 @@ export default function ChatListScreen() {
         </Text>
       </Animated.View>
 
+      <SwipeableProvider>
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
@@ -88,7 +96,11 @@ export default function ChatListScreen() {
           const friend = getFriend(item.characterId);
           if (!char) return null;
           return (
-            <SwipeableRow onDelete={() => handleDelete(item)}>
+            <SwipeableRow
+              onDelete={() => handleDelete(item)}
+              onPin={() => handlePin(item)}
+              isPinned={friend?.isPinned || false}
+            >
               <ConversationCard
                 name={char.name}
                 avatarEmoji={char.avatarEmoji}
@@ -111,6 +123,7 @@ export default function ChatListScreen() {
           </View>
         }
       />
+      </SwipeableProvider>
     </View>
   );
 }
