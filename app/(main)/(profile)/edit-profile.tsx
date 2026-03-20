@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useTheme } from '../../../hooks/useTheme';
 import { uploadAvatar } from '../../../services/api';
+import ImageCropper from '../../../components/common/ImageCropper';
 
 function safeDisplayName(username: string | undefined, email: string | undefined): string {
   if (!username || username.trim().length === 0) return email?.split('@')[0] || '';
@@ -33,6 +34,7 @@ export default function EditProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cropperImage, setCropperImage] = useState<string | null>(null);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -40,26 +42,41 @@ export default function EditProfileScreen() {
       Alert.alert('権限が必要', 'フォトライブラリへのアクセスを許可してください');
       return;
     }
+    const isWeb = Platform.OS === 'web';
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      allowsEditing: !isWeb, // Native 用系统裁剪，Web 用自定义裁剪器
       aspect: [1, 1],
       quality: 0.8,
     });
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
-    const mimeType = asset.mimeType || 'image/jpeg';
+    if (isWeb) {
+      // Web: 弹出圆形裁剪器
+      setCropperImage(asset.uri);
+    } else {
+      // Native: 系统已裁剪，直接上传
+      await doUpload(asset.uri, asset.mimeType || 'image/jpeg');
+    }
+  };
+
+  const doUpload = async (uri: string, mimeType: string) => {
     setUploadingAvatar(true);
     try {
-      const url = await uploadAvatar(asset.uri, mimeType, 'user', user!.id);
+      const url = await uploadAvatar(uri, mimeType, 'user', user!.id);
       setAvatarUrl(url);
-      setSelectedEmoji(''); // 切换到图片模式时清除 emoji
+      setSelectedEmoji('');
     } catch (err) {
       Alert.alert('アップロード失敗', (err as Error).message);
     } finally {
       setUploadingAvatar(false);
     }
+  };
+
+  const handleCropConfirm = (croppedUri: string) => {
+    setCropperImage(null);
+    doUpload(croppedUri, 'image/jpeg');
   };
 
   const handleSave = async () => {
@@ -184,6 +201,15 @@ export default function EditProfileScreen() {
           <Text style={[styles.inputHint, { color: t.textSecondary }]}>変更不可</Text>
         </View>
       </ScrollView>
+
+      {/* 圆形裁剪器（Web 端） */}
+      {cropperImage && (
+        <ImageCropper
+          imageUri={cropperImage}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropperImage(null)}
+        />
+      )}
     </View>
   );
 }
