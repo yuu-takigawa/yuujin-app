@@ -276,6 +276,8 @@ export default function NewsDetailScreen() {
               ...prev,
               [tempId]: { ...prev[tempId], characterName: event.character!.name, characterEmoji: event.character!.avatarEmoji },
             } : prev);
+            // AI 开始回复时滚动到底部
+            setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
           } else if (event.type === 'delta' && event.content) {
             setStreamingReplies((prev) => prev[tempId] ? {
               ...prev,
@@ -651,6 +653,12 @@ export default function NewsDetailScreen() {
             returnKeyType="send"
             onSubmitEditing={handleSendComment}
             blurOnSubmit={false}
+            onFocus={() => {
+              // 滚动到评论区末尾，让用户看到即将发表的位置
+              setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+              }, 300);
+            }}
           />
         </View>
         <TouchableOpacity
