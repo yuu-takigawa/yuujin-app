@@ -52,12 +52,18 @@ export default function EditProfileScreen() {
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
-    if (isWeb) {
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const isGif = mimeType === 'image/gif' || asset.uri?.toLowerCase().endsWith('.gif');
+
+    if (isGif) {
+      // GIF 跳过裁剪器，直接上传保留动画（圆形显示由 CSS borderRadius 处理）
+      await doUpload(asset.uri, 'image/gif');
+    } else if (isWeb) {
       // Web: 弹出圆形裁剪器
       setCropperImage(asset.uri);
     } else {
       // Native: 系统已裁剪，直接上传
-      await doUpload(asset.uri, asset.mimeType || 'image/jpeg');
+      await doUpload(asset.uri, mimeType);
     }
   };
 
