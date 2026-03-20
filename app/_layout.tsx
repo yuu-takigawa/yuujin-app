@@ -40,7 +40,7 @@ export default function RootLayout() {
           <Stack.Screen name="character/[characterId]" />
           <Stack.Screen name="create-character" />
           <Stack.Screen name="edit-character" />
-          <Stack.Screen name="article/[articleId]" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="article/[articleId]" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="settings" />
           <Stack.Screen name="membership" />
         </Stack>

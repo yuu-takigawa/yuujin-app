@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback, TextInput, StyleSheet, Platform, ActivityIndicator, Image, Alert, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -103,7 +103,7 @@ export default function NewsDetailScreen() {
                   const iconCenter = rect.left + rect.width / 2;
                   const idealLeft = iconCenter - tooltipW / 2;
                   const cx = Math.max(8, Math.min(idealLeft, screenWidth - tooltipW - 8));
-                  const cy = Math.max(56, rect.top - 52);
+                  const cy = Math.max(56, rect.top - 68);
                   setTooltipPos({ x: cx, y: cy, arrowLeft: iconCenter - cx });
                   setTooltipIndex(index);
                   return;
@@ -221,7 +221,10 @@ export default function NewsDetailScreen() {
       setCommentText('');
       commentInputRef.current?.blur();
       await loadComments(articleId);
-    } catch { /* silent */ } finally {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '不明なエラー';
+      Alert.alert('コメント送信失敗', msg);
+    } finally {
       setSending(false);
     }
   };
@@ -398,47 +401,49 @@ export default function NewsDetailScreen() {
             <Text style={{ color: t.textSecondary, fontSize: 13 }}>まだコメントはありません</Text>
           )}
         </View>
-        <View style={{ height: 80 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Floating tooltip */}
       {tooltipIndex !== null && (
-        <View style={styles.tooltipOverlay} pointerEvents="box-none">
-          <View style={[
-            styles.tooltip,
-            { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
-          ]}>
-            <TouchableOpacity
-              style={styles.tooltipBtn}
-              onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
-            >
-              <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
-              <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
-            </TouchableOpacity>
-            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-            <TouchableOpacity
-              style={styles.tooltipBtn}
-              onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
-            >
-              <Ionicons name="language-outline" size={16} color={t.brand} />
-              <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
-            </TouchableOpacity>
-            <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
-            <TouchableOpacity
-              style={styles.tooltipBtn}
-              onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
-            >
-              <Ionicons name="school-outline" size={16} color={t.brand} />
-              <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
-            </TouchableOpacity>
-            {/* 三角箭头 */}
-            <View style={[styles.tooltipArrow, { borderTopColor: t.surface, left: tooltipPos.arrowLeft - 6 }]} />
+        <TouchableWithoutFeedback onPress={() => setTooltipIndex(null)}>
+          <View style={styles.tooltipOverlay}>
+            <View style={[
+              styles.tooltip,
+              { backgroundColor: t.surface, shadowColor: '#000', top: tooltipPos.y, left: tooltipPos.x },
+            ]}>
+              <TouchableOpacity
+                style={styles.tooltipBtn}
+                onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
+              >
+                <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
+                <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
+              </TouchableOpacity>
+              <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+              <TouchableOpacity
+                style={styles.tooltipBtn}
+                onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
+              >
+                <Ionicons name="language-outline" size={16} color={t.brand} />
+                <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
+              </TouchableOpacity>
+              <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
+              <TouchableOpacity
+                style={styles.tooltipBtn}
+                onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
+              >
+                <Ionicons name="school-outline" size={16} color={t.brand} />
+                <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
+              </TouchableOpacity>
+              {/* 三角箭头 */}
+              <View style={[styles.tooltipArrow, { borderTopColor: t.surface, left: tooltipPos.arrowLeft - 6 }]} />
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       )}
 
       {/* Fixed bottom input bar */}
-      <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border }]}>
+      <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
         <TouchableOpacity
           style={[styles.bottomScrollBtn, { borderColor: t.border }]}
           onPress={() => scrollViewRef.current?.scrollTo({ y: commentSectionY.current - 60, animated: true })}
@@ -705,7 +710,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    paddingBottom: 16,
     gap: 8,
     borderTopWidth: 1,
   },
