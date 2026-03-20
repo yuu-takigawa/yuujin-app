@@ -47,6 +47,8 @@ export default function NewsScreen() {
   const loadingMoreRef = useRef(false);
   const flatListRef = useRef<FlatList>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const prevCategoryRef = useRef(category);
+  const hasFetchedRef = useRef(false);
 
   const loadArticles = useCallback(async (offset = 0, replace = false, cat?: string) => {
     try {
@@ -61,9 +63,20 @@ export default function NewsScreen() {
   }, [category]);
 
   useEffect(() => {
+    const categoryChanged = prevCategoryRef.current !== category;
+    prevCategoryRef.current = category;
+
+    // 返回时已有数据且分类没变，跳过重新加载
+    if (hasFetchedRef.current && !categoryChanged) return;
+
+    if (categoryChanged) {
+      setArticles([]);
+    }
     setLoading(true);
-    setArticles([]);
-    loadArticles(0, true, category || undefined).finally(() => setLoading(false));
+    loadArticles(0, true, category || undefined).finally(() => {
+      setLoading(false);
+      hasFetchedRef.current = true;
+    });
   }, [category]);
 
   const handleRefresh = useCallback(async () => {
