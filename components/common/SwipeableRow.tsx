@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, createContext, useContext, useCallback } from 'react';
+import { useRef, useMemo, createContext, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,30 +12,44 @@ import { useTheme } from '../../hooks/useTheme';
 // ─── 排他控制：同时只有一个 row 打开 ───
 type CloseCallback = () => void;
 const SwipeContext = createContext<{
-  register: (close: CloseCallback) => void;
   notifyOpen: (close: CloseCallback) => void;
+  closeAll: () => void;
 }>({
-  register: () => {},
   notifyOpen: () => {},
+  closeAll: () => {},
 });
 
 /** 包裹 FlatList 外层，确保同时只有一个 SwipeableRow 打开 */
-export function SwipeableProvider({ children }: { children: React.ReactNode }) {
+export function SwipeableProvider({ children, closeAllRef }: { children: React.ReactNode; closeAllRef?: React.MutableRefObject<(() => void) | null> }) {
   const openRef = useRef<CloseCallback | null>(null);
 
-  const register = useCallback(() => {}, []);
   const notifyOpen = useCallback((close: CloseCallback) => {
     if (openRef.current && openRef.current !== close) {
-      openRef.current(); // 关闭上一个
+      openRef.current();
     }
     openRef.current = close;
   }, []);
 
+  const closeAll = useCallback(() => {
+    if (openRef.current) {
+      openRef.current();
+      openRef.current = null;
+    }
+  }, []);
+
+  // 暴露 closeAll 给外部
+  if (closeAllRef) closeAllRef.current = closeAll;
+
   return (
-    <SwipeContext.Provider value={{ register, notifyOpen }}>
+    <SwipeContext.Provider value={{ notifyOpen, closeAll }}>
       {children}
     </SwipeContext.Provider>
   );
+}
+
+/** Hook: 获取 closeAll，用于 FlatList onScrollBeginDrag */
+export function useSwipeableClose() {
+  return useContext(SwipeContext).closeAll;
 }
 
 // ─── SwipeableRow ───
@@ -47,7 +61,7 @@ interface SwipeableRowProps {
 }
 
 const ACTION_WIDTH = 72;
-const TOTAL_WIDTH = ACTION_WIDTH * 2; // 置顶 + 削除
+const TOTAL_WIDTH = ACTION_WIDTH * 2;
 
 export default function SwipeableRow({ children, onDelete, onPin, isPinned }: SwipeableRowProps) {
   const t = useTheme();
@@ -55,7 +69,7 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
 
-  // 关闭动画
+  // 关闭（带动画）
   const close = useCallback(() => {
     Animated.spring(translateX, {
       toValue: 0,
@@ -65,12 +79,17 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
     isOpen.current = false;
   }, [translateX]);
 
+  // 瞬间复位（无动画，用于置顶后列表重排）
+  const resetInstant = useCallback(() => {
+    translateX.setValue(0);
+    isOpen.current = false;
+  }, [translateX]);
+
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) => {
       return Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 10;
     },
     onPanResponderGrant: () => {
-      // 通知 Provider 关闭其他已打开的 row
       notifyOpen(close);
     },
     onPanResponderMove: (_, gs) => {
@@ -96,11 +115,10 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
 
   return (
     <View style={styles.container}>
-      {/* 底层按钮区 */}
       <View style={[styles.actionsContainer, { right: 0 }]}>
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: '#34C759', width: ACTION_WIDTH }]}
-          onPress={() => { onPin?.(); close(); }}
+          onPress={() => { resetInstant(); onPin?.(); }}
         >
           <Text style={styles.actionText}>{isPinned ? '解除' : 'ピン留め'}</Text>
         </TouchableOpacity>
@@ -112,7 +130,6 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
         </TouchableOpacity>
       </View>
 
-      {/* 前景内容 */}
       <Animated.View
         style={[styles.content, { backgroundColor: t.background, transform: [{ translateX }] }]}
         {...panResponder.panHandlers}

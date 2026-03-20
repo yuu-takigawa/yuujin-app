@@ -24,6 +24,7 @@ export default function ChatListScreen() {
   const deleteConversation = useFriendStore((s) => s.deleteConversation);
   const removeFriend = useFriendStore((s) => s.removeFriend);
   const togglePin = useFriendStore((s) => s.togglePin);
+  const closeAllRef = useRef<(() => void) | null>(null);
   const characters = useCharacterStore((s) => s.characters);
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters);
 
@@ -86,11 +87,12 @@ export default function ChatListScreen() {
         </Text>
       </Animated.View>
 
-      <SwipeableProvider>
+      <SwipeableProvider closeAllRef={closeAllRef}>
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 8 + insets.bottom }}
+        onScrollBeginDrag={() => closeAllRef.current?.()}
         renderItem={({ item }) => {
           const char = getCharacter(item.characterId);
           const friend = getFriend(item.characterId);
