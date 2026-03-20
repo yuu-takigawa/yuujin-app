@@ -25,7 +25,7 @@ export default function CharacterDetail({
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.background }]}>
       <View style={styles.header}>
-        <Avatar emoji={character.avatarEmoji} size={96} />
+        <Avatar imageUrl={character.avatarUrl} name={character.name} size={96} />
         <Text style={[styles.name, { color: t.text }]}>{character.name}</Text>
         <Text style={[styles.sub, { color: t.textSecondary }]}>
           {character.age}歳 · {character.gender} · {character.occupation}

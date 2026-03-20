@@ -5,7 +5,8 @@ import { radii } from '../../constants/theme';
 
 interface CharacterCardProps {
   name: string;
-  avatarEmoji: string;
+  avatarEmoji?: string;
+  avatarUrl?: string;
   occupation: string;
   personality: string[];
   location: string;
@@ -21,6 +22,7 @@ interface CharacterCardProps {
 export default function CharacterCard({
   name,
   avatarEmoji,
+  avatarUrl,
   occupation,
   personality,
   location,
@@ -39,7 +41,7 @@ export default function CharacterCard({
       activeOpacity={0.85}
     >
       {/* Avatar */}
-      <Avatar emoji={avatarEmoji} size={90} />
+      <Avatar imageUrl={avatarUrl} name={name} size={90} />
 
       {/* Type badge */}
       <View style={[styles.typeBadge, { borderColor: t.border, backgroundColor: t.surface }]}>

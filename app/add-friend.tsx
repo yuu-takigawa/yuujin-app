@@ -84,7 +84,7 @@ export default function AddFriendScreen() {
           const alreadyFriend = isFriend(item.id);
           return (
             <View style={[styles.row, { borderBottomColor: t.border }]}>
-              <Avatar emoji={item.avatarEmoji} size={44} />
+              <Avatar imageUrl={item.avatarUrl} name={item.name} size={44} />
               <View style={styles.info}>
                 <Text style={[styles.name, { color: t.text }]}>{item.name}</Text>
                 <Text style={[styles.sub, { color: t.textSecondary }]}>

@@ -228,7 +228,7 @@ export default function FriendsScreen() {
               ) : (
                 <CharacterCard
                   name={char.name}
-                  avatarEmoji={char.avatarEmoji}
+                  avatarUrl={char.avatarUrl}
                   occupation={char.occupation}
                   personality={char.personality}
                   location={char.location}

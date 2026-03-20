@@ -4,15 +4,15 @@ import { useTheme } from '../../hooks/useTheme';
 
 interface StreamingTextProps {
   content: string;
-  avatarEmoji?: string;
+  avatarUrl?: string;
 }
 
-export default function StreamingText({ content, avatarEmoji }: StreamingTextProps) {
+export default function StreamingText({ content, avatarUrl }: StreamingTextProps) {
   const t = useTheme();
 
   return (
     <View style={styles.row}>
-      {avatarEmoji && <Avatar emoji={avatarEmoji} size={36} />}
+      {avatarUrl && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={styles.bubbleWrap}>
         <View style={[styles.bubble, { backgroundColor: t.bubbleAI }]}>
           <Text style={[styles.text, { color: t.text }]}>

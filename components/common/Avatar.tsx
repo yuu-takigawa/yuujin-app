@@ -2,12 +2,12 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 
 interface AvatarProps {
-  emoji?: string;
   imageUrl?: string;
+  name?: string;
   size?: number;
 }
 
-export default function Avatar({ emoji, imageUrl, size = 48 }: AvatarProps) {
+export default function Avatar({ imageUrl, name, size = 48 }: AvatarProps) {
   const t = useTheme();
   const containerStyle = {
     width: size,
@@ -24,9 +24,11 @@ export default function Avatar({ emoji, imageUrl, size = 48 }: AvatarProps) {
     );
   }
 
+  // 无图时显示首字母
+  const initial = name?.charAt(0)?.toUpperCase() || '?';
   return (
     <View style={[styles.container, containerStyle]}>
-      <Text style={{ fontSize: size * 0.5 }}>{emoji || '👤'}</Text>
+      <Text style={{ fontSize: size * 0.4, fontWeight: '600', color: t.brand }}>{initial}</Text>
     </View>
   );
 }

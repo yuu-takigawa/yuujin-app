@@ -234,7 +234,7 @@ export default function ConversationScreen() {
     >
       <CharacterHeader
         name={character?.name || ''}
-        avatarEmoji={character?.avatarEmoji || '👤'}
+        avatarUrl={character?.avatarUrl}
         onMenuPress={() => setMenuVisible(true)}
         onSearchPress={handleSearchToggle}
       />
@@ -288,7 +288,7 @@ export default function ConversationScreen() {
               <MessageBubble
                 content={item.data.content}
                 role={item.data.role}
-                avatarEmoji={item.data.role === 'assistant' ? character?.avatarEmoji : user?.avatarEmoji}
+                avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
                 onLongPress={() => setBubbleContent(item.data.content)}
                 highlight={isSearchHit}
@@ -301,10 +301,10 @@ export default function ConversationScreen() {
               streamingContent ? (
                 <StreamingText
                   content={streamingContent}
-                  avatarEmoji={character?.avatarEmoji}
+                  avatarUrl={character?.avatarUrl}
                 />
               ) : (
-                <TypingIndicator avatarEmoji={character?.avatarEmoji} />
+                <TypingIndicator avatarUrl={character?.avatarUrl} />
               )
             ) : null
           }

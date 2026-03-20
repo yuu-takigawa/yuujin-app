@@ -106,7 +106,6 @@ export default function ChatListScreen() {
             >
               <ConversationCard
                 name={char.name}
-                avatarEmoji={char.avatarEmoji}
                 avatarUrl={char.avatarUrl}
                 lastMessage={item.lastMessage}
                 time={item.lastMessageAt}

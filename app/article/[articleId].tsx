@@ -386,7 +386,7 @@ export default function NewsDetailScreen() {
   // 渲染流式 AI 回复（正在生成中）
   const renderStreamingReply = (tempId: string, reply: typeof streamingReplies[string]) => (
     <View key={tempId} style={[styles.commentRow, styles.replyRow]}>
-      <Avatar emoji={reply.characterEmoji} size={28} />
+      <Avatar name={reply.characterName} size={28} />
       <View style={styles.commentBody}>
         <View style={styles.commentHeader}>
           <Text style={[styles.commentName, { color: t.brand }]}>{reply.characterName}</Text>
@@ -413,7 +413,7 @@ export default function NewsDetailScreen() {
     return (
       <View key={comment.id}>
         <View style={[styles.commentRow, isReply && styles.replyRow]}>
-          <Avatar emoji={comment.characterEmoji} size={isReply ? 28 : 36} />
+          <Avatar name={comment.characterName} size={isReply ? 28 : 36} />
           <View style={styles.commentBody}>
             <View style={styles.commentHeader}>
               <Text style={[styles.commentName, { color: t.text }]}>{comment.characterName}</Text>

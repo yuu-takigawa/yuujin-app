@@ -34,7 +34,7 @@ export default function ShareModal({ visible, onClose, onShare }: ShareModalProp
           if (!char) return null;
           return (
             <View style={styles.row}>
-              <Avatar emoji={char.avatarEmoji} size={40} />
+              <Avatar imageUrl={char.avatarUrl} name={char.name} size={40} />
               <View style={styles.info}>
                 <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>{char.name}</Text>
                 <Text style={[styles.preview, { color: t.textSecondary }]} numberOfLines={1}>{item.lastMessage}</Text>

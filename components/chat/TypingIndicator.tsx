@@ -4,10 +4,10 @@ import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
 
 interface TypingIndicatorProps {
-  avatarEmoji?: string;
+  avatarUrl?: string;
 }
 
-export default function TypingIndicator({ avatarEmoji }: TypingIndicatorProps) {
+export default function TypingIndicator({ avatarUrl }: TypingIndicatorProps) {
   const t = useTheme();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
@@ -60,7 +60,7 @@ export default function TypingIndicator({ avatarEmoji }: TypingIndicatorProps) {
 
   return (
     <View style={styles.row}>
-      {avatarEmoji && <Avatar emoji={avatarEmoji} size={36} />}
+      {avatarUrl && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={[styles.bubble, { backgroundColor: t.bubbleAI }]}>
         <Animated.View style={[styles.dot, makeDotStyle(dot1), { backgroundColor: t.textSecondary }]} />
         <Animated.View style={[styles.dot, makeDotStyle(dot2), { backgroundColor: t.textSecondary }]} />

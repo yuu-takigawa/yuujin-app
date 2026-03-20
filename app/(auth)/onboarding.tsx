@@ -101,7 +101,7 @@ export default function OnboardingScreen() {
             最初の友達を紹介します
           </Text>
           <View style={styles.giftCard}>
-            <Avatar emoji="👩" size={80} />
+            <Avatar name="ゆき" size={80} />
             <Text style={[styles.giftName, { color: t.text }]}>佐藤ゆき</Text>
             <Text style={[styles.giftDesc, { color: t.textSecondary }]}>
               27歳 · UIデザイナー · 東京・下北沢
@@ -125,7 +125,7 @@ export default function OnboardingScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.background }]}>
       <View style={styles.giftSection}>
-        <Avatar emoji="👩" size={80} />
+        <Avatar name="ゆき" size={80} />
         <Text style={[styles.giftTitle, { color: t.text, marginTop: spacing.md }]}>
           ゆきと友達になろう！
         </Text>

@@ -6,7 +6,7 @@ import { useTheme } from '../../hooks/useTheme';
 interface MessageBubbleProps {
   content: string;
   role: 'user' | 'assistant';
-  avatarEmoji?: string;
+  avatarUrl?: string;
   createdAt?: string;
   onLongPress?: () => void;
   highlight?: boolean;
@@ -22,7 +22,7 @@ function formatMessageTime(dateStr?: string): string {
 export default function MessageBubble({
   content,
   role,
-  avatarEmoji,
+  avatarUrl,
   createdAt,
   onLongPress,
   highlight,
@@ -31,7 +31,7 @@ export default function MessageBubble({
   const isUser = role === 'user';
   const t = useTheme();
   const timeStr = formatMessageTime(createdAt);
-  const hasAvatar = !!avatarEmoji;
+  const hasAvatar = !!avatarUrl;
 
   const animValue = useRef(new Animated.Value(skipEntrance ? 1 : 0)).current;
   const mounted = useRef(false);
@@ -53,7 +53,7 @@ export default function MessageBubble({
       opacity: animValue,
       transform: [{ translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
     }]}>
-      {!isUser && hasAvatar && <Avatar emoji={avatarEmoji!} size={36} />}
+      {!isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={styles.bubbleWrap}>
         <TouchableOpacity
           style={[
@@ -81,7 +81,7 @@ export default function MessageBubble({
           </Text>
         ) : null}
       </View>
-      {isUser && hasAvatar && <Avatar emoji={avatarEmoji!} size={36} />}
+      {isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
     </Animated.View>
   );
 }

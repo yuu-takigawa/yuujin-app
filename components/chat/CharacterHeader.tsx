@@ -6,14 +6,14 @@ import { useTheme } from '../../hooks/useTheme';
 
 interface CharacterHeaderProps {
   name: string;
-  avatarEmoji: string;
+  avatarUrl?: string;
   onMenuPress: () => void;
   onSearchPress?: () => void;
 }
 
 export default function CharacterHeader({
   name,
-  avatarEmoji,
+  avatarUrl,
   onMenuPress,
   onSearchPress,
 }: CharacterHeaderProps) {
@@ -27,7 +27,7 @@ export default function CharacterHeader({
       </TouchableOpacity>
 
       <View style={styles.center}>
-        <Avatar emoji={avatarEmoji} size={32} />
+        <Avatar imageUrl={avatarUrl} name={name} size={32} />
         <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>
           {name}
         </Text>
