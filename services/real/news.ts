@@ -130,12 +130,76 @@ export async function getNewsComments(newsId: string): Promise<NewsComment[]> {
   return list.map((c) => mapComment(c, newsId));
 }
 
+export interface CommentMention {
+  type: 'character' | 'user';
+  id: string;
+  name: string;
+}
+
 export async function postNewsComment(
   newsId: string,
   content: string,
   parentId?: string,
-): Promise<{ id: string }> {
-  return post<{ id: string }>(`/news/${newsId}/comments`, { content, parentId });
+): Promise<{ id: string; mentions: CommentMention[] }> {
+  return post<{ id: string; mentions: CommentMention[] }>(`/news/${newsId}/comments`, { content, parentId });
+}
+
+/** AI 角色流式回复评论（SSE）。返回取消函数。 */
+export interface AIReplySSEEvent {
+  type: 'start' | 'delta' | 'done' | 'error';
+  commentId?: string;
+  character?: { id: string; name: string; avatarEmoji: string };
+  content?: string;
+  error?: string;
+}
+
+export function requestAIReply(
+  newsId: string,
+  commentId: string,
+  characterId: string,
+  onEvent: (event: AIReplySSEEvent) => void,
+): () => void {
+  let cancelled = false;
+
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/news/${newsId}/comments/ai-reply`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  const token = getToken();
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  }
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      const newText = xhr.responseText.substring(lastIndex);
+      lastIndex = xhr.responseText.length;
+      if (newText) {
+        parseSSELines(newText, (event) => {
+          if (!cancelled) onEvent(event as unknown as AIReplySSEEvent);
+        });
+      }
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Network error' });
+  };
+
+  xhr.timeout = 30000;
+  xhr.ontimeout = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Request timeout' });
+  };
+
+  xhr.send(JSON.stringify({ commentId, characterId }));
+
+  return () => {
+    cancelled = true;
+    xhr.abort();
+  };
 }
 
 // ─── 振り仮名（kuromoji 辞書、AI不要） ───

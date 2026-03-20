@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator, Image, Alert, useWindowDimensions, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,8 +7,8 @@ import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
-import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph } from '../../services/api';
-import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent } from '../../services/api';
+import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph, requestAIReply } from '../../services/api';
+import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent, AIReplySSEEvent } from '../../services/api';
 
 function formatCommentTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -29,10 +29,20 @@ type AnnotationCache = Record<string, { text: string; loading: boolean }>;
 type RubyCache = Record<number, [string, string][]>;
 
 export default function NewsDetailScreen() {
-  const { articleId } = useLocalSearchParams<{ articleId: string }>();
+  const { articleId, title: previewTitle, imageUrl: previewImageUrl, imageEmoji: previewEmoji, source: previewSource, timeAgo: previewTimeAgo } = useLocalSearchParams<{ articleId: string; title?: string; imageUrl?: string; imageEmoji?: string; source?: string; timeAgo?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+
+  // 入场动画
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   const { width: screenWidth } = useWindowDimensions();
   const [shareVisible, setShareVisible] = useState(false);
@@ -41,6 +51,16 @@ export default function NewsDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<NewsComment[]>([]);
   const [sending, setSending] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = picker hidden
+  // 流式 AI 回复：key = tempId, value = streaming reply data
+  const [streamingReplies, setStreamingReplies] = useState<Record<string, {
+    parentId: string;
+    characterName: string;
+    characterEmoji: string;
+    content: string;
+    done: boolean;
+  }>>({});
+  const aiReplyCancelRefs = useRef<Array<() => void>>([]);
   const [annotations, setAnnotations] = useState<AnnotationCache>({});
   const [rubyCache, setRubyCache] = useState<RubyCache>({});
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
@@ -70,6 +90,7 @@ export default function NewsDetailScreen() {
     loadComments(articleId);
     return () => {
       cancelRef.current?.();
+      aiReplyCancelRefs.current.forEach((fn) => fn());
       Speech.stop();
     };
   }, [articleId]);
@@ -217,10 +238,59 @@ export default function NewsDetailScreen() {
     if (!commentText.trim() || !articleId || sending) return;
     setSending(true);
     try {
-      await postNewsComment(articleId, commentText.trim());
+      const result = await postNewsComment(articleId, commentText.trim());
       setCommentText('');
+      setMentionQuery(null);
       commentInputRef.current?.blur();
       await loadComments(articleId);
+
+      // 对每个 @提及的 AI 角色，触发流式回复
+      const mentionedChars = (result.mentions || []).filter((m) => m.type === 'character');
+      for (const mention of mentionedChars) {
+        const tempId = `streaming-${mention.id}-${Date.now()}`;
+        // 找到角色信息
+        const charInfo = mentionableCharacters.find((c) => c.id === mention.id);
+
+        setStreamingReplies((prev) => ({
+          ...prev,
+          [tempId]: {
+            parentId: result.id,
+            characterName: charInfo?.name || mention.name,
+            characterEmoji: charInfo?.emoji || '🤖',
+            content: '',
+            done: false,
+          },
+        }));
+
+        const cancel = requestAIReply(articleId, result.id, mention.id, (event: AIReplySSEEvent) => {
+          if (event.type === 'start' && event.character) {
+            setStreamingReplies((prev) => prev[tempId] ? {
+              ...prev,
+              [tempId]: { ...prev[tempId], characterName: event.character!.name, characterEmoji: event.character!.avatarEmoji },
+            } : prev);
+          } else if (event.type === 'delta' && event.content) {
+            setStreamingReplies((prev) => prev[tempId] ? {
+              ...prev,
+              [tempId]: { ...prev[tempId], content: prev[tempId].content + event.content },
+            } : prev);
+          } else if (event.type === 'done') {
+            setStreamingReplies((prev) => {
+              const copy = { ...prev };
+              delete copy[tempId];
+              return copy;
+            });
+            // 刷新评论列表获取最终数据
+            loadComments(articleId);
+          } else if (event.type === 'error') {
+            setStreamingReplies((prev) => {
+              const copy = { ...prev };
+              delete copy[tempId];
+              return copy;
+            });
+          }
+        });
+        aiReplyCancelRefs.current.push(cancel);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : '不明なエラー';
       Alert.alert('コメント送信失敗', msg);
@@ -229,15 +299,62 @@ export default function NewsDetailScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={t.brand} />
-      </View>
-    );
-  }
+  // 从评论中提取可@的角色（去重）
+  const mentionableCharacters = (() => {
+    const seen = new Set<string>();
+    const result: { id: string; name: string; emoji: string }[] = [];
+    const collect = (list: NewsComment[]) => {
+      for (const c of list) {
+        if (c.characterId && !seen.has(c.characterId)) {
+          seen.add(c.characterId);
+          result.push({ id: c.characterId, name: c.characterName, emoji: c.characterEmoji });
+        }
+        if (c.replies) collect(c.replies);
+      }
+    };
+    collect(comments);
+    return result;
+  })();
 
-  if (!article) {
+  // 根据 mentionQuery 过滤候选角色
+  const filteredMentions = mentionQuery !== null
+    ? mentionableCharacters.filter(c => c.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : [];
+
+  // 处理输入变化，检测 @ 触发
+  const handleCommentChange = (text: string) => {
+    setCommentText(text);
+    // 找到光标前最近的 @ 符号
+    const lastAt = text.lastIndexOf('@');
+    if (lastAt >= 0) {
+      const afterAt = text.slice(lastAt + 1);
+      // @ 后面没有空格说明还在输入中
+      if (!afterAt.includes(' ') && !afterAt.includes('\n')) {
+        setMentionQuery(afterAt);
+        return;
+      }
+    }
+    setMentionQuery(null);
+  };
+
+  // 选择角色后插入 @角色名
+  const handleSelectMention = (name: string) => {
+    const lastAt = commentText.lastIndexOf('@');
+    if (lastAt >= 0) {
+      setCommentText(commentText.slice(0, lastAt) + '@' + name + ' ');
+    }
+    setMentionQuery(null);
+    commentInputRef.current?.focus();
+  };
+
+  // 使用预览数据（从列表页传入）或真实数据
+  const displayTitle = article?.title || previewTitle || '';
+  const displayImageUrl = article?.imageUrl || previewImageUrl || '';
+  const displayEmoji = article?.imageEmoji || previewEmoji || '📰';
+  const displaySource = article?.source || previewSource || '';
+  const displayTimeAgo = article?.timeAgo || previewTimeAgo || '';
+
+  if (!loading && !article) {
     return (
       <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
         <Text style={{ color: t.text, padding: 20 }}>記事が見つかりません</Text>
@@ -245,26 +362,71 @@ export default function NewsDetailScreen() {
     );
   }
 
-  const renderComment = (comment: NewsComment, isReply = false) => (
-    <View key={comment.id}>
-      <View style={[styles.commentRow, isReply && styles.replyRow]}>
-        <Avatar emoji={comment.characterEmoji} size={isReply ? 28 : 36} />
-        <View style={styles.commentBody}>
-          <View style={styles.commentHeader}>
-            <Text style={[styles.commentName, { color: t.text }]}>{comment.characterName}</Text>
-            <Text style={[styles.commentTime, { color: t.textSecondary }]}>
-              {formatCommentTime(comment.createdAt)}
-            </Text>
-          </View>
-          <Text style={[styles.commentText, { color: t.text }]}>{comment.content}</Text>
+  // 渲染评论内容，高亮 @角色名
+  const renderCommentContent = (content: string) => {
+    const parts = content.split(/(@[^\s@,，。！？!?]+)/g);
+    return (
+      <Text style={[styles.commentText, { color: t.text }]}>
+        {parts.map((part, i) =>
+          part.startsWith('@') ? (
+            <Text key={i} style={{ color: t.brand, fontWeight: '600' }}>{part}</Text>
+          ) : (
+            <Text key={i}>{part}</Text>
+          )
+        )}
+      </Text>
+    );
+  };
+
+  // 渲染流式 AI 回复（正在生成中）
+  const renderStreamingReply = (tempId: string, reply: typeof streamingReplies[string]) => (
+    <View key={tempId} style={[styles.commentRow, styles.replyRow]}>
+      <Avatar emoji={reply.characterEmoji} size={28} />
+      <View style={styles.commentBody}>
+        <View style={styles.commentHeader}>
+          <Text style={[styles.commentName, { color: t.brand }]}>{reply.characterName}</Text>
+          <Text style={[styles.commentTime, { color: t.textSecondary }]}>入力中...</Text>
         </View>
+        {reply.content ? (
+          renderCommentContent(reply.content)
+        ) : (
+          <View style={{ flexDirection: 'row', gap: 4, paddingTop: 4 }}>
+            <ActivityIndicator size={12} color={t.brand} />
+            <Text style={{ color: t.textSecondary, fontSize: 13 }}>考え中...</Text>
+          </View>
+        )}
       </View>
-      {comment.replies?.map((reply) => renderComment(reply, true))}
     </View>
   );
 
+  const renderComment = (comment: NewsComment, isReply = false) => {
+    // 找到属于这条评论的流式回复
+    const streamingForThis = Object.entries(streamingReplies).filter(
+      ([, r]) => r.parentId === comment.id,
+    );
+
+    return (
+      <View key={comment.id}>
+        <View style={[styles.commentRow, isReply && styles.replyRow]}>
+          <Avatar emoji={comment.characterEmoji} size={isReply ? 28 : 36} />
+          <View style={styles.commentBody}>
+            <View style={styles.commentHeader}>
+              <Text style={[styles.commentName, { color: t.text }]}>{comment.characterName}</Text>
+              <Text style={[styles.commentTime, { color: t.textSecondary }]}>
+                {formatCommentTime(comment.createdAt)}
+              </Text>
+            </View>
+            {renderCommentContent(comment.content)}
+          </View>
+        </View>
+        {comment.replies?.map((reply) => renderComment(reply, true))}
+        {streamingForThis.map(([tempId, r]) => renderStreamingReply(tempId, r))}
+      </View>
+    );
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
+    <Animated.View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: t.border }]}>
         <TouchableOpacity style={styles.headerBack} onPress={() => router.back()}>
@@ -291,21 +453,28 @@ export default function NewsDetailScreen() {
       >
         {/* Article Header */}
         <View style={styles.articleHeader}>
-          {article.imageUrl ? (
-            <Image source={{ uri: article.imageUrl }} style={styles.heroImage} resizeMode="cover" />
+          {displayImageUrl ? (
+            <Image source={{ uri: displayImageUrl }} style={styles.heroImage} resizeMode="cover" />
           ) : (
             <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
-              <Text style={{ fontSize: 72 }}>{article.imageEmoji}</Text>
+              <Text style={{ fontSize: 72 }}>{displayEmoji}</Text>
             </View>
           )}
-          <Text style={[styles.articleTitle, { color: t.text }]}>{article.title}</Text>
+          <Text style={[styles.articleTitle, { color: t.text }]}>{displayTitle}</Text>
           <View style={styles.metaRow}>
-            <Text style={[styles.metaText, { color: t.textSecondary }]}>{article.source}</Text>
-            <Text style={[styles.metaText, { color: t.textSecondary }]}>·</Text>
-            <Text style={[styles.metaText, { color: t.textSecondary }]}>{article.timeAgo}</Text>
+            <Text style={[styles.metaText, { color: t.textSecondary }]}>{displaySource}</Text>
+            {displaySource && displayTimeAgo ? <Text style={[styles.metaText, { color: t.textSecondary }]}>·</Text> : null}
+            <Text style={[styles.metaText, { color: t.textSecondary }]}>{displayTimeAgo}</Text>
           </View>
           <View style={[styles.separator, { backgroundColor: t.border }]} />
         </View>
+
+        {/* Paragraphs — show loading if content not ready */}
+        {loading ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={t.brand} />
+          </View>
+        ) : null}
 
         {/* Paragraphs */}
         {paragraphs.map((text, index) => {
@@ -440,6 +609,22 @@ export default function NewsDetailScreen() {
         </View>
       )}
 
+      {/* @Mention picker */}
+      {mentionQuery !== null && filteredMentions.length > 0 && (
+        <View style={[styles.mentionPicker, { backgroundColor: t.surface, borderColor: t.border, bottom: 56 + Math.max(insets.bottom, 8) + 8 }]}>
+          {filteredMentions.map((char) => (
+            <TouchableOpacity
+              key={char.id}
+              style={styles.mentionItem}
+              onPress={() => handleSelectMention(char.name)}
+            >
+              <Text style={styles.mentionEmoji}>{char.emoji}</Text>
+              <Text style={[styles.mentionName, { color: t.text }]}>{char.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {/* Fixed bottom input bar */}
       <View style={[styles.bottomBar, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
         <TouchableOpacity
@@ -455,7 +640,7 @@ export default function NewsDetailScreen() {
             placeholder="コメントを書く..."
             placeholderTextColor={t.textSecondary}
             value={commentText}
-            onChangeText={setCommentText}
+            onChangeText={handleCommentChange}
             returnKeyType="send"
             onSubmitEditing={handleSendComment}
             blurOnSubmit={false}
@@ -478,7 +663,7 @@ export default function NewsDetailScreen() {
         onClose={() => setShareVisible(false)}
         onShare={() => setShareVisible(false)}
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -740,5 +925,32 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mentionPicker: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 4,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 8 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 -2px 12px rgba(0,0,0,0.1)' } as any,
+    }),
+  },
+  mentionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  mentionEmoji: {
+    fontSize: 20,
+  },
+  mentionName: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
