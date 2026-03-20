@@ -75,18 +75,22 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
   // Web: 左滑过程中阻止浏览器原生垂直滚动
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    const preventScroll = (e: Event) => {
+    const preventScroll = (e: TouchEvent) => {
       if (swiping.current) e.preventDefault();
     };
-    // 延迟获取 DOM 节点
+    let el: HTMLElement | null = null;
     const timer = setTimeout(() => {
-      const el = (rowRef.current as any);
+      el = rowRef.current as unknown as HTMLElement;
       if (el?.addEventListener) {
         el.addEventListener('touchmove', preventScroll, { passive: false });
-        return;
       }
     }, 0);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (el?.removeEventListener) {
+        el.removeEventListener('touchmove', preventScroll);
+      }
+    };
   }, []);
 
   // 关闭（带动画）
