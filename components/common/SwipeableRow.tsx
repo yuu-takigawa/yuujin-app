@@ -85,9 +85,29 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
     isOpen.current = false;
   }, [translateX]);
 
+  const snapOrClose = useCallback((gs: { dx: number }) => {
+    const dx = isOpen.current ? gs.dx - TOTAL_WIDTH : gs.dx;
+    if (dx < -ACTION_WIDTH) {
+      Animated.spring(translateX, {
+        toValue: -TOTAL_WIDTH,
+        useNativeDriver: true,
+        overshootClamping: true,
+      }).start();
+      isOpen.current = true;
+    } else {
+      close();
+    }
+  }, [translateX, close]);
+
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) => {
-      return Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 10;
+      // 只在水平滑动时拦截
+      if (Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 10) return true;
+      // 纵向滑动时，如果已打开则关闭
+      if (Math.abs(gs.dy) > 10 && isOpen.current) {
+        close();
+      }
+      return false;
     },
     onPanResponderGrant: () => {
       notifyOpen(close);
@@ -99,19 +119,13 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
       }
     },
     onPanResponderRelease: (_, gs) => {
-      const dx = isOpen.current ? gs.dx - TOTAL_WIDTH : gs.dx;
-      if (dx < -ACTION_WIDTH) {
-        Animated.spring(translateX, {
-          toValue: -TOTAL_WIDTH,
-          useNativeDriver: true,
-          overshootClamping: true,
-        }).start();
-        isOpen.current = true;
-      } else {
-        close();
-      }
+      snapOrClose(gs);
     },
-  }), [translateX, close, notifyOpen]);
+    // 手势被滚动等抢走时，也要收回
+    onPanResponderTerminate: (_, gs) => {
+      snapOrClose(gs);
+    },
+  }), [translateX, close, notifyOpen, snapOrClose]);
 
   return (
     <View style={styles.container}>

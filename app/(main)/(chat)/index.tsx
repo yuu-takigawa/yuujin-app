@@ -93,6 +93,7 @@ export default function ChatListScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 8 + insets.bottom }}
         onScrollBeginDrag={() => closeAllRef.current?.()}
+        onMomentumScrollBegin={() => closeAllRef.current?.()}
         renderItem={({ item }) => {
           const char = getCharacter(item.characterId);
           const friend = getFriend(item.characterId);
