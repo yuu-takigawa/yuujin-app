@@ -63,7 +63,6 @@ export function streamResponse(
   conversationId: string,
   userMessage: string,
   onEvent: SSECallback,
-  modelId?: string,
 ): () => void {
   let cancelled = false;
 
@@ -114,7 +113,6 @@ export function streamResponse(
   xhr.send(JSON.stringify({
     conversationId,
     message: userMessage,
-    ...(modelId ? { modelId } : {}),
   }));
 
   return () => {

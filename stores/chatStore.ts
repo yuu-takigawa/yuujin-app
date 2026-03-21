@@ -143,7 +143,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }, CHAR_INTERVAL_MS);
     };
 
-    const modelId = useCreditStore.getState().selectedModelId || undefined;
     const cancel = streamResponse(conversationId, content, (event) => {
       if (event.type === 'delta' && event.content) {
         accumulated += event.content;
@@ -175,7 +174,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
         }, 1000);
       }
-    }, modelId);
+    });
 
     set({
       cancelStream: () => {
