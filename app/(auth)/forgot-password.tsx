@@ -8,55 +8,52 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
-import { useRouter, Link } from 'expo-router';
-import { useAuthStore } from '../../stores/authStore';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../hooks/useTheme';
 import { radii, spacing, fontSize } from '../../constants/theme';
+import { resetPassword } from '../../services/api';
 import VerificationCodeInput from '../../components/auth/VerificationCodeInput';
 
-export default function RegisterScreen() {
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const register = useAuthStore((s) => s.register);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const [submitting, setSubmitting] = useState(false);
   const t = useTheme();
   const router = useRouter();
 
-  const handleRegister = async () => {
+  const handleReset = async () => {
     setError('');
-    if (!username.trim()) {
-      setError('ユーザー名を入力してください');
-      return;
-    }
     if (!email.trim()) {
       setError('メールアドレスを入力してください');
-      return;
-    }
-    if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError('有効なメールアドレスを入力してください');
       return;
     }
     if (!code.trim() || code.length !== 6) {
       setError('6桁の認証コードを入力してください');
       return;
     }
-    if (!password.trim()) {
-      setError('パスワードを入力してください');
-      return;
-    }
-    if (password.length < 6) {
+    if (!newPassword.trim() || newPassword.length < 6) {
       setError('パスワードは6文字以上で入力してください');
       return;
     }
+    if (newPassword !== confirmPassword) {
+      setError('パスワードが一致しません');
+      return;
+    }
+    setSubmitting(true);
     try {
-      await register(email.trim(), password, username.trim(), code.trim());
-      router.replace('/');
+      await resetPassword(email.trim(), code.trim(), newPassword);
+      Alert.alert('パスワード再設定完了', '新しいパスワードでログインしてください。', [
+        { text: 'ログインへ', onPress: () => router.replace('/(auth)/login') },
+      ]);
     } catch {
-      setError('登録に失敗しました。コードを確認してもう一度お試しください');
+      setError('再設定に失敗しました。コードを確認してください');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -70,16 +67,12 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: t.text }]}>アカウント作成</Text>
+        <Text style={[styles.title, { color: t.text }]}>パスワード再設定</Text>
+        <Text style={[styles.desc, { color: t.textSecondary }]}>
+          登録済みのメールアドレスに認証コードを送信します
+        </Text>
 
         <View style={styles.form}>
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="ユーザー名"
-            placeholderTextColor={t.textSecondary}
-            value={username}
-            onChangeText={(v) => { setUsername(v); setError(''); }}
-          />
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
             placeholder="メールアドレス"
@@ -92,7 +85,7 @@ export default function RegisterScreen() {
 
           <VerificationCodeInput
             email={email.trim()}
-            type="register"
+            type="reset_password"
             value={code}
             onChangeText={(v) => { setCode(v); setError(''); }}
             onError={setError}
@@ -100,38 +93,46 @@ export default function RegisterScreen() {
 
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="パスワード（6文字以上）"
+            placeholder="新しいパスワード（6文字以上）"
             placeholderTextColor={t.textSecondary}
-            value={password}
-            onChangeText={(v) => { setPassword(v); setError(''); }}
+            value={newPassword}
+            onChangeText={(v) => { setNewPassword(v); setError(''); }}
             secureTextEntry
           />
+          <TextInput
+            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+            placeholder="新しいパスワード（確認）"
+            placeholderTextColor={t.textSecondary}
+            value={confirmPassword}
+            onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
+            secureTextEntry
+          />
+
           {error ? (
             <Text style={[styles.errorText, { color: t.error || '#E53935' }]}>{error}</Text>
           ) : null}
+
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: t.brand }, isLoading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={isLoading}
+            style={[styles.button, { backgroundColor: t.brand }, submitting && styles.buttonDisabled]}
+            onPress={handleReset}
+            disabled={submitting}
           >
             <Text style={styles.buttonText}>
-              {isLoading ? '登録中...' : '登録する'}
+              {submitting ? '処理中...' : 'パスワードを再設定'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <Link href="/(auth)/login" style={styles.link}>
+        <TouchableOpacity style={styles.link} onPress={() => router.back()}>
           <Text style={[styles.linkText, { color: t.brand }]}>ログインに戻る</Text>
-        </Link>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   inner: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -142,40 +143,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.title,
     fontWeight: '700',
     textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  desc: {
+    fontSize: 14,
+    textAlign: 'center',
     marginBottom: spacing.xl,
+    lineHeight: 22,
   },
-  form: {
-    gap: spacing.md,
-  },
+  form: { gap: spacing.md },
   input: {
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 14,
     fontSize: fontSize.body,
   },
-  errorText: {
-    fontSize: fontSize.caption,
-    textAlign: 'center',
-  },
+  errorText: { fontSize: fontSize.caption, textAlign: 'center' },
   button: {
     borderRadius: radii.lg,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: spacing.sm,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.body,
-    fontWeight: '600',
-  },
-  link: {
-    marginTop: spacing.lg,
-    alignSelf: 'center',
-  },
-  linkText: {
-    fontSize: fontSize.body,
-  },
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: '#FFFFFF', fontSize: fontSize.body, fontWeight: '600' },
+  link: { marginTop: spacing.lg, alignSelf: 'center' },
+  linkText: { fontSize: fontSize.body },
 });

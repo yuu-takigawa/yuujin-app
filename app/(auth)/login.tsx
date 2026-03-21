@@ -9,11 +9,15 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../hooks/useTheme';
 import { radii, spacing, fontSize } from '../../constants/theme';
 
+type LoginTab = 'email' | 'phone';
+
 export default function LoginScreen() {
+  const [tab, setTab] = useState<LoginTab>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -51,37 +55,68 @@ export default function LoginScreen() {
           日本語会話パートナー
         </Text>
 
-        <View style={styles.form}>
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="メールアドレス"
-            placeholderTextColor={t.textSecondary}
-            value={email}
-            onChangeText={(v) => { setEmail(v); setError(''); }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="パスワード"
-            placeholderTextColor={t.textSecondary}
-            value={password}
-            onChangeText={(v) => { setPassword(v); setError(''); }}
-            secureTextEntry
-          />
-          {error ? (
-            <Text style={[styles.errorText, { color: t.error || '#E53935' }]}>{error}</Text>
-          ) : null}
+        {/* Tab switcher */}
+        <View style={[styles.tabRow, { backgroundColor: t.inputBg, borderColor: t.border }]}>
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: t.brand }, isLoading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
+            style={[styles.tab, tab === 'email' && { backgroundColor: t.surface }]}
+            onPress={() => { setTab('email'); setError(''); }}
           >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'ログイン中...' : 'ログイン'}
-            </Text>
+            <Ionicons name="mail-outline" size={16} color={tab === 'email' ? t.brand : t.textSecondary} />
+            <Text style={[styles.tabText, { color: tab === 'email' ? t.brand : t.textSecondary }]}>メール</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'phone' && { backgroundColor: t.surface }]}
+            onPress={() => { setTab('phone'); setError(''); }}
+          >
+            <Ionicons name="phone-portrait-outline" size={16} color={tab === 'phone' ? t.brand : t.textSecondary} />
+            <Text style={[styles.tabText, { color: tab === 'phone' ? t.brand : t.textSecondary }]}>携帯電話</Text>
           </TouchableOpacity>
         </View>
+
+        {tab === 'email' ? (
+          <View style={styles.form}>
+            <TextInput
+              style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+              placeholder="メールアドレス"
+              placeholderTextColor={t.textSecondary}
+              value={email}
+              onChangeText={(v) => { setEmail(v); setError(''); }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+              placeholder="パスワード"
+              placeholderTextColor={t.textSecondary}
+              value={password}
+              onChangeText={(v) => { setPassword(v); setError(''); }}
+              secureTextEntry
+            />
+            {error ? (
+              <Text style={[styles.errorText, { color: t.error || '#E53935' }]}>{error}</Text>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: t.brand }, isLoading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? 'ログイン中...' : 'ログイン'}
+              </Text>
+            </TouchableOpacity>
+
+            <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
+              <Text style={[styles.forgotText, { color: t.textSecondary }]}>パスワードをお忘れですか？</Text>
+            </Link>
+          </View>
+        ) : (
+          <View style={styles.phoneComingSoon}>
+            <Ionicons name="phone-portrait-outline" size={48} color={t.border} />
+            <Text style={[styles.comingSoonText, { color: t.textSecondary }]}>
+              携帯電話でのログインは{'\n'}近日公開予定です
+            </Text>
+          </View>
+        )}
 
         <Link href="/(auth)/register" style={styles.link}>
           <Text style={[styles.linkText, { color: t.brand }]}>アカウントを作成</Text>
@@ -113,6 +148,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.xl,
   },
+  tabRow: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   form: {
     gap: spacing.md,
   },
@@ -139,6 +194,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: fontSize.body,
     fontWeight: '600',
+  },
+  forgotLink: {
+    alignSelf: 'center',
+  },
+  forgotText: {
+    fontSize: 13,
+  },
+  phoneComingSoon: {
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 40,
+  },
+  comingSoonText: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   link: {
     marginTop: spacing.lg,

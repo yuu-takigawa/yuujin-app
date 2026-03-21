@@ -61,10 +61,22 @@ export async function login(email: string, password: string): Promise<AuthRespon
   }
 }
 
-export async function register(email: string, password: string, username: string): Promise<AuthResponse> {
-  const result = await post<ServerAuthResult>('/auth/register', { email, password, name: username });
+export async function register(email: string, password: string, username: string, code: string): Promise<AuthResponse> {
+  const result = await post<ServerAuthResult>('/auth/register', { email, password, name: username, code });
   setTokens(result.token, result.refreshToken);
   return { token: result.token, user: mapUser(result.user, true) };
+}
+
+export async function sendCode(email: string, type: 'register' | 'reset_password'): Promise<void> {
+  await post('/auth/send-code', { email, type });
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  await post('/auth/reset-password', { email, code, newPassword });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await post('/auth/change-password', { currentPassword, newPassword });
 }
 
 export async function refreshToken(): Promise<{ token: string }> {

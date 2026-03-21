@@ -7,6 +7,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="membership" />
+      <Stack.Screen name="change-password" />
     </Stack>
   );
 }

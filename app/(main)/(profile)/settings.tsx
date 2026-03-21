@@ -195,7 +195,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="lock-closed-outline"
             label="パスワード変更"
-            onPress={() => Alert.alert('準備中', 'この機能は近日公開予定です。')}
+            onPress={() => router.push('/change-password')}
           />
           <RowDivider />
           <SettingsRow

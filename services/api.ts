@@ -3,7 +3,7 @@
 export const USE_REAL_API = true;
 
 // ─── Auth ───
-export { login, register, refreshToken, updateProfile, deleteAccount } from './real/auth';
+export { login, register, refreshToken, updateProfile, deleteAccount, sendCode, resetPassword, changePassword } from './real/auth';
 
 // ─── Chat streaming ───
 export { streamResponse, streamText } from './real/chat';
