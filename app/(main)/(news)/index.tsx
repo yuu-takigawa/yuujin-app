@@ -123,13 +123,11 @@ export default function NewsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: t.brand }]}>ニュース</Text>
-        <TouchableOpacity onPress={refreshing ? undefined : handleRefresh} style={{ width: 28, alignItems: 'center' }}>
-          {refreshing ? (
-            <ActivityIndicator size={16} color={t.brand} />
-          ) : (
-            <Ionicons name="refresh-outline" size={20} color={t.brand} />
-          )}
-        </TouchableOpacity>
+        {showScrollTop ? (
+          <Text style={[styles.scrollTopBtn, { color: t.brand }]} onPress={scrollToTop}>↑</Text>
+        ) : (
+          <View style={{ width: 28 }} />
+        )}
       </View>
 
       {/* Category Tabs */}
@@ -159,34 +157,12 @@ export default function NewsScreen() {
         })}
       </ScrollView>
 
-      {/* Articles */}
-      {loading ? (
-        <View style={styles.skeletonList}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={[styles.skeletonCard, { borderBottomColor: t.border }]}>
-              <View style={[styles.skeletonImage, { backgroundColor: t.border }]} />
-              <View style={[styles.skeletonLine, { width: '85%', height: 16, backgroundColor: t.border }]} />
-              <View style={[styles.skeletonLine, { width: '100%', height: 12, backgroundColor: t.border }]} />
-              <View style={[styles.skeletonLine, { width: '60%', height: 12, backgroundColor: t.border }]} />
-              <View style={styles.skeletonMeta}>
-                <View style={[styles.skeletonLine, { width: 48, height: 10, backgroundColor: t.border }]} />
-                <View style={[styles.skeletonLine, { width: 60, height: 10, backgroundColor: t.border }]} />
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : articles.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={[styles.emptyText, { color: t.textSecondary }]}>
-            ニュースはまだありません
-          </Text>
-        </View>
-      ) : (
+      {/* Articles — FlatList 始终渲染以支持下拉刷新 */}
         <FlatList
           ref={flatListRef}
-          data={articles}
+          data={loading ? [] : articles}
           keyExtractor={(item: NewsArticle) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, (loading || articles.length === 0) && { flex: 1 }]}
           renderItem={({ item }) => (
             <NewsCard
               article={item}
@@ -196,6 +172,30 @@ export default function NewsScreen() {
           )}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.brand} colors={[t.brand]} />
+          }
+          ListEmptyComponent={
+            loading ? (
+              <View style={styles.skeletonList}>
+                {[0, 1, 2, 3].map((i) => (
+                  <View key={i} style={[styles.skeletonCard, { borderBottomColor: t.border }]}>
+                    <View style={[styles.skeletonImage, { backgroundColor: t.border }]} />
+                    <View style={[styles.skeletonLine, { width: '85%', height: 16, backgroundColor: t.border }]} />
+                    <View style={[styles.skeletonLine, { width: '100%', height: 12, backgroundColor: t.border }]} />
+                    <View style={[styles.skeletonLine, { width: '60%', height: 12, backgroundColor: t.border }]} />
+                    <View style={styles.skeletonMeta}>
+                      <View style={[styles.skeletonLine, { width: 48, height: 10, backgroundColor: t.border }]} />
+                      <View style={[styles.skeletonLine, { width: 60, height: 10, backgroundColor: t.border }]} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Text style={[styles.emptyText, { color: t.textSecondary }]}>
+                  ニュースはまだありません
+                </Text>
+              </View>
+            )
           }
           onEndReached={Platform.OS !== 'web' ? handleLoadMore : undefined}
           onEndReachedThreshold={0.3}
@@ -215,7 +215,6 @@ export default function NewsScreen() {
             ) : null
           }
         />
-      )}
       <ShareModal
         visible={shareVisible}
         onClose={() => setShareVisible(false)}
