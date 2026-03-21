@@ -6,7 +6,7 @@ import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
 import { ActivityIndicator } from 'react-native';
 
-type Tier = 'free' | 'basic' | 'premium' | 'admin';
+type Tier = 'free' | 'pro' | 'max' | 'admin';
 
 interface Plan {
   tier: Tier;
@@ -23,7 +23,7 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     tier: 'free',
-    name: '無料プラン',
+    name: 'Free',
     price: '¥0',
     priceNote: 'ずっと無料',
     dailyCredits: '100pt',
@@ -32,29 +32,29 @@ const PLANS: Plan[] = [
     models: ['ERNIE Speed', 'ERNIE Lite'],
   },
   {
-    tier: 'basic',
-    name: 'ベーシック',
+    tier: 'pro',
+    name: 'Pro',
     price: '¥9.9',
     priceNote: '/ 月',
     dailyCredits: '500pt',
     color: '#3B82F6',
-    features: ['毎日500ポイント', '全ての無料プラン機能', 'DeepSeek V3 利用可', '通義千問 Plus / Max 利用可'],
-    models: ['ERNIE Speed', 'ERNIE Lite', 'DeepSeek V3', '通義千問 Plus', '通義千問 Max'],
+    features: ['毎日500ポイント', '全ての Free 機能', 'DeepSeek V3 利用可', '通義千問 キャラモデル利用可'],
+    models: ['通義 Flash キャラ', 'DeepSeek V3', '通義 Plus キャラ', '通義千問 Plus'],
   },
   {
-    tier: 'premium',
-    name: 'プレミアム',
+    tier: 'max',
+    name: 'Max',
     price: '¥29.9',
     priceNote: '/ 月',
     dailyCredits: '2000pt',
     color: '#E85B3A',
     badgeText: 'おすすめ',
-    features: ['毎日2000ポイント', '全ての基本プラン機能', 'Claude Haiku 4.5 利用可（最高品質）', '優先サポート'],
-    models: ['全モデル対応（Claude Haiku 4.5 含む）'],
+    features: ['毎日2000ポイント', '全ての Pro 機能', '通義千問 Max（最高品質）', '優先サポート'],
+    models: ['全モデル対応（通義千問 Max 含む）'],
   },
 ];
 
-const TIER_ORDER: Record<Tier, number> = { free: 0, basic: 1, premium: 2, admin: 3 };
+const TIER_ORDER: Record<Tier, number> = { free: 0, pro: 1, max: 2, admin: 3 };
 
 export default function MembershipScreen() {
   const router = useRouter();
@@ -98,7 +98,7 @@ export default function MembershipScreen() {
               <Text style={[styles.adminTitle, { color: '#7C3AED' }]}>管理者アカウント</Text>
             </View>
             <Text style={[styles.adminDesc, { color: t.textSecondary }]}>
-              全モデル利用可 · ポイント無制限 · Claude Sonnet / Opus 含む
+              全モデル利用可 · ポイント無制限 · 通義千問 Max 含む
             </Text>
             <View style={styles.adminStats}>
               <Text style={[styles.adminStat, { color: '#7C3AED' }]}>∞ pt 残り</Text>
@@ -221,7 +221,7 @@ export default function MembershipScreen() {
                         {
                           text: 'アップグレード', onPress: async () => {
                             try {
-                              await upgradePlan(plan.tier as 'basic' | 'premium');
+                              await upgradePlan(plan.tier as 'pro' | 'max');
                               Alert.alert('🎉 アップグレード完了', `${plan.name}になりました！`);
                             } catch {
                               Alert.alert('エラー', 'アップグレードに失敗しました。');

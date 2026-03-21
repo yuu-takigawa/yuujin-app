@@ -7,7 +7,7 @@ import { useAuthStore } from '../../../stores/authStore';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
 
-type Tier = 'free' | 'basic' | 'premium' | 'admin';
+type Tier = 'free' | 'pro' | 'max' | 'admin';
 
 /**
  * 服务端可能因 DB 编码问题（GBK→UTF-8 错误解析）返回含 U+FFFD 替换字符的用户名。
@@ -26,16 +26,16 @@ function safeDisplayName(username: string | undefined, email: string | undefined
 }
 
 const TIER_LABEL: Record<Tier, string> = {
-  free: '無料プラン',
-  basic: 'ベーシック',
-  premium: 'プレミアム',
-  admin: '管理者',
+  free: 'Free',
+  pro: 'Pro',
+  max: 'Max',
+  admin: 'Max',
 };
 
 const TIER_COLOR: Record<Tier, string> = {
   free: '#9CA3AF',
-  basic: '#3B82F6',
-  premium: '#E85B3A',
+  pro: '#3B82F6',
+  max: '#E85B3A',
   admin: '#7C3AED',
 };
 
@@ -257,28 +257,28 @@ export default function ProfileScreen() {
                 全モデル・ポイント無制限
               </Text>
             </View>
-          ) : tier === 'premium' ? (
-            /* Premium card - show current plan details */
+          ) : tier === 'max' ? (
+            /* Max card - show current plan details */
             <View style={[styles.memberCard, { backgroundColor: t.brandLight, borderColor: t.brand + '60' }]}>
               <View style={styles.memberRow}>
                 <Ionicons name="trophy" size={20} color={t.brand} />
-                <Text style={[styles.memberTitle, { color: t.brand }]}>プレミアム会員</Text>
+                <Text style={[styles.memberTitle, { color: t.brand }]}>Max 会員</Text>
               </View>
               <Text style={[styles.memberDesc, { color: t.textSecondary }]}>
-                全モデル対応 · Claude Haiku 4.5 利用可 · 毎日2000pt
+                全モデル対応 · 通義千問 Max 利用可 · 毎日2000pt
               </Text>
             </View>
           ) : (
-            /* Upgrade ad for free / basic */
+            /* Upgrade ad for free / pro */
             <View style={[styles.upgradeCard, { backgroundColor: t.surface, borderColor: t.border }]}>
               <View style={styles.upgradeHeader}>
                 <View style={[styles.upgradeIcon, { backgroundColor: t.brandLight }]}>
                   <Ionicons name="trophy" size={22} color={t.brand} />
                 </View>
                 <View style={styles.upgradeText}>
-                  <Text style={[styles.upgradeTitle, { color: t.text }]}>プレミアムにアップグレード</Text>
+                  <Text style={[styles.upgradeTitle, { color: t.text }]}>Max にアップグレード</Text>
                   <Text style={[styles.upgradeSub, { color: t.textSecondary }]}>
-                    毎日2000pt · Claude Haiku 4.5 利用可
+                    毎日2000pt · 通義千問 Max 利用可
                   </Text>
                 </View>
               </View>

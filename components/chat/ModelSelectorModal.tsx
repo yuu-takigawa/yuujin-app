@@ -10,10 +10,24 @@ interface ModelSelectorModalProps {
 }
 
 const TIER_LABELS: Record<string, string> = {
-  free: '無料',
-  basic: 'ベーシック',
-  premium: 'プレミアム',
-  admin: '管理者',
+  free: 'Free',
+  pro: 'Pro',
+  max: 'Max',
+  admin: 'Max',
+};
+
+const TIER_COLORS: Record<string, string> = {
+  free: '#9CA3AF',
+  pro: '#3B82F6',
+  max: '#E85B3A',
+  admin: '#7C3AED',
+};
+
+const TIER_WEIGHT: Record<string, number> = {
+  free: 0,
+  pro: 1,
+  max: 2,
+  admin: 3,
 };
 
 const PROVIDER_ICONS: Record<string, string> = {
@@ -50,9 +64,12 @@ export default function ModelSelectorModal({ visible, onClose }: ModelSelectorMo
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        {models.map((model) => {
+        {[...models]
+          .sort((a, b) => (TIER_WEIGHT[b.minTier] ?? 0) - (TIER_WEIGHT[a.minTier] ?? 0))
+          .map((model) => {
           const isSelected = model.id === selectedModelId;
           const isLocked = !model.available;
+          const tierColor = TIER_COLORS[model.minTier] || '#9CA3AF';
 
           return (
             <TouchableOpacity
@@ -72,22 +89,20 @@ export default function ModelSelectorModal({ visible, onClose }: ModelSelectorMo
               </View>
 
               <View style={styles.modelInfo}>
-                <Text style={[styles.modelName, { color: isLocked ? t.textSecondary : t.text }]}>
-                  {model.name}
-                </Text>
-                <View style={styles.modelMeta}>
-                  <Text style={[styles.costText, { color: t.textSecondary }]}>
-                    {model.creditsPerChat}pt/回
+                <View style={styles.modelNameRow}>
+                  <Text style={[styles.modelName, { color: isLocked ? t.textSecondary : t.text }]}>
+                    {model.name}
                   </Text>
-                  {isLocked && (
-                    <View style={[styles.tierBadge, { backgroundColor: t.inputBg }]}>
-                      <Ionicons name="lock-closed" size={10} color={t.textSecondary} />
-                      <Text style={[styles.tierText, { color: t.textSecondary }]}>
-                        {TIER_LABELS[model.minTier] || model.minTier}
-                      </Text>
-                    </View>
-                  )}
+                  <View style={[styles.tierBadge, { backgroundColor: tierColor + '18' }]}>
+                    {isLocked && <Ionicons name="lock-closed" size={9} color={tierColor} />}
+                    <Text style={[styles.tierText, { color: tierColor }]}>
+                      {TIER_LABELS[model.minTier] || model.minTier}
+                    </Text>
+                  </View>
                 </View>
+                <Text style={[styles.costText, { color: t.textSecondary }]}>
+                  {model.creditsPerChat}pt/回
+                </Text>
               </View>
 
               {isSelected && (
@@ -154,16 +169,16 @@ const styles = StyleSheet.create({
   },
   modelInfo: {
     flex: 1,
-    gap: 2,
+    gap: 3,
+  },
+  modelNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   modelName: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  modelMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   costText: {
     fontSize: 12,

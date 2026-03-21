@@ -6,6 +6,6 @@ interface UpgradeResult {
   dailyCredits: number;
 }
 
-export async function upgradeSubscription(tier: 'basic' | 'premium'): Promise<UpgradeResult> {
+export async function upgradeSubscription(tier: 'pro' | 'max'): Promise<UpgradeResult> {
   return post<UpgradeResult>('/subscriptions/upgrade', { tier });
 }

@@ -20,7 +20,7 @@ interface CreditState {
   setSelectedModel: (modelId: string) => void;
   setDefaultModel: (modelId: string) => Promise<void>;
   updateCredits: (credits: number) => void;
-  upgradePlan: (tier: 'basic' | 'premium') => Promise<void>;
+  upgradePlan: (tier: 'pro' | 'max') => Promise<void>;
 }
 
 export const useCreditStore = create<CreditState>((set, get) => ({
