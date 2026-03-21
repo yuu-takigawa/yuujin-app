@@ -21,7 +21,7 @@ export default function CharacterHeader({
   const t = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: t.white, borderBottomColor: t.border }]}>
+    <View style={[styles.container, { backgroundColor: t.surface, borderBottomColor: t.border }]}>
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
       </TouchableOpacity>

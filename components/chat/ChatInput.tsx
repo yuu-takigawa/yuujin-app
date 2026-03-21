@@ -96,7 +96,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker 
   });
 
   return (
-    <ReAnimated.View style={[styles.wrapper, { backgroundColor: t.white, borderTopColor: t.border }, bottomPaddingStyle]}>
+    <ReAnimated.View style={[styles.wrapper, { backgroundColor: t.surface, borderTopColor: t.border }, bottomPaddingStyle]}>
       {/* Main row: [＋] [input] [AI] */}
       <View style={styles.mainRow}>
         {/* Plus / Close button */}

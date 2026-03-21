@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, Switch, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
-import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
 import type { JpLevel } from '../../../services/api';
 import { updateProfile } from '../../../services/api';
-import ModelSelectorModal from '../../../components/chat/ModelSelectorModal';
 import HalfScreenModal from '../../../components/common/HalfScreenModal';
 
 const JP_LEVELS: { value: JpLevel; label: string; desc: string }[] = [
@@ -75,17 +73,7 @@ export default function SettingsScreen() {
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const jpLevel = user?.jpLevel || 'N4';
 
-  const models = useCreditStore((s) => s.models);
-  const selectedModelId = useCreditStore((s) => s.selectedModelId);
-  const loadModels = useCreditStore((s) => s.loadModels);
-  const [modelModalVisible, setModelModalVisible] = useState(false);
   const [jpLevelPickerVisible, setJpLevelPickerVisible] = useState(false);
-
-  useEffect(() => {
-    if (models.length === 0) loadModels();
-  }, []);
-
-  const currentModelName = models.find((m) => m.id === selectedModelId)?.name || '自動選択';
 
   const currentLevel = JP_LEVELS.find((l) => l.value === jpLevel) || JP_LEVELS[1];
 
@@ -185,34 +173,6 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* AI */}
-        <SectionHeader title="AI" />
-        <View style={[styles.group, { borderColor: t.border }]}>
-          <SettingsRow
-            icon="sparkles-outline"
-            label="デフォルトモデル"
-            right={
-              <View style={styles.valueRow}>
-                <Text style={[styles.valueText, { color: t.brand }]}>{currentModelName}</Text>
-                <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
-              </View>
-            }
-            onPress={() => setModelModalVisible(true)}
-          />
-          <RowDivider />
-          <SettingsRow
-            icon="globe-outline"
-            label="インターフェース言語"
-            right={
-              <View style={styles.valueRow}>
-                <Text style={[styles.valueText, { color: t.textSecondary }]}>中文</Text>
-                <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
-              </View>
-            }
-            onPress={() => Alert.alert('準備中', 'この機能は近日公開予定です。')}
-          />
-        </View>
-
         {/* 通知 */}
         <SectionHeader title="通知" />
         <View style={[styles.group, { borderColor: t.border }]}>
@@ -280,8 +240,6 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
-
-      <ModelSelectorModal visible={modelModalVisible} onClose={() => setModelModalVisible(false)} />
 
       <HalfScreenModal visible={jpLevelPickerVisible} onClose={() => setJpLevelPickerVisible(false)} height={420}>
         <View style={styles.levelModal}>

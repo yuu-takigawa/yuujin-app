@@ -689,7 +689,7 @@ export default function NewsDetailScreen() {
 
       {/* @Mention picker */}
       {mentionQuery !== null && filteredMentions.length > 0 && (
-        <View style={[styles.mentionPicker, { backgroundColor: t.surface, borderColor: t.border, bottom: 56 + Math.max(insets.bottom, 8) + 8 }]}>
+        <View style={[styles.mentionPicker, { backgroundColor: t.surface, borderColor: t.border, bottom: 56 + Math.max(insets.bottom, 4) }]}>
           {filteredMentions.map((char) => (
             <TouchableOpacity
               key={char.id}
@@ -704,7 +704,7 @@ export default function NewsDetailScreen() {
       )}
 
       {/* Fixed bottom: reply indicator + input bar */}
-      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 4) }]}>
         {/* Reply indicator */}
         {replyTarget && (
           <View style={[styles.replyIndicator, { borderBottomColor: t.border }]}>

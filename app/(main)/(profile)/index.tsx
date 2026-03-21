@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
+import ModelSelectorModal from '../../../components/chat/ModelSelectorModal';
 
 type Tier = 'free' | 'pro' | 'max' | 'admin';
 
@@ -55,6 +56,10 @@ export default function ProfileScreen() {
   const dailyCredits = useCreditStore((s) => s.dailyCredits);
   const membership = useCreditStore((s) => s.membership) as Tier;
   const loadCredits = useCreditStore((s) => s.loadCredits);
+  const models = useCreditStore((s) => s.models);
+  const selectedModelId = useCreditStore((s) => s.selectedModelId);
+  const loadModels = useCreditStore((s) => s.loadModels);
+  const [modelModalVisible, setModelModalVisible] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -64,6 +69,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadCredits();
+    loadModels();
     anims.forEach((anim, i) => {
       setTimeout(() => {
         Animated.timing(anim, { toValue: 1, duration: 280, useNativeDriver: true }).start();
@@ -247,7 +253,7 @@ export default function ProfileScreen() {
         {/* ── Membership card ── */}
         <Animated.View style={staggerStyle(2)}>
           {isAdmin ? (
-            /* Admin card */
+            /* Admin card with model selector */
             <View style={[styles.memberCard, { backgroundColor: '#7C3AED18', borderColor: '#7C3AED60' }]}>
               <View style={styles.memberRow}>
                 <Ionicons name="shield-checkmark" size={20} color="#7C3AED" />
@@ -256,6 +262,18 @@ export default function ProfileScreen() {
               <Text style={[styles.memberDesc, { color: t.textSecondary }]}>
                 全モデル・ポイント無制限
               </Text>
+              <TouchableOpacity
+                style={[styles.modelSelectBtn, { backgroundColor: '#7C3AED12', borderColor: '#7C3AED40' }]}
+                onPress={() => setModelModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles" size={16} color="#7C3AED" />
+                <Text style={[styles.modelSelectLabel, { color: t.textSecondary }]}>使用中モデル</Text>
+                <Text style={[styles.modelSelectValue, { color: '#7C3AED' }]} numberOfLines={1}>
+                  {models.find((m) => m.id === selectedModelId)?.name || '自動選択'}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color="#7C3AED" />
+              </TouchableOpacity>
             </View>
           ) : tier === 'max' ? (
             /* Max card - show current plan details */
@@ -333,6 +351,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      <ModelSelectorModal visible={modelModalVisible} onClose={() => setModelModalVisible(false)} />
     </View>
   );
 }
@@ -457,6 +477,18 @@ const styles = StyleSheet.create({
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   memberTitle: { fontSize: 16, fontWeight: '700' },
   memberDesc: { fontSize: 13, lineHeight: 20 },
+  modelSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  modelSelectLabel: { fontSize: 12 },
+  modelSelectValue: { flex: 1, fontSize: 14, fontWeight: '600', textAlign: 'right' },
   upgradeCard: {
     borderRadius: 14,
     padding: 16,
