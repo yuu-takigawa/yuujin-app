@@ -216,8 +216,8 @@ export default function CharacterForm({
 
       {/* アバター選択 (5列) */}
       <View style={styles.field}>
-        <Text style={[styles.label, { color: t.text, marginBottom: 8 }]}>アバター <Text style={{ color: t.error }}>*</Text></Text>
-        <View style={[styles.avatarGrid, errors.avatar ? { borderColor: t.error, borderWidth: 2, borderRadius: 12 } : {}]}>
+        <Text style={[styles.label, { color: errors.avatar ? t.error : t.text, marginBottom: 8 }]}>アバター <Text style={{ color: t.error }}>*</Text> {errors.avatar ? <Text style={{ color: t.error, fontSize: 12, fontWeight: '400' }}>選択してください</Text> : null}</Text>
+        <View style={styles.avatarGrid}>
           {PRESET_AVATARS.map((url) => (
             <TouchableOpacity
               key={url}
