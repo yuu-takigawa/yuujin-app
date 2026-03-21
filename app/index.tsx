@@ -2,15 +2,18 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../stores/authStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export default function Index() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const isRestoring = useAuthStore((s) => s.isRestoring);
   const restoreSession = useAuthStore((s) => s.restoreSession);
+  const hydrateSettings = useSettingsStore((s) => s.hydrate);
 
   useEffect(() => {
     restoreSession();
+    hydrateSettings();
   }, []);
 
   if (isRestoring) {
