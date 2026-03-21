@@ -80,26 +80,31 @@ export default function VerificationCodeInput({ email, type, value, onChangeText
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   input: {
     flex: 1,
+    minWidth: 0,
     height: 48,
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     fontSize: 16,
     letterSpacing: 4,
   },
   sendBtn: {
+    flexShrink: 0,
     height: 48,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 90,
   },
   sendText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });
