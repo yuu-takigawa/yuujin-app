@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { fontSize } from '../../constants/theme';
+import { useCreditStore } from '../../stores/creditStore';
 import HalfScreenModal from '../common/HalfScreenModal';
 
 interface HamburgerMenuProps {
@@ -14,6 +15,7 @@ interface HamburgerMenuProps {
   onTogglePin: () => void;
   onClearChat: () => void;
   onDeleteFriend: () => void;
+  onModelSelect: () => void;
 }
 
 export default function HamburgerMenu({
@@ -26,8 +28,12 @@ export default function HamburgerMenu({
   onTogglePin,
   onClearChat,
   onDeleteFriend,
+  onModelSelect,
 }: HamburgerMenuProps) {
   const t = useTheme();
+  const models = useCreditStore((s) => s.models);
+  const selectedModelId = useCreditStore((s) => s.selectedModelId);
+  const currentModelName = models.find((m) => m.id === selectedModelId)?.name || '自動選択';
 
   const items = [
     { icon: 'person-outline' as const, label: '角色詳細', onPress: onViewCharacter },
@@ -43,10 +49,23 @@ export default function HamburgerMenu({
   };
 
   return (
-    <HalfScreenModal visible={visible} onClose={onClose} height={380}>
+    <HalfScreenModal visible={visible} onClose={onClose} height={430}>
       <View style={[styles.header, { borderBottomColor: t.border }]}>
         <Text style={[styles.title, { color: t.text }]}>メニュー</Text>
       </View>
+
+      {/* Model selector row */}
+      <TouchableOpacity
+        style={[styles.modelRow, { backgroundColor: t.inputBg }]}
+        onPress={() => handleItemPress(onModelSelect)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="sparkles" size={18} color={t.brand} />
+        <Text style={[styles.modelLabel, { color: t.textSecondary }]}>AIモデル</Text>
+        <Text style={[styles.modelValue, { color: t.brand }]} numberOfLines={1}>{currentModelName}</Text>
+        <Ionicons name="chevron-forward" size={14} color={t.textSecondary} />
+      </TouchableOpacity>
+
       <View style={styles.menuList}>
         {items.map((item, i) => (
           <TouchableOpacity
@@ -90,6 +109,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  modelLabel: { fontSize: 13 },
+  modelValue: { flex: 1, fontSize: 14, fontWeight: '600', textAlign: 'right' },
   menuList: {
     paddingHorizontal: 20,
   },

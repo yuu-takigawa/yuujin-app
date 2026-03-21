@@ -24,6 +24,7 @@ import TypingIndicator from '../../components/chat/TypingIndicator';
 import ChatInput from '../../components/chat/ChatInput';
 import CharacterHeader from '../../components/chat/CharacterHeader';
 import HamburgerMenu from '../../components/chat/HamburgerMenu';
+import ModelSelectorModal from '../../components/chat/ModelSelectorModal';
 import BubbleMenu from '../../components/chat/BubbleMenu';
 import TopicDrawModal from '../../components/chat/TopicDrawModal';
 import NewsPickerModal from '../../components/chat/NewsPickerModal';
@@ -71,6 +72,7 @@ export default function ConversationScreen() {
   const [bubbleContent, setBubbleContent] = useState<string | null>(null);
   const [topicDrawVisible, setTopicDrawVisible] = useState(false);
   const [newsPickerVisible, setNewsPickerVisible] = useState(false);
+  const [modelModalVisible, setModelModalVisible] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const loadCredits = useCreditStore((s) => s.loadCredits);
@@ -335,7 +337,10 @@ export default function ConversationScreen() {
         }}
         onClearChat={clearChat}
         onDeleteFriend={handleDeleteFriend}
+        onModelSelect={() => setModelModalVisible(true)}
       />
+
+      <ModelSelectorModal visible={modelModalVisible} onClose={() => setModelModalVisible(false)} />
 
       <BubbleMenu
         visible={!!bubbleContent}
