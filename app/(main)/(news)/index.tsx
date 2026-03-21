@@ -47,6 +47,11 @@ export default function NewsScreen() {
   const [shareArticle, setShareArticle] = useState<NewsArticle | null>(null);
   const loadingMoreRef = useRef(false);
   const flatListRef = useRef<FlatList>(null);
+  // Web 下拉刷新
+  const [pullDistance, setPullDistance] = useState(0);
+  const pullStartY = useRef(0);
+  const isPulling = useRef(false);
+  const listContainerRef = useRef<View>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const prevCategoryRef = useRef(category);
   const hasFetchedRef = useRef(false);
@@ -87,6 +92,58 @@ export default function NewsScreen() {
     setRefreshing(false);
   }, [loadArticles, refreshing]);
 
+  // Web: 原生 touch 事件实现下拉刷新
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = listContainerRef.current as unknown as HTMLElement;
+    if (!el?.addEventListener) return;
+
+    const getScrollTop = () => {
+      // FlatList 内部的滚动容器
+      const scrollEl = el.querySelector('[data-testid]') || el.firstElementChild?.firstElementChild;
+      return (scrollEl as HTMLElement)?.scrollTop ?? 0;
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (getScrollTop() <= 0 && !refreshing) {
+        pullStartY.current = e.touches[0].clientY;
+        isPulling.current = true;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isPulling.current) return;
+      const dy = e.touches[0].clientY - pullStartY.current;
+      if (dy > 0 && getScrollTop() <= 0) {
+        e.preventDefault();
+        setPullDistance(Math.min(dy * 0.4, 80)); // 阻尼
+      } else {
+        isPulling.current = false;
+        setPullDistance(0);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isPulling.current) return;
+      const dist = pullDistance;
+      isPulling.current = false;
+      setPullDistance(0);
+      if (dist > 50) {
+        handleRefresh();
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [refreshing, pullDistance, handleRefresh]);
+
   const handleLoadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
@@ -95,13 +152,6 @@ export default function NewsScreen() {
     setLoadingMore(false);
     loadingMoreRef.current = false;
   }, [hasMore, articles.length, loadArticles]);
-
-  // Web 下拉刷新：松手时检测 overscroll
-  const handleScrollEndDrag = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (Platform.OS === 'web' && e.nativeEvent.contentOffset.y < -50 && !refreshing) {
-      handleRefresh();
-    }
-  }, [handleRefresh, refreshing]);
 
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -164,7 +214,18 @@ export default function NewsScreen() {
         })}
       </ScrollView>
 
-      {/* Articles — FlatList 始终渲染以支持下拉刷新 */}
+      {/* 下拉刷新指示器 (Web) */}
+      {Platform.OS === 'web' && (pullDistance > 0 || refreshing) && (
+        <View style={{ alignItems: 'center', paddingVertical: 8, height: refreshing ? 40 : pullDistance }}>
+          <ActivityIndicator size="small" color={t.brand} />
+          {!refreshing && pullDistance > 50 && (
+            <Text style={{ color: t.textSecondary, fontSize: 11, marginTop: 2 }}>離して更新</Text>
+          )}
+        </View>
+      )}
+
+      {/* Articles */}
+      <View ref={listContainerRef} style={{ flex: 1 }}>
         <FlatList
           ref={flatListRef}
           data={loading ? [] : articles}
@@ -179,14 +240,6 @@ export default function NewsScreen() {
           )}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.brand} colors={[t.brand]} />
-          }
-          onScrollEndDrag={handleScrollEndDrag}
-          ListHeaderComponent={
-            refreshing ? (
-              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                <ActivityIndicator size="small" color={t.brand} />
-              </View>
-            ) : null
           }
           ListEmptyComponent={
             loading ? (
@@ -230,6 +283,7 @@ export default function NewsScreen() {
             ) : null
           }
         />
+      </View>
       <ShareModal
         visible={shareVisible}
         onClose={() => setShareVisible(false)}
