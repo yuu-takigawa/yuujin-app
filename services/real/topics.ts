@@ -15,3 +15,14 @@ export async function drawTopics(characterId: string): Promise<Topic[]> {
     category: 'ai',
   }));
 }
+
+export async function shuffleTopic(characterId: string): Promise<Topic> {
+  const result = await post<{ success: boolean; data: ServerTopic }>('/topics/shuffle', { characterId });
+  const t = result.data;
+  return {
+    id: `shuffle-${Date.now()}`,
+    text: t?.text || '何か面白いことある？',
+    emoji: t?.emoji || '🎲',
+    category: 'ai',
+  };
+}

@@ -29,6 +29,7 @@ import BubbleMenu from '../../components/chat/BubbleMenu';
 import TopicDrawModal from '../../components/chat/TopicDrawModal';
 import NewsPickerModal from '../../components/chat/NewsPickerModal';
 import { useTheme } from '../../hooks/useTheme';
+import { uploadChatImage } from '../../services/api';
 import type { Message } from '../../services/api';
 
 function formatDateLabel(date: Date): string {
@@ -317,10 +318,13 @@ export default function ConversationScreen() {
           disabled={isStreaming}
           onTopicDraw={() => setTopicDrawVisible(true)}
           onNewsPicker={() => setNewsPickerVisible(true)}
-          onImagePicked={(uri) => {
-            // TODO: Upload to OSS then send with imageUrl
-            // For now, send as text placeholder
-            sendMessage(`[image] ${uri.split('/').pop()}`);
+          onImagePicked={async (uri) => {
+            try {
+              const imageUrl = await uploadChatImage(uri);
+              sendMessage(`[image] ${imageUrl}`);
+            } catch {
+              sendMessage('[image] upload failed');
+            }
           }}
         />
       </ReAnimated.View>

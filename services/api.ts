@@ -6,7 +6,7 @@ export const USE_REAL_API = true;
 export { login, register, refreshToken, updateProfile, deleteAccount, sendCode, resetPassword, changePassword } from './real/auth';
 
 // ─── Chat streaming ───
-export { streamResponse, streamText } from './real/chat';
+export { streamResponse, streamText, uploadChatImage, streamResponseWithImage } from './real/chat';
 export type { SSEEvent } from './real/chat';
 
 // ─── Conversations ───
@@ -49,7 +49,7 @@ export { getNewsArticles, getNewsDetail, markNewsAsRead, getNewsComments, postNe
 export type { AnnotateSSEEvent, AIReplySSEEvent, CommentMention } from './real/news';
 
 // ─── Topics ───
-export { drawTopics } from './real/topics';
+export { drawTopics, shuffleTopic } from './real/topics';
 
 // ─── Avatars ───
 export { getAvatarPresets, uploadAvatar } from './real/avatars';

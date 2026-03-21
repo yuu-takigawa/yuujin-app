@@ -120,3 +120,79 @@ export function streamResponse(
     xhr.abort();
   };
 }
+
+/**
+ * Upload an image for chat (multipart/form-data → OSS → returns URL)
+ */
+export async function uploadChatImage(uri: string): Promise<string> {
+  const token = getToken();
+  const formData = new FormData();
+
+  // React Native / Web compatible
+  const filename = uri.split('/').pop() || 'photo.jpg';
+  const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+  const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+
+  formData.append('file', {
+    uri,
+    name: filename,
+    type: mimeType,
+  } as unknown as Blob);
+
+  const response = await fetch(`${API_BASE_URL}/chat/image`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const json = await response.json();
+  if (!json.success) throw new Error(json.error || 'Upload failed');
+  return json.data.url;
+}
+
+/**
+ * Stream chat with optional imageUrl
+ */
+export function streamResponseWithImage(
+  conversationId: string,
+  userMessage: string,
+  imageUrl: string,
+  onEvent: SSECallback,
+): () => void {
+  let cancelled = false;
+
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/chat`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  const token = getToken();
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  }
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      const newText = xhr.responseText.substring(lastIndex);
+      lastIndex = xhr.responseText.length;
+      if (newText) {
+        parseSSELines(newText, (event) => {
+          if (!cancelled) onEvent(event);
+        });
+      }
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Network error' });
+  };
+
+  xhr.timeout = 60000;
+  xhr.send(JSON.stringify({ conversationId, message: userMessage, imageUrl }));
+
+  return () => { cancelled = true; xhr.abort(); };
+}
