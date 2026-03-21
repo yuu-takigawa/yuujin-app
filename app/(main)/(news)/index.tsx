@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../hooks/useTheme';
 import { spacing, fontSize } from '../../../constants/theme';
 import NewsCard from '../../../components/news/NewsCard';
@@ -122,11 +123,13 @@ export default function NewsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: t.brand }]}>ニュース</Text>
-        {showScrollTop ? (
-          <Text style={[styles.scrollTopBtn, { color: t.brand }]} onPress={scrollToTop}>↑</Text>
-        ) : (
-          <View style={{ width: 28 }} />
-        )}
+        <TouchableOpacity onPress={refreshing ? undefined : handleRefresh} style={{ width: 28, alignItems: 'center' }}>
+          {refreshing ? (
+            <ActivityIndicator size={16} color={t.brand} />
+          ) : (
+            <Ionicons name="refresh-outline" size={20} color={t.brand} />
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Category Tabs */}
