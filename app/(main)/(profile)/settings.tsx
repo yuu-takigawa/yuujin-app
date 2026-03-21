@@ -71,8 +71,8 @@ export default function SettingsScreen() {
   const setJpLevel = useAuthStore((s) => s.setJpLevel);
   const logout = useAuthStore((s) => s.logout);
   const deleteAccount = useAuthStore((s) => s.deleteAccount);
-  const darkMode = useSettingsStore((s) => s.darkMode);
-  const setDarkMode = useSettingsStore((s) => s.setDarkMode);
+  const themeMode = useSettingsStore((s) => s.themeMode);
+  const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const jpLevel = user?.jpLevel || 'N4';
 
   const models = useCreditStore((s) => s.models);
@@ -162,14 +162,25 @@ export default function SettingsScreen() {
         <View style={[styles.group, { borderColor: t.border }]}>
           <SettingsRow
             icon="moon-outline"
-            label="ダークモード"
+            label="テーマ"
             right={
-              <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ true: t.brand, false: t.border }}
-                thumbColor="#FFFFFF"
-              />
+              <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: t.border }}>
+                {([['light', 'ライト'], ['system', 'システム'], ['dark', 'ダーク']] as const).map(([mode, label]) => (
+                  <TouchableOpacity
+                    key={mode}
+                    onPress={() => setThemeMode(mode)}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      backgroundColor: themeMode === mode ? t.brand : 'transparent',
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: themeMode === mode ? '#FFF' : t.textSecondary }}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             }
           />
         </View>

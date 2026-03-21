@@ -96,6 +96,13 @@ export default function NewsScreen() {
     loadingMoreRef.current = false;
   }, [hasMore, articles.length, loadArticles]);
 
+  // Web 下拉刷新：松手时检测 overscroll
+  const handleScrollEndDrag = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (Platform.OS === 'web' && e.nativeEvent.contentOffset.y < -50 && !refreshing) {
+      handleRefresh();
+    }
+  }, [handleRefresh, refreshing]);
+
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
     // 回到顶部按钮：滚动超过 800px 显示
@@ -172,6 +179,14 @@ export default function NewsScreen() {
           )}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.brand} colors={[t.brand]} />
+          }
+          onScrollEndDrag={handleScrollEndDrag}
+          ListHeaderComponent={
+            refreshing ? (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <ActivityIndicator size="small" color={t.brand} />
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             loading ? (
