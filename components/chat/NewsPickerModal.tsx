@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { getNewsArticles } from '../../services/api';
 import type { NewsArticle } from '../../services/api';
@@ -45,22 +45,25 @@ export default function NewsPickerModal({ visible, onClose, onSelectNews }: News
           data={articles}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: t.border }]} />}
           renderItem={({ item }) => (
-            <View style={[styles.item, { backgroundColor: t.surface, borderColor: t.border }]}>
-              <View style={[styles.thumb, { backgroundColor: t.inputBg }]}>
-                <Text style={styles.thumbEmoji}>{item.imageEmoji}</Text>
-              </View>
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => handleSelect(item)}
+              activeOpacity={0.6}
+            >
+              {item.imageUrl ? (
+                <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+              ) : (
+                <View style={[styles.thumb, styles.thumbPlaceholder, { backgroundColor: t.inputBg }]}>
+                  <Text style={styles.thumbEmoji}>{item.imageEmoji || '📰'}</Text>
+                </View>
+              )}
               <View style={styles.info}>
                 <Text style={[styles.itemTitle, { color: t.text }]} numberOfLines={2}>{item.title}</Text>
                 <Text style={[styles.meta, { color: t.textSecondary }]}>{item.source} · {item.timeAgo}</Text>
               </View>
-              <TouchableOpacity
-                style={[styles.sendBtn, { backgroundColor: t.brand }]}
-                onPress={() => handleSelect(item)}
-              >
-                <Text style={styles.sendText}>送信</Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <Text style={[styles.emptyText, { color: t.textSecondary }]}>
@@ -90,47 +93,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   list: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 72,
   },
   item: {
     flexDirection: 'row',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 10,
     alignItems: 'center',
     gap: 12,
   },
   thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+  },
+  thumbPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbEmoji: {
-    fontSize: 28,
+    fontSize: 22,
   },
   info: {
     flex: 1,
     gap: 4,
   },
   itemTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   meta: {
     fontSize: 11,
-  },
-  sendBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  sendText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
   },
   emptyText: {
     fontSize: 14,

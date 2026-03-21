@@ -69,7 +69,7 @@ export default function ConversationScreen() {
   const characters = useCharacterStore((s) => s.characters);
 
   const [menuVisible, setMenuVisible] = useState(false);
-  const [bubbleContent, setBubbleContent] = useState<string | null>(null);
+  const [bubbleContent, setBubbleContent] = useState<{ content: string; role: string } | null>(null);
   const [topicDrawVisible, setTopicDrawVisible] = useState(false);
   const [newsPickerVisible, setNewsPickerVisible] = useState(false);
   const [modelModalVisible, setModelModalVisible] = useState(false);
@@ -225,8 +225,9 @@ export default function ConversationScreen() {
     setTopicDrawVisible(false);
   };
 
-  const handleNewsSend = (articleTitle: string) => {
-    sendMessage(`📰 ${articleTitle}`);
+  const handleNewsSend = (article: import('../../services/api').NewsArticle) => {
+    // Send title as display text, but include article ID for linking
+    sendMessage(`📰[${article.id}] ${article.title}`);
     setNewsPickerVisible(false);
   };
 
@@ -292,7 +293,7 @@ export default function ConversationScreen() {
                 role={item.data.role}
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
-                onLongPress={() => setBubbleContent(item.data.content)}
+                onLongPress={() => setBubbleContent({ content: item.data.content, role: item.data.role })}
                 highlight={isSearchHit}
                 skipEntrance={item.data.id === skipEntranceId}
               />
@@ -316,6 +317,11 @@ export default function ConversationScreen() {
           disabled={isStreaming}
           onTopicDraw={() => setTopicDrawVisible(true)}
           onNewsPicker={() => setNewsPickerVisible(true)}
+          onImagePicked={(uri) => {
+            // TODO: Upload to OSS then send with imageUrl
+            // For now, send as text placeholder
+            sendMessage(`[image] ${uri.split('/').pop()}`);
+          }}
         />
       </ReAnimated.View>
 
@@ -344,7 +350,8 @@ export default function ConversationScreen() {
 
       <BubbleMenu
         visible={!!bubbleContent}
-        content={bubbleContent || ''}
+        content={bubbleContent?.content || ''}
+        role={bubbleContent?.role}
         onClose={() => setBubbleContent(null)}
       />
 
@@ -358,7 +365,7 @@ export default function ConversationScreen() {
       <NewsPickerModal
         visible={newsPickerVisible}
         onClose={() => setNewsPickerVisible(false)}
-        onSelectNews={(article) => handleNewsSend(article.title)}
+        onSelectNews={(article) => handleNewsSend(article)}
       />
 
 

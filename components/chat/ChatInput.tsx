@@ -15,6 +15,7 @@ import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import * as ImagePicker from 'expo-image-picker';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 
 interface ChatInputProps {
@@ -22,9 +23,10 @@ interface ChatInputProps {
   disabled?: boolean;
   onTopicDraw?: () => void;
   onNewsPicker?: () => void;
+  onImagePicked?: (uri: string) => void;
 }
 
-export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker, onImagePicked }: ChatInputProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
@@ -164,13 +166,13 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker 
           )}
         </View>
 
-        {/* AI assist button */}
+        {/* AI assist button — toggles expand panel */}
         <TouchableOpacity
-          style={[styles.aiButton, { backgroundColor: t.brandLight }]}
-          onPress={() => Alert.alert('準備中', 'AI返信アシスト機能は開発中です')}
+          style={[styles.aiButton, { backgroundColor: expandOpen ? t.brand : t.brandLight }]}
+          onPress={() => setExpandOpen(!expandOpen)}
           activeOpacity={0.6}
         >
-          <Text style={[styles.aiButtonText, { color: t.brand }]} numberOfLines={1}>
+          <Text style={[styles.aiButtonText, { color: expandOpen ? '#FFF' : t.brand }]} numberOfLines={1}>
             AI
           </Text>
         </TouchableOpacity>
@@ -181,13 +183,25 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker 
         maxHeight: panelAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 100] }),
         opacity: panelAnim,
       }]}>
-        <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={() => Alert.alert('準備中', 'カメラ機能は開発中です')}>
+        <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={async () => {
+          setExpandOpen(false);
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('カメラの許可が必要です'); return; }
+          const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
+          if (!result.canceled && result.assets[0]) onImagePicked?.(result.assets[0].uri);
+        }}>
           <View style={[styles.expandIconBox, { backgroundColor: t.inputBg }]}>
             <Text style={styles.expandEmoji}>📷</Text>
           </View>
           <Text style={[styles.expandLabel, { color: t.text }]}>Camera</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={() => Alert.alert('準備中', 'アルバム機能は開発中です')}>
+        <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={async () => {
+          setExpandOpen(false);
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('写真の許可が必要です'); return; }
+          const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+          if (!result.canceled && result.assets[0]) onImagePicked?.(result.assets[0].uri);
+        }}>
           <View style={[styles.expandIconBox, { backgroundColor: t.inputBg }]}>
             <Text style={styles.expandEmoji}>🖼</Text>
           </View>

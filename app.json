@@ -37,7 +37,8 @@
           "color": "#E85B3A",
           "sounds": []
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {

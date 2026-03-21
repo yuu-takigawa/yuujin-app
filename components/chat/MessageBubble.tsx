@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { useRouter } from 'expo-router';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -11,7 +12,11 @@ interface MessageBubbleProps {
   onLongPress?: () => void;
   highlight?: boolean;
   skipEntrance?: boolean;
+  imageUrl?: string;
 }
+
+// Match news ref pattern: 📰[articleId] Title
+const NEWS_REF_REGEX = /^📰\[([^\]]+)\]\s*(.+)$/;
 
 function formatMessageTime(dateStr?: string): string {
   if (!dateStr) return '';
@@ -27,9 +32,11 @@ export default function MessageBubble({
   onLongPress,
   highlight,
   skipEntrance,
+  imageUrl,
 }: MessageBubbleProps) {
   const isUser = role === 'user';
   const t = useTheme();
+  const router = useRouter();
   const timeStr = formatMessageTime(createdAt);
   const hasAvatar = !!avatarUrl;
 
@@ -47,6 +54,40 @@ export default function MessageBubble({
       }).start();
     }
   }, []);
+
+  // Check if this is a news reference message
+  const newsMatch = content.match(NEWS_REF_REGEX);
+
+  const renderContent = () => {
+    // Image message
+    if (imageUrl) {
+      return (
+        <View style={styles.imageWrap}>
+          <Image source={{ uri: imageUrl }} style={styles.chatImage} resizeMode="cover" />
+          {content && !content.startsWith('[image]') && (
+            <Text style={[styles.text, { color: t.text }]}>{content}</Text>
+          )}
+        </View>
+      );
+    }
+
+    // News reference — clickable link style
+    if (newsMatch) {
+      const [, articleId, title] = newsMatch;
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/article/${articleId}`)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.newsIcon}>📰</Text>
+          <Text style={[styles.newsTitle, { color: t.brand }]}>{title}</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    // Normal text
+    return <Text style={[styles.text, { color: t.text }]}>{content}</Text>;
+  };
 
   return (
     <Animated.View style={[styles.row, isUser && styles.rowUser, {
@@ -67,7 +108,7 @@ export default function MessageBubble({
           activeOpacity={0.8}
           delayLongPress={300}
         >
-          <Text style={[styles.text, { color: t.text }]}>{content}</Text>
+          {renderContent()}
         </TouchableOpacity>
         {timeStr ? (
           <Text
@@ -118,6 +159,24 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 17,
     lineHeight: 25.5,
+  },
+  newsIcon: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  newsTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    textDecorationLine: 'underline',
+  },
+  imageWrap: {
+    gap: 8,
+  },
+  chatImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 12,
   },
   time: {
     fontSize: 10,

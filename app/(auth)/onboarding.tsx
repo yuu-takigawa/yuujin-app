@@ -4,23 +4,29 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../../components/common/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useFriendStore } from '../../stores/friendStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { spacing, fontSize, radii } from '../../constants/theme';
+import type { JpLevel } from '../../services/api';
 
-type Step = 'level' | 'gift' | 'add';
+type Step = 'welcome' | 'level' | 'gift' | 'add';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const t = useTheme();
-  const [step, setStep] = useState<Step>('level');
-  const [selectedLevel, setSelectedLevel] = useState<import('../../services/api').JpLevel>('N4');
+  const { t: i } = useLocale();
+  const [step, setStep] = useState<Step>('welcome');
+  const [selectedLevel, setSelectedLevel] = useState<JpLevel>('N4');
+  const [isAdding, setIsAdding] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const setJpLevel = useAuthStore((s) => s.setJpLevel);
@@ -29,16 +35,14 @@ export default function OnboardingScreen() {
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters);
   const addFriend = useFriendStore((s) => s.addFriend);
 
-  const levels: Array<import('../../services/api').JpLevel> = ['none', 'N5', 'N4', 'N3', 'N2', 'N1', 'native'];
-  const levelDescriptions: Record<string, string> = {
-    none: '🔰 無経験 — まったくの初心者',
-    N5: '初心者 — ひらがな・カタカナ、基本的な挨拶',
-    N4: '初級 — 日常会話の基本',
-    N3: '中級 — 日常的な場面で使える',
-    N2: '中上級 — 幅広い場面で使える',
-    N1: '上級 — 複雑な文章も理解できる',
-    native: '🇯🇵 母語話者 — ネイティブレベル',
-  };
+  const levels: { value: JpLevel; label: string }[] = [
+    { value: 'none', label: i('onboarding.levelNone') },
+    { value: 'N5', label: i('onboarding.levelN5') },
+    { value: 'N4', label: i('onboarding.levelN4') },
+    { value: 'N3', label: i('onboarding.levelN3') },
+    { value: 'N2', label: i('onboarding.levelN2') },
+    { value: 'N1', label: i('onboarding.levelN1') },
+  ];
 
   const handleLevelSelect = () => {
     setJpLevel(selectedLevel);
@@ -46,39 +50,71 @@ export default function OnboardingScreen() {
     setStep('gift');
   };
 
-  const handleGiftAccept = () => {
-    setStep('add');
-  };
-
   const handleAddFriend = async () => {
-    if (!user) return;
-    await fetchCharacters();
-    const conv = await addFriend(user.id, 'preset-sato-yuki');
-    completeOnboarding();
-    router.replace(`/conversation/${conv.id}`);
+    if (!user || isAdding) return;
+    setIsAdding(true);
+    try {
+      await fetchCharacters();
+      const conv = await addFriend(user.id, 'preset-sato-yuki');
+      completeOnboarding();
+      router.replace(`/conversation/${conv.id}`);
+    } catch {
+      setIsAdding(false);
+    }
   };
 
+  // Step 1: Welcome
+  if (step === 'welcome') {
+    return (
+      <View style={[styles.container, { backgroundColor: t.background }]}>
+        <View style={styles.center}>
+          <Text style={[styles.logo, { color: t.brand }]}>Yuujin・友人</Text>
+          <Text style={[styles.welcomeTitle, { color: t.text }]}>
+            {i('onboarding.welcome')}
+          </Text>
+          <Text style={[styles.welcomeSub, { color: t.textSecondary }]}>
+            {i('onboarding.subtitle')}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: t.brand }]}
+          onPress={() => setStep('level')}
+        >
+          <Text style={styles.buttonText}>{i('onboarding.next')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Step 2: Select JP level
   if (step === 'level') {
     return (
       <View style={[styles.container, { backgroundColor: t.background }]}>
-        <Text style={[styles.title, { color: t.text }]}>日本語のレベルを{'\n'}教えてください</Text>
+        <Text style={[styles.title, { color: t.text }]}>
+          {i('onboarding.selectLevel')}
+        </Text>
         <View style={styles.levels}>
           {levels.map((lv) => (
             <TouchableOpacity
-              key={lv}
+              key={lv.value}
               style={[
                 styles.levelOption,
-                { backgroundColor: t.surface },
-                selectedLevel === lv && { backgroundColor: t.brandLight },
+                { backgroundColor: t.surface, borderColor: t.border, borderWidth: 1 },
+                selectedLevel === lv.value && { backgroundColor: t.brandLight, borderColor: t.brand },
               ]}
-              onPress={() => setSelectedLevel(lv)}
+              onPress={() => setSelectedLevel(lv.value)}
             >
-              <Text style={[styles.levelLabel, { color: t.text }, selectedLevel === lv && { color: t.brand }]}>
-                {lv}
-              </Text>
-              <Text style={[styles.levelDesc, { color: t.textSecondary }]}>
-                {levelDescriptions[lv]}
-              </Text>
+              <View style={styles.levelRow}>
+                <Text style={[styles.levelValue, { color: selectedLevel === lv.value ? t.brand : t.text }]}>
+                  {lv.value === 'none' ? '🔰' : lv.value}
+                </Text>
+                <Text style={[styles.levelLabel, { color: selectedLevel === lv.value ? t.brand : t.textSecondary }]}>
+                  {lv.label}
+                </Text>
+              </View>
+              {selectedLevel === lv.value && (
+                <Ionicons name="checkmark-circle" size={20} color={t.brand} />
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -86,58 +122,55 @@ export default function OnboardingScreen() {
           style={[styles.button, { backgroundColor: t.brand }]}
           onPress={handleLevelSelect}
         >
-          <Text style={styles.buttonText}>次へ</Text>
+          <Text style={styles.buttonText}>{i('onboarding.next')}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // Step 3: Meet Yuki
   if (step === 'gift') {
     return (
       <View style={[styles.container, { backgroundColor: t.background }]}>
-        <View style={styles.giftSection}>
-          <Text style={[styles.giftTitle, { color: t.text }]}>ようこそ！🎉</Text>
-          <Text style={[styles.giftSub, { color: t.textSecondary }]}>
-            最初の友達を紹介します
+        <View style={styles.center}>
+          <Text style={[styles.giftTitle, { color: t.text }]}>
+            {i('onboarding.meetYuki')}
           </Text>
-          <View style={styles.giftCard}>
+          <View style={[styles.yukiCard, { backgroundColor: t.surface, borderColor: t.border }]}>
             <Avatar name="ゆき" size={80} />
-            <Text style={[styles.giftName, { color: t.text }]}>佐藤ゆき</Text>
-            <Text style={[styles.giftDesc, { color: t.textSecondary }]}>
-              27歳 · UIデザイナー · 東京・下北沢
-            </Text>
-            <Text style={[styles.giftBio, { color: t.text }]}>
-              明るくて話しやすい、好奇心旺盛な女の子。{'\n'}気軽に日本語で話しかけてね！
+            <Text style={[styles.yukiName, { color: t.text }]}>佐藤ゆき</Text>
+            <Text style={[styles.yukiDesc, { color: t.textSecondary }]}>
+              {i('onboarding.yukiDesc')}
             </Text>
           </View>
         </View>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: t.brand }]}
-          onPress={handleGiftAccept}
+          onPress={() => setStep('add')}
         >
-          <Text style={styles.buttonText}>受け取る</Text>
+          <Text style={styles.buttonText}>{i('onboarding.addFriend')}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // step === 'add'
+  // Step 4: Add friend & start chatting
   return (
     <View style={[styles.container, { backgroundColor: t.background }]}>
-      <View style={styles.giftSection}>
+      <View style={styles.center}>
         <Avatar name="ゆき" size={80} />
-        <Text style={[styles.giftTitle, { color: t.text, marginTop: spacing.md }]}>
-          ゆきと友達になろう！
-        </Text>
-        <Text style={[styles.giftSub, { color: t.textSecondary }]}>
-          友達に追加すると、すぐにチャットが始まります
+        <Text style={[styles.addTitle, { color: t.text }]}>
+          {i('onboarding.tryReply')}
         </Text>
       </View>
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: t.brand }]}
+        style={[styles.button, { backgroundColor: t.brand }, isAdding && { opacity: 0.6 }]}
         onPress={handleAddFriend}
+        disabled={isAdding}
       >
-        <Text style={styles.buttonText}>友達に追加してチャット開始</Text>
+        <Text style={styles.buttonText}>
+          {isAdding ? '...' : i('onboarding.start')}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -148,6 +181,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    paddingBottom: 40,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: 'ShipporiMincho_700Bold',
+    letterSpacing: 2,
+    marginBottom: spacing.lg,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  welcomeSub: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: spacing.md,
   },
   title: {
     fontSize: fontSize.title,
@@ -157,21 +215,29 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   levels: {
-    gap: spacing.sm,
+    gap: 8,
     marginBottom: spacing.xl,
   },
   levelOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     borderRadius: radii.lg,
   },
-  levelLabel: {
-    fontSize: fontSize.body,
-    fontWeight: '700',
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  levelDesc: {
-    fontSize: fontSize.caption,
-    marginTop: 2,
+  levelValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    width: 36,
+  },
+  levelLabel: {
+    fontSize: 14,
   },
   button: {
     paddingVertical: 16,
@@ -183,35 +249,33 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     fontWeight: '600',
   },
-  giftSection: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
   giftTitle: {
-    fontSize: fontSize.title,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  giftSub: {
-    fontSize: fontSize.body,
-    textAlign: 'center',
     marginBottom: spacing.lg,
+    textAlign: 'center',
   },
-  giftCard: {
+  yukiCard: {
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 10,
+    padding: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    width: '100%',
   },
-  giftName: {
-    fontSize: fontSize.subtitle,
+  yukiName: {
+    fontSize: 20,
     fontWeight: '700',
   },
-  giftDesc: {
-    fontSize: fontSize.caption,
-  },
-  giftBio: {
-    fontSize: fontSize.body,
+  yukiDesc: {
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: spacing.md,
+    lineHeight: 22,
+  },
+  addTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: spacing.lg,
+    textAlign: 'center',
   },
 });

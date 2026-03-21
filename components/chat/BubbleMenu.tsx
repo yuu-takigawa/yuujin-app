@@ -10,16 +10,18 @@ import {
   Share,
   Animated,
 } from 'react-native';
+import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
 import { spacing, fontSize, radii } from '../../constants/theme';
 
 interface BubbleMenuProps {
   visible: boolean;
   content: string;
+  role?: string;
   onClose: () => void;
 }
 
-export default function BubbleMenu({ visible, content, onClose }: BubbleMenuProps) {
+export default function BubbleMenu({ visible, content, role, onClose }: BubbleMenuProps) {
   const t = useTheme();
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
@@ -58,10 +60,16 @@ export default function BubbleMenu({ visible, content, onClose }: BubbleMenuProp
     } catch {}
   };
 
+  const handleSpeak = () => {
+    Speech.stop();
+    Speech.speak(content, { language: 'ja-JP' });
+    onClose();
+  };
+
   const items = [
+    ...(role === 'assistant' ? [{ label: '朗読', onPress: handleSpeak }] : []),
     { label: '翻訳', onPress: () => showToast('翻訳機能は開発中です') },
     { label: '解析', onPress: () => showToast('解析機能は開発中です') },
-    { label: '多選', onPress: () => showToast('多選機能は開発中です') },
     { label: '分享', onPress: handleShare },
     { label: 'コピー', onPress: handleCopy },
   ];

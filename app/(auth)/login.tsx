@@ -12,6 +12,7 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { radii, spacing, fontSize } from '../../constants/theme';
 
 type LoginTab = 'email' | 'phone';
@@ -24,6 +25,7 @@ export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
   const isLoading = useAuthStore((s) => s.isLoading);
   const t = useTheme();
+  const { t: i } = useLocale();
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -77,7 +79,7 @@ export default function LoginScreen() {
           <View style={styles.form}>
             <TextInput
               style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-              placeholder="メールアドレス"
+              placeholder={i('auth.email')}
               placeholderTextColor={t.textSecondary}
               value={email}
               onChangeText={(v) => { setEmail(v); setError(''); }}
@@ -86,7 +88,7 @@ export default function LoginScreen() {
             />
             <TextInput
               style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-              placeholder="パスワード"
+              placeholder={i('auth.password')}
               placeholderTextColor={t.textSecondary}
               value={password}
               onChangeText={(v) => { setPassword(v); setError(''); }}
@@ -101,12 +103,12 @@ export default function LoginScreen() {
               disabled={isLoading}
             >
               <Text style={styles.buttonText}>
-                {isLoading ? 'ログイン中...' : 'ログイン'}
+                {isLoading ? '...' : i('auth.loginBtn')}
               </Text>
             </TouchableOpacity>
 
             <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
-              <Text style={[styles.forgotText, { color: t.textSecondary }]}>パスワードをお忘れですか？</Text>
+              <Text style={[styles.forgotText, { color: t.textSecondary }]}>{i('auth.forgotPassword')}</Text>
             </Link>
           </View>
         ) : (
@@ -119,7 +121,7 @@ export default function LoginScreen() {
         )}
 
         <Link href="/(auth)/register" style={styles.link}>
-          <Text style={[styles.linkText, { color: t.brand }]}>アカウントを作成</Text>
+          <Text style={[styles.linkText, { color: t.brand }]}>{i('auth.noAccount')} {i('auth.registerBtn')}</Text>
         </Link>
       </View>
     </KeyboardAvoidingView>

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import type { JpLevel } from '../../../services/api';
 import { updateProfile } from '../../../services/api';
 import HalfScreenModal from '../../../components/common/HalfScreenModal';
@@ -65,6 +66,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
   const user = useAuthStore((s) => s.user);
   const setJpLevel = useAuthStore((s) => s.setJpLevel);
   const logout = useAuthStore((s) => s.logout);
@@ -124,17 +126,17 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.back} onPress={() => router.back()} activeOpacity={0.6}>
           <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: t.text }]}>設定</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('settings.title')}</Text>
         <View style={styles.back} />
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
         {/* 学習 */}
-        <SectionHeader title="学習" />
+        <SectionHeader title={i('settings.learning')} />
         <View style={[styles.group, { borderColor: t.border }]}>
           <SettingsRow
             icon="school-outline"
-            label="日本語レベル"
+            label={i('settings.jpLevel')}
             right={
               <View style={styles.valueRow}>
                 <Text style={[styles.valueText, { color: t.brand }]}>{currentLevel.label}</Text>
@@ -146,17 +148,17 @@ export default function SettingsScreen() {
         </View>
 
         {/* 外観 */}
-        <SectionHeader title="外観" />
+        <SectionHeader title={i('settings.appearance')} />
         <View style={[styles.group, { borderColor: t.border }]}>
           <SettingsRow
             icon="moon-outline"
-            label="テーマ"
+            label={i('settings.theme')}
             right={
               <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: t.border }}>
-                {([['light', 'ライト'], ['system', 'システム'], ['dark', 'ダーク']] as const).map(([mode, label]) => (
+                {([['light', i('settings.themeLight')], ['system', i('settings.themeSystem')], ['dark', i('settings.themeDark')]] as [string, string][]).map(([mode, label]) => (
                   <TouchableOpacity
                     key={mode}
-                    onPress={() => setThemeMode(mode)}
+                    onPress={() => setThemeMode(mode as 'light' | 'system' | 'dark')}
                     style={{
                       paddingHorizontal: 10,
                       paddingVertical: 6,
@@ -174,76 +176,44 @@ export default function SettingsScreen() {
         </View>
 
         {/* 通知 */}
-        <SectionHeader title="通知" />
+        <SectionHeader title={i('settings.notifications')} />
         <View style={[styles.group, { borderColor: t.border }]}>
           <SettingsRow
             icon="notifications-outline"
-            label="プッシュ通知"
-            right={<Switch value={false} onValueChange={() => Alert.alert('準備中', 'この機能は近日公開予定です。')} trackColor={{ true: t.brand, false: t.border }} thumbColor="#FFFFFF" />}
+            label={i('settings.pushNotifications')}
+            right={<Switch value={false} onValueChange={() => Alert.alert(i('action.preparing'), i('action.preparingMsg'))} trackColor={{ true: t.brand, false: t.border }} thumbColor="#FFFFFF" />}
           />
         </View>
 
         {/* アカウント */}
-        <SectionHeader title="アカウント" />
+        <SectionHeader title={i('settings.account')} />
         <View style={[styles.group, { borderColor: t.border }]}>
           <SettingsRow
             icon="person-outline"
-            label="プロフィール編集"
+            label={i('settings.editProfile')}
             onPress={() => router.push('/edit-profile')}
           />
           <RowDivider />
           <SettingsRow
             icon="lock-closed-outline"
-            label="パスワード変更"
+            label={i('settings.changePassword')}
             onPress={() => router.push('/change-password')}
           />
           <RowDivider />
           <SettingsRow
-            icon="log-out-outline"
-            label="ログアウト"
-            destructive
-            iconColor={t.error || '#E53935'}
-            onPress={handleLogout}
-          />
-          <RowDivider />
-          <SettingsRow
             icon="trash-outline"
-            label="アカウント削除"
+            label={i('settings.deleteAccount')}
             destructive
             iconColor={t.error || '#E53935'}
             onPress={handleDeleteAccount}
           />
         </View>
 
-        {/* その他 */}
-        <SectionHeader title="その他" />
-        <View style={[styles.group, { borderColor: t.border }]}>
-          <SettingsRow
-            icon="information-circle-outline"
-            label="バージョン情報"
-            right={<Text style={[styles.valueText, { color: t.textSecondary }]}>1.0.0</Text>}
-            iconColor={t.textSecondary}
-          />
-          <RowDivider />
-          <SettingsRow
-            icon="chatbubble-ellipses-outline"
-            label="フィードバック"
-            onPress={() => Alert.alert('準備中', 'この機能は近日公開予定です。')}
-            iconColor={t.textSecondary}
-          />
-          <RowDivider />
-          <SettingsRow
-            icon="document-text-outline"
-            label="オープンソースライセンス"
-            onPress={() => Alert.alert('準備中', 'この機能は近日公開予定です。')}
-            iconColor={t.textSecondary}
-          />
-        </View>
       </ScrollView>
 
       <HalfScreenModal visible={jpLevelPickerVisible} onClose={() => setJpLevelPickerVisible(false)} height={420}>
         <View style={styles.levelModal}>
-          <Text style={[styles.levelModalTitle, { color: t.text }]}>日本語レベルを選択</Text>
+          <Text style={[styles.levelModalTitle, { color: t.text }]}>{i('settings.selectJpLevel')}</Text>
           {JP_LEVELS.map((l) => (
             <TouchableOpacity
               key={l.value}

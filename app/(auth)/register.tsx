@@ -12,6 +12,7 @@ import {
 import { useRouter, Link } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { radii, spacing, fontSize } from '../../constants/theme';
 import VerificationCodeInput from '../../components/auth/VerificationCodeInput';
 
@@ -24,6 +25,7 @@ export default function RegisterScreen() {
   const register = useAuthStore((s) => s.register);
   const isLoading = useAuthStore((s) => s.isLoading);
   const t = useTheme();
+  const { t: i } = useLocale();
   const router = useRouter();
 
   const handleRegister = async () => {
@@ -70,19 +72,19 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: t.text }]}>アカウント作成</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('auth.register')}</Text>
 
         <View style={styles.form}>
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="ユーザー名"
+            placeholder="Username"
             placeholderTextColor={t.textSecondary}
             value={username}
             onChangeText={(v) => { setUsername(v); setError(''); }}
           />
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="メールアドレス"
+            placeholder={i('auth.email')}
             placeholderTextColor={t.textSecondary}
             value={email}
             onChangeText={(v) => { setEmail(v); setError(''); }}
@@ -100,7 +102,7 @@ export default function RegisterScreen() {
 
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="パスワード（6文字以上）"
+            placeholder={i('auth.password')}
             placeholderTextColor={t.textSecondary}
             value={password}
             onChangeText={(v) => { setPassword(v); setError(''); }}
@@ -115,13 +117,13 @@ export default function RegisterScreen() {
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>
-              {isLoading ? '登録中...' : '登録する'}
+              {isLoading ? '...' : i('auth.registerBtn')}
             </Text>
           </TouchableOpacity>
         </View>
 
         <Link href="/(auth)/login" style={styles.link}>
-          <Text style={[styles.linkText, { color: t.brand }]}>ログインに戻る</Text>
+          <Text style={[styles.linkText, { color: t.brand }]}>{i('auth.backToLogin')}</Text>
         </Link>
       </ScrollView>
     </KeyboardAvoidingView>

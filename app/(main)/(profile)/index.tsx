@@ -114,18 +114,6 @@ export default function ProfileScreen() {
       iconColor: t.textSecondary,
       onPress: () => router.push('/settings'),
     },
-    {
-      icon: 'information-circle-outline' as const,
-      label: 'このアプリについて',
-      iconColor: t.textSecondary,
-      onPress: () => {},
-    },
-    {
-      icon: 'chatbubble-outline' as const,
-      label: 'フィードバック',
-      iconColor: t.textSecondary,
-      onPress: () => {},
-    },
   ];
 
   return (
