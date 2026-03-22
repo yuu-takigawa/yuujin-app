@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
@@ -132,16 +131,17 @@ export default function MessageBubble({
       );
     }
 
-    // Normal text with info icon
+    // Normal text with inline info icon
     return (
-      <View style={styles.textRow}>
-        <Text style={[styles.text, { color: t.text, flex: 1 }]}>{content}</Text>
-        <View ref={iconRef} collapsable={false} style={styles.infoIconWrap}>
-          <TouchableOpacity onPress={handleInfoPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="information-circle-outline" size={14} color={t.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Text style={[styles.text, { color: t.text }]}>
+        {content}
+        <Text
+          ref={iconRef as any}
+          collapsable={false}
+          onPress={handleInfoPress}
+          style={{ color: t.brand, fontSize: 13 }}
+        >{'  ⓘ'}</Text>
+      </Text>
     );
   };
 
@@ -234,14 +234,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 4,
     borderBottomRightRadius: 18,
     borderBottomLeftRadius: 18,
-  },
-  textRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  infoIconWrap: {
-    paddingBottom: 4,
   },
   text: {
     fontSize: 17,

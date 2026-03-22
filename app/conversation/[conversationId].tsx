@@ -272,7 +272,7 @@ export default function ConversationScreen() {
           style={styles.list}
           data={chatItems}
           keyExtractor={(item) => item.type === 'date' ? item.key : item.data.id}
-          contentContainerStyle={[styles.messageList, { paddingBottom: 12 }]}
+          contentContainerStyle={[styles.messageList, { paddingBottom: 12, paddingTop: 12 }]}
           initialNumToRender={20}
           onContentSizeChange={handleContentSizeChange}
           automaticallyAdjustKeyboardInsets={false}

@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
   },
   logo: {
@@ -153,6 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 10,
     padding: 3,
+    width: '100%',
     marginBottom: spacing.lg,
     borderWidth: 1,
   },
@@ -171,6 +173,7 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+    width: '100%',
   },
   input: {
     borderRadius: radii.md,
