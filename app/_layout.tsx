@@ -2,8 +2,23 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { useFonts } from 'expo-font';
+import {
+  CormorantGaramond_400Regular,
+  CormorantGaramond_700Bold,
+} from '@expo-google-fonts/cormorant-garamond';
+import {
+  JosefinSans_300Light,
+  JosefinSans_400Regular,
+} from '@expo-google-fonts/josefin-sans';
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    CormorantGaramond_400Regular,
+    CormorantGaramond_700Bold,
+    JosefinSans_300Light,
+    JosefinSans_400Regular,
+  });
 
   return (
     <KeyboardProvider statusBarTranslucent navigationBarTranslucent>

@@ -29,7 +29,7 @@
       "bundler": "metro"
     },
     "plugins": [
-      ["expo-router", { "asyncRoutes": { "web": "production", "default": false } }],
+      "expo-router",
       [
         "expo-notifications",
         {

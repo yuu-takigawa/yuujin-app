@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 28,
     fontWeight: '700',
+    fontFamily: 'ShipporiMincho_700Bold',
     letterSpacing: 2,
     marginBottom: spacing.lg,
   },

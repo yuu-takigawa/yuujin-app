@@ -186,6 +186,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   emptyLogo: {
+    fontFamily: 'ShipporiMincho_700Bold',
     fontSize: 32,
     letterSpacing: 2,
   },
