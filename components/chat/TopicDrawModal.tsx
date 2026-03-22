@@ -75,9 +75,10 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
     setShuffling(false);
   }, [characterId, shuffling]);
 
-  const currentTopic = topics[currentIndex] || { id: 'empty', text: '話題がありません', emoji: '💬' };
+  const currentTopic = topics[currentIndex] || null;
 
   const handleSend = useCallback(() => {
+    if (!currentTopic) return;
     onSelectTopic(currentTopic);
     onClose();
   }, [currentTopic, onSelectTopic, onClose]);
@@ -145,13 +146,18 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
                 <ActivityIndicator size="large" color={t.brand} />
                 <Text style={[styles.cardHint, { color: t.textSecondary }]}>読み込み中...</Text>
               </>
-            ) : (
+            ) : currentTopic ? (
               <>
                 <Text style={styles.cardEmoji}>{currentTopic.emoji}</Text>
                 <Text style={[styles.cardTopic, { color: t.text }]}>{currentTopic.text}</Text>
                 {topics.length > 1 && (
                   <Text style={[styles.cardHint, { color: t.textSecondary }]}>タップして次へ</Text>
                 )}
+              </>
+            ) : (
+              <>
+                <Text style={styles.cardEmoji}>💬</Text>
+                <Text style={[styles.cardTopic, { color: t.textSecondary }]}>ランダムで話題を生成しよう</Text>
               </>
             )}
           </TouchableOpacity>

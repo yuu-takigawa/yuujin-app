@@ -302,12 +302,14 @@ export default function ConversationScreen() {
           style={styles.list}
           data={chatItems}
           keyExtractor={(item) => item.type === 'date' ? item.key : item.data.id}
-          contentContainerStyle={[styles.messageList, { paddingBottom: 12, paddingTop: 12 }]}
+          contentContainerStyle={[styles.messageList, { paddingBottom: 60, paddingTop: 12 }]}
           initialNumToRender={20}
           onContentSizeChange={handleContentSizeChange}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
+          onScroll={() => setScrollSignal((s) => s + 1)}
+          scrollEventThrottle={200}
           renderItem={({ item }) => {
             if (item.type === 'date') {
               return (
