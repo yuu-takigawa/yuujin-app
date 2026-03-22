@@ -6,7 +6,7 @@ export const USE_REAL_API = true;
 export { login, register, refreshToken, updateProfile, deleteAccount, sendCode, resetPassword, changePassword } from './real/auth';
 
 // ─── Chat streaming ───
-export { streamResponse, streamText, uploadChatImage, streamResponseWithImage, streamChatAnnotate } from './real/chat';
+export { streamResponse, streamText, uploadChatImage, streamResponseWithImage, streamChatAnnotate, streamSuggest } from './real/chat';
 export type { SSEEvent } from './real/chat';
 
 // ─── Conversations ───

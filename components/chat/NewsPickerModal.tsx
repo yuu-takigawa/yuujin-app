@@ -15,16 +15,33 @@ export default function NewsPickerModal({ visible, onClose, onSelectNews }: News
   const t = useTheme();
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     if (visible && articles.length === 0) {
       setLoading(true);
-      getNewsArticles()
-        .then(res => setArticles(res.articles))
+      getNewsArticles({ limit: 20, offset: 0 })
+        .then(res => {
+          setArticles(res.articles);
+          setHasMore(res.hasMore);
+        })
         .catch(() => {})
         .finally(() => setLoading(false));
     }
   }, [visible]);
+
+  const loadMore = () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    getNewsArticles({ limit: 20, offset: articles.length })
+      .then(res => {
+        setArticles(prev => [...prev, ...res.articles]);
+        setHasMore(res.hasMore);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   const handleSelect = (article: NewsArticle) => {
     onSelectNews(article);
@@ -65,6 +82,15 @@ export default function NewsPickerModal({ visible, onClose, onSelectNews }: News
               </View>
             </TouchableOpacity>
           )}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={t.brand} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <Text style={[styles.emptyText, { color: t.textSecondary }]}>
               ニュースはまだありません

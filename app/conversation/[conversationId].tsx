@@ -29,7 +29,7 @@ import ModelSelectorModal from '../../components/chat/ModelSelectorModal';
 import TopicDrawModal from '../../components/chat/TopicDrawModal';
 import NewsPickerModal from '../../components/chat/NewsPickerModal';
 import { useTheme } from '../../hooks/useTheme';
-import { uploadChatImage } from '../../services/api';
+import { uploadChatImage, streamSuggest } from '../../services/api';
 import type { Message } from '../../services/api';
 
 function formatDateLabel(date: Date): string {
@@ -78,6 +78,9 @@ export default function ConversationScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrollSignal, setScrollSignal] = useState(0);
+  const [suggestText, setSuggestText] = useState<string | undefined>(undefined);
+  const [aiAssistLoading, setAiAssistLoading] = useState(false);
+  const suggestCancelRef = useRef<(() => void) | null>(null);
   const loadCredits = useCreditStore((s) => s.loadCredits);
   const loadModels = useCreditStore((s) => s.loadModels);
   const searchInputRef = useRef<TextInput>(null);
@@ -225,6 +228,30 @@ export default function ConversationScreen() {
     }
   }, [searchMatchIndex]);
 
+  const handleAIAssist = useCallback(() => {
+    if (!conversationId || aiAssistLoading) return;
+    // Cancel previous suggest if any
+    suggestCancelRef.current?.();
+    setAiAssistLoading(true);
+    setSuggestText('');
+
+    let accumulated = '';
+    const cancel = streamSuggest(conversationId, (event) => {
+      if (event.type === 'delta' && event.content) {
+        accumulated += event.content;
+        setSuggestText(accumulated);
+      } else if (event.type === 'done' || event.type === 'error') {
+        setAiAssistLoading(false);
+      }
+    });
+    suggestCancelRef.current = cancel;
+  }, [conversationId, aiAssistLoading]);
+
+  // Cleanup suggest on unmount
+  useEffect(() => {
+    return () => { suggestCancelRef.current?.(); };
+  }, []);
+
   const handleTopicSend = (topicText: string) => {
     sendMessage(`🎲 ${topicText}`);
     setTopicDrawVisible(false);
@@ -333,6 +360,9 @@ export default function ConversationScreen() {
           characterName={character?.name}
           onTopicDraw={() => setTopicDrawVisible(true)}
           onNewsPicker={() => setNewsPickerVisible(true)}
+          onAIAssist={handleAIAssist}
+          suggestedText={suggestText}
+          aiAssistLoading={aiAssistLoading}
           onImagePicked={async (uri) => {
             try {
               const imageUrl = await uploadChatImage(uri);

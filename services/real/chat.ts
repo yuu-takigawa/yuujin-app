@@ -132,6 +132,61 @@ export function streamResponse(
 }
 
 /**
+ * Stream AI reply suggestion for the user (no credits, no save)
+ * Endpoint: POST /chat/suggest
+ */
+export function streamSuggest(
+  conversationId: string,
+  onEvent: SSECallback,
+): () => void {
+  let cancelled = false;
+
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/chat/suggest`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  const token = getToken();
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  }
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      if (xhr.readyState === 4 && xhr.status !== 200) {
+        let errorMsg = 'Suggest failed';
+        if (xhr.status === 401) errorMsg = 'Authentication failed';
+        else if (xhr.status >= 500) errorMsg = 'Server error';
+        onEvent({ type: 'error', error: errorMsg });
+        return;
+      }
+      const newText = xhr.responseText.substring(lastIndex);
+      lastIndex = xhr.responseText.length;
+      if (newText) {
+        parseSSELines(newText, (event) => {
+          if (!cancelled) onEvent(event);
+        });
+      }
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Network error' });
+  };
+
+  xhr.timeout = 30000;
+  xhr.ontimeout = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Request timeout' });
+  };
+
+  xhr.send(JSON.stringify({ conversationId }));
+
+  return () => { cancelled = true; xhr.abort(); };
+}
+
+/**
  * Upload an image for chat (multipart/form-data → OSS → returns URL)
  */
 export async function uploadChatImage(uri: string): Promise<string> {

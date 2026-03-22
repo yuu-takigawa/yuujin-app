@@ -23,15 +23,22 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
   const panY = useRef(new Animated.Value(0)).current;
   const panOpacity = useRef(new Animated.Value(1)).current;
 
-  // Load pre-generated topics from DB (fast, no AI call)
+  // Load pre-generated topics from DB; if empty, auto-generate via AI
   useEffect(() => {
     if (!visible || !characterId) return;
     setLoading(true);
     drawTopics(characterId)
-      .then((cards) => {
+      .then(async (cards) => {
         if (cards.length > 0) {
           setTopics(cards);
           setCurrentIndex(0);
+        } else {
+          // No pre-stored topics — auto-generate one via AI
+          try {
+            const newTopic = await shuffleTopic(characterId);
+            setTopics([newTopic]);
+            setCurrentIndex(0);
+          } catch { /* ignore */ }
         }
       })
       .catch(() => {})

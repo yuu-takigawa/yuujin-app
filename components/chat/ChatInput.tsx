@@ -25,16 +25,26 @@ interface ChatInputProps {
   onTopicDraw?: () => void;
   onNewsPicker?: () => void;
   onImagePicked?: (uri: string) => void;
+  onAIAssist?: () => void;
+  suggestedText?: string;
+  aiAssistLoading?: boolean;
   characterName?: string;
 }
 
-export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker, onImagePicked, characterName }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker, onImagePicked, onAIAssist, suggestedText, aiAssistLoading, characterName }: ChatInputProps) {
   const t = useTheme();
   const { t: i } = useLocale();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [expandOpen, setExpandOpen] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+
+  // AI suggest text: 当 suggestedText 变化时填入输入框
+  useEffect(() => {
+    if (suggestedText !== undefined) {
+      setText(suggestedText);
+    }
+  }, [suggestedText]);
 
   // 语音录制
   const micPulse = useRef(new Animated.Value(1)).current;
@@ -150,8 +160,9 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
                 backgroundColor: isRecording ? '#FF3B30' : isProcessing ? t.border : t.brandLight,
               }]}
               activeOpacity={0.8}
-              onPressIn={startRecording}
-              onPressOut={stopRecording}
+              {...(Platform.OS === 'web'
+                ? { onPress: isRecording ? stopRecording : startRecording }
+                : { onPressIn: startRecording, onPressOut: stopRecording })}
               disabled={disabled || isProcessing}
             >
               {isProcessing ? (
@@ -169,15 +180,20 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           )}
         </View>
 
-        {/* AI assist button — TODO: implement AI reply suggestion */}
+        {/* AI assist button */}
         <TouchableOpacity
-          style={[styles.aiButton, { backgroundColor: t.brandLight }]}
-          onPress={() => { /* TODO: AI assist reply */ }}
+          style={[styles.aiButton, { backgroundColor: aiAssistLoading ? t.brand : t.brandLight }]}
+          onPress={() => onAIAssist?.()}
           activeOpacity={0.6}
+          disabled={disabled || aiAssistLoading}
         >
-          <Text style={[styles.aiButtonText, { color: expandOpen ? '#FFF' : t.brand }]} numberOfLines={1}>
-            AI
-          </Text>
+          {aiAssistLoading ? (
+            <ActivityIndicator size={12} color="#FFFFFF" />
+          ) : (
+            <Text style={[styles.aiButtonText, { color: t.brand }]} numberOfLines={1}>
+              AI
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
