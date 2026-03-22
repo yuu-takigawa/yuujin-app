@@ -87,12 +87,7 @@ export default function MessageBubble({
   }, []);
 
   const handleInfoPress = () => {
-    if (iconRef.current) {
-      iconRef.current.measureInWindow((x, y, w, h) => {
-        setTooltipAnchor({ x: x + w / 2, y });
-        setTooltipVisible(true);
-      });
-    }
+    setTooltipVisible(!tooltipVisible);
   };
 
   const handleAction = async (action: BubbleAction) => {
@@ -193,6 +188,19 @@ export default function MessageBubble({
           />
         )}
 
+        {/* Tooltip - rendered below bubble */}
+        {tooltipVisible && (
+          <BubbleTooltip
+            visible={tooltipVisible}
+            content={content}
+            role={role}
+            anchorY={0}
+            anchorX={0}
+            onClose={() => setTooltipVisible(false)}
+            onAction={handleAction}
+          />
+        )}
+
         {/* Copy toast */}
         {toastVisible && (
           <Animated.View style={[styles.toast, { backgroundColor: t.text, opacity: toastAnim }]}>
@@ -201,16 +209,6 @@ export default function MessageBubble({
         )}
       </View>
       {isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
-
-      <BubbleTooltip
-        visible={tooltipVisible}
-        content={content}
-        role={role}
-        anchorY={tooltipAnchor.y}
-        anchorX={tooltipAnchor.x}
-        onClose={() => setTooltipVisible(false)}
-        onAction={handleAction}
-      />
     </Animated.View>
   );
 }
