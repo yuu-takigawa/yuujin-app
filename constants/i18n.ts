@@ -254,6 +254,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'character.uploadFailed': '上传失败',
     'character.bioPlaceholder': '自我介绍文（也可AI生成）',
 
+    // Panel
+    'panel.camera': '拍照',
+    'panel.album': '相册',
+    'panel.topic': '话题',
+    'panel.news': '新闻',
+
     // Time
     'time.yesterday': '昨天',
     'time.sunday': '周日',
@@ -522,6 +528,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'character.uploadFailed': 'Upload Failed',
     'character.bioPlaceholder': 'Bio (AI generation available)',
 
+    // Panel
+    'panel.camera': 'Camera',
+    'panel.album': 'Album',
+    'panel.topic': 'Topic',
+    'panel.news': 'News',
+
     // Time
     'time.yesterday': 'Yesterday',
     'time.sunday': 'Sun',
@@ -789,6 +801,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'character.photoPermission': 'フォトライブラリへのアクセスを許可してください',
     'character.uploadFailed': 'アップロード失敗',
     'character.bioPlaceholder': '自己紹介文（AI生成も可能）',
+
+    // Panel
+    'panel.camera': 'カメラ',
+    'panel.album': 'アルバム',
+    'panel.topic': 'トピック',
+    'panel.news': 'ニュース',
 
     // Time
     'time.yesterday': '昨日',

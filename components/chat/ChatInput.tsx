@@ -15,6 +15,7 @@ import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import * as ImagePicker from 'expo-image-picker';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 
@@ -29,6 +30,7 @@ interface ChatInputProps {
 
 export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker, onImagePicked, characterName }: ChatInputProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [expandOpen, setExpandOpen] = useState(false);
@@ -167,10 +169,10 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           )}
         </View>
 
-        {/* AI assist button — toggles expand panel */}
+        {/* AI assist button — TODO: implement AI reply suggestion */}
         <TouchableOpacity
-          style={[styles.aiButton, { backgroundColor: expandOpen ? t.brand : t.brandLight }]}
-          onPress={() => setExpandOpen(!expandOpen)}
+          style={[styles.aiButton, { backgroundColor: t.brandLight }]}
+          onPress={() => { /* TODO: AI assist reply */ }}
           activeOpacity={0.6}
         >
           <Text style={[styles.aiButtonText, { color: expandOpen ? '#FFF' : t.brand }]} numberOfLines={1}>
@@ -181,7 +183,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
 
       {/* Expand panel - animated */}
       {showPanel && <Animated.View style={[styles.expandPanel, { backgroundColor: t.surface }, {
-        maxHeight: panelAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 100] }),
+        maxHeight: panelAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 120] }),
         opacity: panelAnim,
       }]}>
         <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={async () => {
@@ -192,9 +194,9 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           if (!result.canceled && result.assets[0]) onImagePicked?.(result.assets[0].uri);
         }}>
           <View style={[styles.expandIconBox, { backgroundColor: t.inputBg }]}>
-            <Text style={styles.expandEmoji}>📷</Text>
+            <Ionicons name="camera-outline" size={22} color={t.brand} />
           </View>
-          <Text style={[styles.expandLabel, { color: t.text }]}>Camera</Text>
+          <Text style={[styles.expandLabel, { color: t.text }]}>{i('panel.camera')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={async () => {
           setExpandOpen(false);
@@ -204,9 +206,9 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           if (!result.canceled && result.assets[0]) onImagePicked?.(result.assets[0].uri);
         }}>
           <View style={[styles.expandIconBox, { backgroundColor: t.inputBg }]}>
-            <Text style={styles.expandEmoji}>🖼</Text>
+            <Ionicons name="images-outline" size={22} color={t.brand} />
           </View>
-          <Text style={[styles.expandLabel, { color: t.text }]}>Album</Text>
+          <Text style={[styles.expandLabel, { color: t.text }]}>{i('panel.album')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.expandItem}
@@ -214,9 +216,9 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           activeOpacity={0.6}
         >
           <View style={[styles.expandIconBox, { backgroundColor: t.inputBg }]}>
-            <Text style={styles.expandEmoji}>🎲</Text>
+            <Ionicons name="dice-outline" size={22} color={t.brand} />
           </View>
-          <Text style={[styles.expandLabel, { color: t.text }]}>Topic</Text>
+          <Text style={[styles.expandLabel, { color: t.text }]}>{i('panel.topic')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.expandItem}
@@ -224,9 +226,9 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           activeOpacity={0.6}
         >
           <View style={[styles.expandIconBox, { backgroundColor: t.inputBg }]}>
-            <Text style={styles.expandEmoji}>📰</Text>
+            <Ionicons name="newspaper-outline" size={22} color={t.brand} />
           </View>
-          <Text style={[styles.expandLabel, { color: t.text }]}>News</Text>
+          <Text style={[styles.expandLabel, { color: t.text }]}>{i('panel.news')}</Text>
         </TouchableOpacity>
       </Animated.View>}
     </ReAnimated.View>
@@ -308,7 +310,8 @@ const styles = StyleSheet.create({
   expandPanel: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
     marginTop: 8,
     overflow: 'hidden',
   },
