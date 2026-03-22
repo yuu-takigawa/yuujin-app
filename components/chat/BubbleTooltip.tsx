@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   StyleSheet,
   Pressable,
   Animated,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -43,6 +43,7 @@ export default function BubbleTooltip({
   onAction,
 }: BubbleTooltipProps) {
   const t = useTheme();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -74,6 +75,8 @@ export default function BubbleTooltip({
     onAction('read');
   };
 
+  if (!visible) return null;
+
   const isAI = role === 'assistant';
   const items: TooltipItem[] = isAI
     ? [
@@ -88,69 +91,75 @@ export default function BubbleTooltip({
         { label: 'コピー', icon: 'copy-outline', action: 'copy', onPress: handleCopy },
       ];
 
-  // Position tooltip above the anchor point
-  const tooltipTop = Math.max(40, anchorY - 52);
+  // Position tooltip above the anchor (ⓘ icon center)
   const tooltipWidth = items.length * 56 + 8;
-  const tooltipLeft = Math.max(8, Math.min(anchorX - tooltipWidth / 2, 360 - tooltipWidth));
-  // Arrow position relative to tooltip
+  const tooltipLeft = Math.max(8, Math.min(anchorX - tooltipWidth / 2, screenW - tooltipWidth - 8));
+  const tooltipTop = Math.max(40, anchorY - 56);
+  // Arrow points down to the ⓘ icon
   const arrowLeft = Math.max(12, Math.min(anchorX - tooltipLeft, tooltipWidth - 12));
 
   return (
-    <Modal visible={visible} transparent animationType="none">
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Animated.View
-          style={[
-            styles.tooltip,
-            {
-              backgroundColor: 'rgba(30,30,30,0.92)',
-              top: tooltipTop,
-              left: tooltipLeft,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.12,
-              shadowRadius: 12,
-              elevation: 8,
-            },
-            {
-              opacity: scaleAnim,
-              transform: [
-                {
-                  scale: scaleAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.85, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          {items.map((item, idx) => (
-            <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={styles.tooltipBtn}
-                onPress={item.onPress}
-                activeOpacity={0.6}
-              >
-                <Ionicons name={item.icon} size={16} color={t.brand} />
-                <Text style={styles.tooltipText}>{item.label}</Text>
-              </TouchableOpacity>
-              {idx < items.length - 1 && (
-                <View style={[styles.tooltipDivider, { backgroundColor: 'rgba(255,255,255,0.15)' }]} />
-              )}
-            </View>
-          ))}
-          {/* Arrow */}
-          <View style={[styles.tooltipArrow, { borderTopColor: 'rgba(30,30,30,0.92)', left: arrowLeft - 6 }]} />
-        </Animated.View>
-      </Pressable>
-    </Modal>
+    <>
+      {/* Transparent overlay to catch taps outside tooltip */}
+      <Pressable
+        style={[styles.overlay, { width: screenW, height: screenH }]}
+        onPress={onClose}
+      />
+      {/* Tooltip */}
+      <Animated.View
+        style={[
+          styles.tooltip,
+          {
+            backgroundColor: 'rgba(30,30,30,0.92)',
+            top: tooltipTop,
+            left: tooltipLeft,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 12,
+            elevation: 8,
+          },
+          {
+            opacity: scaleAnim,
+            transform: [
+              {
+                scale: scaleAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        {items.map((item, idx) => (
+          <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={styles.tooltipBtn}
+              onPress={item.onPress}
+              activeOpacity={0.6}
+            >
+              <Ionicons name={item.icon} size={16} color={t.brand} />
+              <Text style={styles.tooltipText}>{item.label}</Text>
+            </TouchableOpacity>
+            {idx < items.length - 1 && (
+              <View style={[styles.tooltipDivider, { backgroundColor: 'rgba(255,255,255,0.15)' }]} />
+            )}
+          </View>
+        ))}
+        {/* Arrow */}
+        <View style={[styles.tooltipArrow, { borderTopColor: 'rgba(30,30,30,0.92)', left: arrowLeft - 6 }]} />
+      </Animated.View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 999,
   },
   tooltip: {
     position: 'absolute',
@@ -158,6 +167,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 4,
+    zIndex: 1000,
   },
   tooltipBtn: {
     alignItems: 'center',

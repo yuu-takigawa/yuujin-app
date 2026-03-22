@@ -17,6 +17,7 @@ interface MessageBubbleProps {
   highlight?: boolean;
   skipEntrance?: boolean;
   imageUrl?: string;
+  dismissSignal?: number;
 }
 
 // Match news ref pattern: [articleId] Title
@@ -36,6 +37,7 @@ export default function MessageBubble({
   highlight,
   skipEntrance,
   imageUrl,
+  dismissSignal,
 }: MessageBubbleProps) {
   const isUser = role === 'user';
   const t = useTheme();
@@ -66,6 +68,13 @@ export default function MessageBubble({
     }
   }, []);
 
+  // Close tooltip when parent signals scroll
+  useEffect(() => {
+    if (dismissSignal && tooltipVisible) {
+      setTooltipVisible(false);
+    }
+  }, [dismissSignal]);
+
   const showToast = useCallback(() => {
     setToastVisible(true);
     toastAnim.setValue(1);
@@ -79,8 +88,8 @@ export default function MessageBubble({
 
   const handleInfoPress = () => {
     if (iconRef.current) {
-      iconRef.current.measureInWindow((x, y, _w, _h) => {
-        setTooltipAnchor({ x, y });
+      iconRef.current.measureInWindow((x, y, w, h) => {
+        setTooltipAnchor({ x: x + w / 2, y });
         setTooltipVisible(true);
       });
     }
@@ -139,7 +148,7 @@ export default function MessageBubble({
           ref={iconRef as any}
           collapsable={false}
           onPress={handleInfoPress}
-          style={{ color: t.brand, fontSize: 13 }}
+          style={{ color: t.textSecondary, fontSize: 13 }}
         >{'  ⓘ'}</Text>
       </Text>
     );

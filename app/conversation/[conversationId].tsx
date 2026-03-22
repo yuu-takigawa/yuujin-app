@@ -77,6 +77,7 @@ export default function ConversationScreen() {
   const [modelModalVisible, setModelModalVisible] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [scrollSignal, setScrollSignal] = useState(0);
   const loadCredits = useCreditStore((s) => s.loadCredits);
   const loadModels = useCreditStore((s) => s.loadModels);
   const searchInputRef = useRef<TextInput>(null);
@@ -147,10 +148,12 @@ export default function ConversationScreen() {
     }
   }, [messages]);
 
-  // Scroll to bottom on every content size change
-  // Covers: initial load, new messages, keyboard padding change, streaming
+  // Scroll to bottom on content size change — only during streaming or initial load
+  // This avoids unwanted scrolling when AnnotationPanel expands
   const handleContentSizeChange = (_w: number, contentHeight: number) => {
-    flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
+    if (!initialScrollDone.current || isStreamingRef.current) {
+      flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
+    }
     if (!initialScrollDone.current && messages.length > 0) {
       initialScrollDone.current = true;
     }
@@ -277,6 +280,7 @@ export default function ConversationScreen() {
           onContentSizeChange={handleContentSizeChange}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
           renderItem={({ item }) => {
             if (item.type === 'date') {
               return (
@@ -297,6 +301,7 @@ export default function ConversationScreen() {
                 createdAt={item.data.createdAt}
                 highlight={isSearchHit}
                 skipEntrance={item.data.id === skipEntranceId}
+                dismissSignal={scrollSignal}
               />
             );
           }}
