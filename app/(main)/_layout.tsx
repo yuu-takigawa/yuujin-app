@@ -41,7 +41,7 @@ export default function MainLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  const safeBottom = Platform.OS === 'web' ? 0 : Math.max(insets.bottom, 16);
+  const safeBottom = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 16);
   const tabBarHeight = 52 + safeBottom;
 
   return (
