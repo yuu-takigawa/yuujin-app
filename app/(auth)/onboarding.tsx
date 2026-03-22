@@ -16,7 +16,10 @@ import { useFriendStore } from '../../stores/friendStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import { spacing, fontSize, radii } from '../../constants/theme';
+import Logo from '../../components/common/Logo';
 import type { JpLevel } from '../../services/api';
+
+const YUKI_AVATAR = 'https://yuujin-assets.oss-cn-hangzhou.aliyuncs.com/avatars/presets/girl-02.png';
 
 type Step = 'welcome' | 'level' | 'gift' | 'add';
 
@@ -42,6 +45,7 @@ export default function OnboardingScreen() {
     { value: 'N3', label: i('onboarding.levelN3') },
     { value: 'N2', label: i('onboarding.levelN2') },
     { value: 'N1', label: i('onboarding.levelN1') },
+    { value: 'native', label: i('onboarding.levelNative') },
   ];
 
   const handleLevelSelect = () => {
@@ -55,12 +59,17 @@ export default function OnboardingScreen() {
     setIsAdding(true);
     try {
       await fetchCharacters();
-      const conv = await addFriend(user.id, 'preset-sato-yuki');
+      await addFriend(user.id, 'preset-sato-yuki');
       completeOnboarding();
-      router.replace(`/conversation/${conv.id}`);
+      router.replace('/');
     } catch {
       setIsAdding(false);
     }
+  };
+
+  const handleSkip = () => {
+    completeOnboarding();
+    router.replace('/');
   };
 
   // Step 1: Welcome
@@ -68,7 +77,7 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.container, { backgroundColor: t.background }]}>
         <View style={styles.center}>
-          <Text style={[styles.logo, { color: t.brand }]}>Yuujin・友人</Text>
+          <Logo height={36} />
           <Text style={[styles.welcomeTitle, { color: t.text }]}>
             {i('onboarding.welcome')}
           </Text>
@@ -94,29 +103,33 @@ export default function OnboardingScreen() {
           {i('onboarding.selectLevel')}
         </Text>
         <View style={styles.levels}>
-          {levels.map((lv) => (
-            <TouchableOpacity
-              key={lv.value}
-              style={[
-                styles.levelOption,
-                { backgroundColor: t.surface, borderColor: t.border, borderWidth: 1 },
-                selectedLevel === lv.value && { backgroundColor: t.brandLight, borderColor: t.brand },
-              ]}
-              onPress={() => setSelectedLevel(lv.value)}
-            >
-              <View style={styles.levelRow}>
-                <Text style={[styles.levelValue, { color: selectedLevel === lv.value ? t.brand : t.text }]}>
-                  {lv.value === 'none' ? '🔰' : lv.value}
-                </Text>
-                <Text style={[styles.levelLabel, { color: selectedLevel === lv.value ? t.brand : t.textSecondary }]}>
-                  {lv.label}
-                </Text>
-              </View>
-              {selectedLevel === lv.value && (
-                <Ionicons name="checkmark-circle" size={20} color={t.brand} />
-              )}
-            </TouchableOpacity>
-          ))}
+          {levels.map((lv) => {
+            const isSelected = selectedLevel === lv.value;
+            return (
+              <TouchableOpacity
+                key={lv.value}
+                style={[
+                  styles.levelOption,
+                  {
+                    backgroundColor: isSelected ? t.brandLight : t.surface,
+                    borderColor: isSelected ? t.brand : 'transparent',
+                    borderWidth: 1.5,
+                  },
+                ]}
+                onPress={() => setSelectedLevel(lv.value)}
+              >
+                <View style={styles.levelRow}>
+                  <Text style={[styles.levelValue, { color: isSelected ? t.brand : t.text }]}>
+                    {lv.value === 'none' ? '🔰' : lv.value === 'native' ? '🗾' : lv.value}
+                  </Text>
+                  <Text style={[styles.levelLabel, { color: isSelected ? t.brand : t.textSecondary }]}>
+                    {lv.label}
+                  </Text>
+                </View>
+                <Ionicons name="checkmark-circle" size={20} color={isSelected ? t.brand : 'transparent'} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: t.brand }]}
@@ -137,7 +150,7 @@ export default function OnboardingScreen() {
             {i('onboarding.meetYuki')}
           </Text>
           <View style={[styles.yukiCard, { backgroundColor: t.surface, borderColor: t.border }]}>
-            <Avatar name="ゆき" size={80} />
+            <Avatar name="ゆき" imageUrl={YUKI_AVATAR} size={80} />
             <Text style={[styles.yukiName, { color: t.text }]}>佐藤ゆき</Text>
             <Text style={[styles.yukiDesc, { color: t.textSecondary }]}>
               {i('onboarding.yukiDesc')}
@@ -150,6 +163,12 @@ export default function OnboardingScreen() {
         >
           <Text style={styles.buttonText}>{i('onboarding.addFriend')}</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleSkip}
+        >
+          <Text style={[styles.skipText, { color: t.textSecondary }]}>{i('onboarding.skip')}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -158,7 +177,7 @@ export default function OnboardingScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.background }]}>
       <View style={styles.center}>
-        <Avatar name="ゆき" size={80} />
+        <Avatar name="ゆき" imageUrl={YUKI_AVATAR} size={80} />
         <Text style={[styles.addTitle, { color: t.text }]}>
           {i('onboarding.tryReply')}
         </Text>
@@ -171,6 +190,12 @@ export default function OnboardingScreen() {
         <Text style={styles.buttonText}>
           {isAdding ? '...' : i('onboarding.start')}
         </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.skipButton}
+        onPress={handleSkip}
+      >
+        <Text style={[styles.skipText, { color: t.textSecondary }]}>{i('onboarding.skip')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -248,6 +273,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: fontSize.body,
     fontWeight: '600',
+  },
+  skipButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  skipText: {
+    fontSize: 14,
   },
   giftTitle: {
     fontSize: 22,

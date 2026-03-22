@@ -2,10 +2,16 @@ export const API_BASE_URL = 'https://api.yuujin.cc';
 
 let _token: string | null = null;
 let _refreshToken: string | null = null;
+let _onUnauthorized: (() => void) | null = null;
 
 export function setTokens(token: string | null, refresh?: string | null) {
   _token = token;
   if (refresh !== undefined) _refreshToken = refresh;
+}
+
+/** Register a callback to be called on 401 responses (auto-logout) */
+export function onUnauthorized(cb: () => void) {
+  _onUnauthorized = cb;
 }
 
 export function getToken() {
@@ -41,6 +47,9 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body.error || `HTTP ${res.status}`);
   }

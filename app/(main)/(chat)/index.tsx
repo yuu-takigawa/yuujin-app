@@ -1,4 +1,5 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { View, FlatList, Text, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +8,8 @@ import { useCharacterStore } from '../../../stores/characterStore';
 import { useAuthStore } from '../../../stores/authStore';
 import ConversationCard from '../../../components/chat/ConversationCard';
 import SwipeableRow, { SwipeableProvider } from '../../../components/common/SwipeableRow';
+import ConfirmModal from '../../../components/common/ConfirmModal';
+import Logo from '../../../components/common/Logo';
 import { useTheme } from '../../../hooks/useTheme';
 import { spacing, fontSize } from '../../../constants/theme';
 import type { Conversation } from '../../../services/api';
@@ -25,6 +28,7 @@ export default function ChatListScreen() {
   const removeFriend = useFriendStore((s) => s.removeFriend);
   const togglePin = useFriendStore((s) => s.togglePin);
   const closeAllRef = useRef<(() => void) | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const characters = useCharacterStore((s) => s.characters);
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters);
 
@@ -40,6 +44,11 @@ export default function ChatListScreen() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // Close swipe actions when returning to this screen
+  useFocusEffect(useCallback(() => {
+    closeAllRef.current?.();
+  }, []));
 
   const getCharacter = useCallback(
     (characterId: string) => characters.find((c) => c.id === characterId),
@@ -60,10 +69,14 @@ export default function ChatListScreen() {
     return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
   });
 
-  const handleDelete = async (conv: Conversation) => {
+  const doDelete = async (conv: Conversation) => {
     if (user) {
       await removeFriend(user.id, conv.characterId);
     }
+  };
+
+  const handleDelete = (conv: Conversation) => {
+    setDeleteTarget(conv);
   };
 
   const handlePin = async (conv: Conversation) => {
@@ -81,7 +94,7 @@ export default function ChatListScreen() {
         <Text style={[styles.headerTitle, { color: t.brand }]}>チャット</Text>
         <Text
           style={[styles.addButton, { color: t.brand }]}
-          onPress={() => router.push('/add-friend')}
+          onPress={() => { closeAllRef.current?.(); router.push('/add-friend'); }}
         >
           ＋
         </Text>
@@ -94,6 +107,8 @@ export default function ChatListScreen() {
         contentContainerStyle={{ paddingBottom: 8 + insets.bottom }}
         onScrollBeginDrag={() => closeAllRef.current?.()}
         onMomentumScrollBegin={() => closeAllRef.current?.()}
+        onScroll={() => closeAllRef.current?.()}
+        scrollEventThrottle={100}
         renderItem={({ item }) => {
           const char = getCharacter(item.characterId);
           const friend = getFriend(item.characterId);
@@ -111,14 +126,14 @@ export default function ChatListScreen() {
                 time={item.lastMessageAt}
                 hasUnread={item.hasUnread}
                 isPinned={friend?.isPinned || false}
-                onPress={() => router.push(`/conversation/${item.id}`)}
+                onPress={() => { closeAllRef.current?.(); router.push(`/conversation/${item.id}`); }}
               />
             </SwipeableRow>
           );
         }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={[styles.emptyLogo, { color: t.brand }]}>Yuujin · 友人</Text>
+            <Logo height={32} />
             <View style={[styles.emptyDivider, { backgroundColor: t.border }]} />
             <Text style={[styles.emptyHint, { color: t.textSecondary }]}>
               右上の ＋ から友達を追加して{'\n'}会話をはじめましょう
@@ -127,6 +142,17 @@ export default function ChatListScreen() {
         }
       />
       </SwipeableProvider>
+
+      <ConfirmModal
+        visible={!!deleteTarget}
+        title="会話を削除"
+        message="この会話を削除しますか？"
+        confirmText="削除"
+        cancelText="キャンセル"
+        destructive
+        onConfirm={() => { if (deleteTarget) doDelete(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </View>
   );
 }

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import CharacterDetail from '../../components/character/CharacterDetail';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useFriendStore } from '../../stores/friendStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -24,6 +26,7 @@ export default function CharacterDetailScreen() {
 
   const character = characters.find((c) => c.id === characterId);
   const isFriend = friends.some((f) => f.characterId === characterId);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!character) {
     return (
@@ -64,10 +67,22 @@ export default function CharacterDetailScreen() {
         onEdit={() => {
           router.push({ pathname: '/edit-character', params: { characterId: character.id } });
         }}
-        onDelete={async () => {
+        onDelete={() => setShowDeleteConfirm(true)}
+      />
+
+      <ConfirmModal
+        visible={showDeleteConfirm}
+        title="キャラクターを削除"
+        message="このキャラクターを削除しますか？この操作は取り消せません。"
+        confirmText="削除"
+        cancelText="キャンセル"
+        destructive
+        onConfirm={async () => {
+          setShowDeleteConfirm(false);
           await deleteCharacter(character.id);
           router.back();
         }}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </View>
   );

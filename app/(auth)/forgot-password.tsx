@@ -8,13 +8,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { radii, spacing, fontSize } from '../../constants/theme';
 import { resetPassword } from '../../services/api';
 import VerificationCodeInput from '../../components/auth/VerificationCodeInput';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -23,39 +25,62 @@ export default function ForgotPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const t = useTheme();
+  const { t: i } = useLocale();
   const router = useRouter();
 
   const handleReset = async () => {
     setError('');
     if (!email.trim()) {
-      setError('メールアドレスを入力してください');
+      setError(i('auth.emailRequired'));
       return;
     }
     if (!code.trim() || code.length !== 6) {
-      setError('6桁の認証コードを入力してください');
+      setError(i('auth.codeRequired'));
       return;
     }
-    if (!newPassword.trim() || newPassword.length < 6) {
-      setError('パスワードは6文字以上で入力してください');
+    if (newPassword.length < 6 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setError(i('auth.passwordRule'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('パスワードが一致しません');
+      setError(i('auth.passwordMismatch'));
       return;
     }
     setSubmitting(true);
     try {
       await resetPassword(email.trim(), code.trim(), newPassword);
-      Alert.alert('パスワード再設定完了', '新しいパスワードでログインしてください。', [
-        { text: 'ログインへ', onPress: () => router.replace('/(auth)/login') },
-      ]);
-    } catch {
-      setError('再設定に失敗しました。コードを確認してください');
+      setSuccess(true);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('different')) {
+        setError(i('auth.samePassword'));
+      } else {
+        setError(i('auth.resetFailed'));
+      }
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (success) {
+    return (
+      <View style={[styles.container, styles.successContainer, { backgroundColor: t.background }]}>
+        <View style={styles.successCenter}>
+          <Ionicons name="checkmark-circle" size={64} color={t.brand} />
+          <Text style={[styles.successTitle, { color: t.text }]}>{i('auth.resetSuccess')}</Text>
+          <Text style={[styles.successMsg, { color: t.textSecondary }]}>{i('auth.resetSuccessMsg')}</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: t.brand }]}
+          onPress={() => router.replace('/(auth)/login')}
+        >
+          <Text style={styles.buttonText}>{i('auth.goLogin')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -67,15 +92,15 @@ export default function ForgotPasswordScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: t.text }]}>パスワード再設定</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('auth.resetTitle')}</Text>
         <Text style={[styles.desc, { color: t.textSecondary }]}>
-          登録済みのメールアドレスに認証コードを送信します
+          {i('auth.resetDesc')}
         </Text>
 
         <View style={styles.form}>
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="メールアドレス"
+            placeholder={i('auth.email')}
             placeholderTextColor={t.textSecondary}
             value={email}
             onChangeText={(v) => { setEmail(v); setError(''); }}
@@ -91,21 +116,15 @@ export default function ForgotPasswordScreen() {
             onError={setError}
           />
 
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="新しいパスワード（6文字以上）"
-            placeholderTextColor={t.textSecondary}
+          <PasswordInput
+            placeholder={i('auth.newPasswordPlaceholder')}
             value={newPassword}
             onChangeText={(v) => { setNewPassword(v); setError(''); }}
-            secureTextEntry
           />
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="新しいパスワード（確認）"
-            placeholderTextColor={t.textSecondary}
+          <PasswordInput
+            placeholder={i('auth.confirmPasswordPlaceholder')}
             value={confirmPassword}
             onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
-            secureTextEntry
           />
 
           {error ? (
@@ -118,13 +137,13 @@ export default function ForgotPasswordScreen() {
             disabled={submitting}
           >
             <Text style={styles.buttonText}>
-              {submitting ? '処理中...' : 'パスワードを再設定'}
+              {submitting ? i('auth.resetting') : i('auth.resetBtn')}
             </Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.link} onPress={() => router.back()}>
-          <Text style={[styles.linkText, { color: t.brand }]}>ログインに戻る</Text>
+          <Text style={[styles.linkText, { color: t.brand }]}>{i('auth.backToLogin')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -169,4 +188,23 @@ const styles = StyleSheet.create({
   buttonText: { color: '#FFFFFF', fontSize: fontSize.body, fontWeight: '600' },
   link: { marginTop: spacing.lg, alignSelf: 'center' },
   linkText: { fontSize: fontSize.body },
+  successContainer: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 40,
+  },
+  successCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  successMsg: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
 });

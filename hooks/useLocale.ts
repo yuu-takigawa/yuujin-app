@@ -11,8 +11,10 @@ import translations, { type Locale } from '../constants/i18n';
  */
 export function useLocale() {
   const storeLevel = useSettingsStore((s) => s.jpLevel);
-  const userLevel = useAuthStore((s) => s.user?.jpLevel);
-  const jpLevel = userLevel || storeLevel || 'N4';
+  const user = useAuthStore((s) => s.user);
+  const userLevel = user?.jpLevel;
+  // When not logged in, always follow system language (ignore cached store level)
+  const jpLevel = user ? (userLevel || storeLevel || 'none') : 'none';
 
   const locale = getEffectiveLocale(jpLevel);
   const t = (key: string): string => translations[locale]?.[key] ?? translations.ja[key] ?? key;

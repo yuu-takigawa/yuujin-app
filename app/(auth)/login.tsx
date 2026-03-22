@@ -14,6 +14,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import { radii, spacing, fontSize } from '../../constants/theme';
+import PasswordInput from '../../components/auth/PasswordInput';
+import Logo from '../../components/common/Logo';
 
 type LoginTab = 'email' | 'phone';
 
@@ -31,18 +33,18 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setError('');
     if (!email.trim()) {
-      setError('メールアドレスを入力してください');
+      setError(i('auth.emailRequired'));
       return;
     }
     if (!password.trim()) {
-      setError('パスワードを入力してください');
+      setError(i('auth.passwordRequired'));
       return;
     }
     try {
       await login(email.trim(), password);
       router.replace('/');
     } catch {
-      setError('メールアドレスまたはパスワードが間違っています');
+      setError(i('auth.loginFailed'));
     }
   };
 
@@ -52,9 +54,9 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
-        <Text style={[styles.logo, { color: t.brand }]}>Yuujin・友人</Text>
+        <Logo height={36} />
         <Text style={[styles.subtitle, { color: t.textSecondary }]}>
-          日本語会話パートナー
+          {i('auth.subtitle')}
         </Text>
 
         {/* Tab switcher */}
@@ -64,14 +66,14 @@ export default function LoginScreen() {
             onPress={() => { setTab('email'); setError(''); }}
           >
             <Ionicons name="mail-outline" size={16} color={tab === 'email' ? t.brand : t.textSecondary} />
-            <Text style={[styles.tabText, { color: tab === 'email' ? t.brand : t.textSecondary }]}>メール</Text>
+            <Text style={[styles.tabText, { color: tab === 'email' ? t.brand : t.textSecondary }]}>{i('auth.emailTab')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === 'phone' && { backgroundColor: t.surface }]}
             onPress={() => { setTab('phone'); setError(''); }}
           >
             <Ionicons name="phone-portrait-outline" size={16} color={tab === 'phone' ? t.brand : t.textSecondary} />
-            <Text style={[styles.tabText, { color: tab === 'phone' ? t.brand : t.textSecondary }]}>携帯電話</Text>
+            <Text style={[styles.tabText, { color: tab === 'phone' ? t.brand : t.textSecondary }]}>{i('auth.phoneTab')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -86,13 +88,10 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            <TextInput
-              style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+            <PasswordInput
               placeholder={i('auth.password')}
-              placeholderTextColor={t.textSecondary}
               value={password}
               onChangeText={(v) => { setPassword(v); setError(''); }}
-              secureTextEntry
             />
             {error ? (
               <Text style={[styles.errorText, { color: t.error || '#E53935' }]}>{error}</Text>
@@ -115,7 +114,7 @@ export default function LoginScreen() {
           <View style={styles.phoneComingSoon}>
             <Ionicons name="phone-portrait-outline" size={48} color={t.border} />
             <Text style={[styles.comingSoonText, { color: t.textSecondary }]}>
-              携帯電話でのログインは{'\n'}近日公開予定です
+              {i('auth.phoneComingSoon')}
             </Text>
           </View>
         )}

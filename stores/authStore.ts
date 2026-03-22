@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '../services/api';
 import { login as apiLogin, register as apiRegister, updateProfile, deleteAccount as apiDeleteAccount, USE_REAL_API } from '../services/api';
-import { setTokens } from '../services/http';
+import { setTokens, onUnauthorized } from '../services/http';
 
 const AUTH_STORAGE_KEY = 'yuujin_auth';
 
@@ -12,7 +12,7 @@ interface AuthState {
   isLoading: boolean;
   isRestoring: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username: string, code: string) => Promise<void>;
+  register: (email: string, password: string, username: string, code: string, inviteCode?: string) => Promise<void>;
   logout: () => void;
   deleteAccount: () => Promise<void>;
   completeOnboarding: () => void;
@@ -55,10 +55,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  register: async (email, password, username, code) => {
+  register: async (email, password, username, code, inviteCode) => {
     set({ isLoading: true });
     try {
-      const res = await apiRegister(email, password, username, code);
+      const res = await apiRegister(email, password, username, code, inviteCode);
       set({ token: res.token, user: res.user, isLoading: false });
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: res.token, user: res.user }));
     } catch {
@@ -120,3 +120,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+// Auto-logout on 401 responses
+onUnauthorized(() => {
+  useAuthStore.getState().logout();
+});

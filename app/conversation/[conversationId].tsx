@@ -25,7 +25,7 @@ import ChatInput from '../../components/chat/ChatInput';
 import CharacterHeader from '../../components/chat/CharacterHeader';
 import HamburgerMenu from '../../components/chat/HamburgerMenu';
 import ModelSelectorModal from '../../components/chat/ModelSelectorModal';
-import BubbleMenu from '../../components/chat/BubbleMenu';
+// BubbleTooltip is now built into MessageBubble
 import TopicDrawModal from '../../components/chat/TopicDrawModal';
 import NewsPickerModal from '../../components/chat/NewsPickerModal';
 import { useTheme } from '../../hooks/useTheme';
@@ -57,6 +57,8 @@ export default function ConversationScreen() {
   const messages = useChatStore((s) => s.messages);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const streamingContent = useChatStore((s) => s.streamingContent);
+  const chatError = useChatStore((s) => s.error);
+  const clearError = useChatStore((s) => s.clearError);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const loadConversation = useChatStore((s) => s.loadConversation);
   const clearChat = useChatStore((s) => s.clearChat);
@@ -70,7 +72,6 @@ export default function ConversationScreen() {
   const characters = useCharacterStore((s) => s.characters);
 
   const [menuVisible, setMenuVisible] = useState(false);
-  const [bubbleContent, setBubbleContent] = useState<{ content: string; role: string } | null>(null);
   const [topicDrawVisible, setTopicDrawVisible] = useState(false);
   const [newsPickerVisible, setNewsPickerVisible] = useState(false);
   const [modelModalVisible, setModelModalVisible] = useState(false);
@@ -294,7 +295,6 @@ export default function ConversationScreen() {
                 role={item.data.role}
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
-                onLongPress={() => setBubbleContent({ content: item.data.content, role: item.data.role })}
                 highlight={isSearchHit}
                 skipEntrance={item.data.id === skipEntranceId}
               />
@@ -313,9 +313,19 @@ export default function ConversationScreen() {
             ) : null
           }
         />
+        {chatError ? (
+          <TouchableOpacity
+            style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 12, marginBottom: 4, borderRadius: 8 }}
+            onPress={clearError}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: '#DC2626', fontSize: 13, textAlign: 'center' }}>{chatError}</Text>
+          </TouchableOpacity>
+        ) : null}
         <ChatInput
           onSend={sendMessage}
           disabled={isStreaming}
+          characterName={character?.name}
           onTopicDraw={() => setTopicDrawVisible(true)}
           onNewsPicker={() => setNewsPickerVisible(true)}
           onImagePicked={async (uri) => {
@@ -352,12 +362,6 @@ export default function ConversationScreen() {
 
       <ModelSelectorModal visible={modelModalVisible} onClose={() => setModelModalVisible(false)} />
 
-      <BubbleMenu
-        visible={!!bubbleContent}
-        content={bubbleContent?.content || ''}
-        role={bubbleContent?.role}
-        onClose={() => setBubbleContent(null)}
-      />
 
       <TopicDrawModal
         visible={topicDrawVisible}

@@ -214,40 +214,46 @@ export default function CharacterForm({
         <Text style={[styles.randomAllText, { color: t.brand }]}>🎲 全てランダム</Text>
       </TouchableOpacity>
 
-      {/* アバター選択 (5列) */}
+      {/* アバター選択 (5列, 3行可見スクロール) */}
       <View style={styles.field}>
         <Text style={[styles.label, { color: errors.avatar ? t.error : t.text, marginBottom: 8 }]}>アバター <Text style={{ color: t.error }}>*</Text> {errors.avatar ? <Text style={{ color: t.error, fontSize: 12, fontWeight: '400' }}>選択してください</Text> : null}</Text>
-        <View style={styles.avatarGrid}>
-          {PRESET_AVATARS.map((url) => (
+        <ScrollView
+          style={{ height: (AVATAR_SIZE + 8) * 3 + 8 }}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator
+        >
+          <View style={styles.avatarGrid}>
+            {/* 自定义上传放在最前面 */}
             <TouchableOpacity
-              key={url}
-              style={[styles.avatarCell, { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }, avatarUrl === url && { borderColor: t.brand, borderWidth: 2 }]}
-              onPress={() => { setAvatarUrl(url); setErrors((p) => ({ ...p, avatar: false })); }}
+              style={[styles.avatarCell, {
+                width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
+                backgroundColor: isCustomAvatar ? undefined : t.surface,
+                borderColor: isCustomAvatar ? t.brand : t.border,
+                borderWidth: isCustomAvatar ? 2 : 1,
+                borderStyle: isCustomAvatar ? 'solid' : 'dashed',
+              }]}
+              onPress={handlePickImage}
+              disabled={uploadingAvatar}
             >
-              <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} />
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color={t.brand} />
+              ) : isCustomAvatar ? (
+                <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
+              ) : (
+                <Ionicons name="camera-outline" size={AVATAR_SIZE * 0.4} color={t.textSecondary} />
+              )}
             </TouchableOpacity>
-          ))}
-          {/* 第15格：自定义上传 / 预览 */}
-          <TouchableOpacity
-            style={[styles.avatarCell, {
-              width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
-              backgroundColor: isCustomAvatar ? undefined : t.surface,
-              borderColor: isCustomAvatar ? t.brand : t.border,
-              borderWidth: isCustomAvatar ? 2 : 1,
-              borderStyle: isCustomAvatar ? 'solid' : 'dashed',
-            }]}
-            onPress={handlePickImage}
-            disabled={uploadingAvatar}
-          >
-            {uploadingAvatar ? (
-              <ActivityIndicator size="small" color={t.brand} />
-            ) : isCustomAvatar ? (
-              <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
-            ) : (
-              <Ionicons name="camera-outline" size={AVATAR_SIZE * 0.4} color={t.textSecondary} />
-            )}
-          </TouchableOpacity>
-        </View>
+            {PRESET_AVATARS.map((url) => (
+              <TouchableOpacity
+                key={url}
+                style={[styles.avatarCell, { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }, avatarUrl === url && { borderColor: t.brand, borderWidth: 2 }]}
+                onPress={() => { setAvatarUrl(url); setErrors((p) => ({ ...p, avatar: false })); }}
+              >
+                <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       {/* 名前 */}

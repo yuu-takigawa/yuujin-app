@@ -11,15 +11,7 @@ import type { JpLevel } from '../../../services/api';
 import { updateProfile } from '../../../services/api';
 import HalfScreenModal from '../../../components/common/HalfScreenModal';
 
-const JP_LEVELS: { value: JpLevel; label: string; desc: string }[] = [
-  { value: 'none', label: '無経験', desc: '日本語が全然わからない' },
-  { value: 'N5', label: 'N5', desc: 'ひらがな・基本あいさつ' },
-  { value: 'N4', label: 'N4', desc: '簡単な日常会話ができる' },
-  { value: 'N3', label: 'N3', desc: '日常会話がある程度できる' },
-  { value: 'N2', label: 'N2', desc: 'ほぼ自然に話せる' },
-  { value: 'N1', label: 'N1', desc: 'ネイティブに近いレベル' },
-  { value: 'native', label: '母語', desc: 'ネイティブレベル' },
-];
+const JP_LEVEL_VALUES: JpLevel[] = ['none', 'N5', 'N4', 'N3', 'N2', 'N1', 'native'];
 
 function SectionHeader({ title }: { title: string }) {
   const t = useTheme();
@@ -77,7 +69,7 @@ export default function SettingsScreen() {
 
   const [jpLevelPickerVisible, setJpLevelPickerVisible] = useState(false);
 
-  const currentLevel = JP_LEVELS.find((l) => l.value === jpLevel) || JP_LEVELS[1];
+  const currentLevelLabel = i(`level.${jpLevel}`);
 
   const handleLogout = () => {
     Alert.alert('ログアウト', '本当にログアウトしますか？', [
@@ -115,7 +107,7 @@ export default function SettingsScreen() {
     setJpLevel(level);
     setJpLevelPickerVisible(false);
     try {
-      await updateUser({ jpLevel: level });
+      await updateProfile({ jpLevel: level });
     } catch { /* silent */ }
   };
 
@@ -139,7 +131,7 @@ export default function SettingsScreen() {
             label={i('settings.jpLevel')}
             right={
               <View style={styles.valueRow}>
-                <Text style={[styles.valueText, { color: t.brand }]}>{currentLevel.label}</Text>
+                <Text style={[styles.valueText, { color: t.brand }]}>{currentLevelLabel}</Text>
                 <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
               </View>
             }
@@ -214,17 +206,17 @@ export default function SettingsScreen() {
       <HalfScreenModal visible={jpLevelPickerVisible} onClose={() => setJpLevelPickerVisible(false)} height={420}>
         <View style={styles.levelModal}>
           <Text style={[styles.levelModalTitle, { color: t.text }]}>{i('settings.selectJpLevel')}</Text>
-          {JP_LEVELS.map((l) => (
+          {JP_LEVEL_VALUES.map((lv) => (
             <TouchableOpacity
-              key={l.value}
-              style={[styles.levelOption, { backgroundColor: jpLevel === l.value ? t.brandLight : 'transparent' }]}
-              onPress={() => handleJpLevelSelect(l.value)}
+              key={lv}
+              style={[styles.levelOption, { backgroundColor: jpLevel === lv ? t.brandLight : 'transparent' }]}
+              onPress={() => handleJpLevelSelect(lv)}
             >
-              <Text style={[styles.levelOptionLabel, { color: jpLevel === l.value ? t.brand : t.text }]}>
-                {l.label}
+              <Text style={[styles.levelOptionLabel, { color: jpLevel === lv ? t.brand : t.text }]}>
+                {i(`level.${lv}`)}
               </Text>
-              <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{l.desc}</Text>
-              {jpLevel === l.value && <Ionicons name="checkmark" size={18} color={t.brand} />}
+              <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{i(`level.${lv}.desc`)}</Text>
+              {jpLevel === lv && <Ionicons name="checkmark" size={18} color={t.brand} />}
             </TouchableOpacity>
           ))}
         </View>

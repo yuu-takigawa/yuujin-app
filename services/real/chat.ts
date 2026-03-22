@@ -85,6 +85,16 @@ export function streamResponse(
     // readyState 3 = LOADING (data is being received incrementally)
     // readyState 4 = DONE (request completed)
     if (xhr.readyState >= 3) {
+      // Check for HTTP errors (e.g. 402 insufficient credits)
+      if (xhr.readyState === 4 && xhr.status !== 200) {
+        let errorMsg = 'AI response failed';
+        if (xhr.status === 402) errorMsg = 'ポイントが不足しています。プランをアップグレードしてください。';
+        else if (xhr.status === 401) errorMsg = 'Authentication failed';
+        else if (xhr.status >= 500) errorMsg = 'Server error';
+        onEvent({ type: 'error', error: errorMsg });
+        return;
+      }
+
       const newText = xhr.responseText.substring(lastIndex);
       lastIndex = xhr.responseText.length;
 
@@ -193,6 +203,63 @@ export function streamResponseWithImage(
 
   xhr.timeout = 60000;
   xhr.send(JSON.stringify({ conversationId, message: userMessage, imageUrl }));
+
+  return () => { cancelled = true; xhr.abort(); };
+}
+
+/**
+ * Stream chat message annotation (translation / grammar analysis) via SSE.
+ * Endpoint: POST /chat/annotate
+ */
+export function streamChatAnnotate(
+  messageContent: string,
+  type: 'translation' | 'analysis',
+  onEvent: SSECallback,
+): () => void {
+  let cancelled = false;
+
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/chat/annotate`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  const token = getToken();
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  }
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      if (xhr.readyState === 4 && xhr.status !== 200) {
+        let errorMsg = 'Annotation failed';
+        if (xhr.status === 402) errorMsg = 'ポイントが不足しています';
+        else if (xhr.status === 401) errorMsg = 'Authentication failed';
+        else if (xhr.status >= 500) errorMsg = 'Server error';
+        onEvent({ type: 'error', error: errorMsg });
+        return;
+      }
+      const newText = xhr.responseText.substring(lastIndex);
+      lastIndex = xhr.responseText.length;
+      if (newText) {
+        parseSSELines(newText, (event) => {
+          if (!cancelled) onEvent(event);
+        });
+      }
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Network error' });
+  };
+
+  xhr.timeout = 30000;
+  xhr.ontimeout = () => {
+    if (!cancelled) onEvent({ type: 'error', error: 'Request timeout' });
+  };
+
+  xhr.send(JSON.stringify({ content: messageContent, type }));
 
   return () => { cancelled = true; xhr.abort(); };
 }

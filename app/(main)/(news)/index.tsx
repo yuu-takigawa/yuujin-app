@@ -160,7 +160,7 @@ export default function NewsScreen() {
     // Web: onScroll 触发无限滚动
     if (Platform.OS === 'web') {
       const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
-      if (distanceFromBottom < 300) {
+      if (distanceFromBottom < 800) {
         handleLoadMore();
       }
     }

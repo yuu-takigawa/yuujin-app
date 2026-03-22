@@ -24,9 +24,10 @@ interface ChatInputProps {
   onTopicDraw?: () => void;
   onNewsPicker?: () => void;
   onImagePicked?: (uri: string) => void;
+  characterName?: string;
 }
 
-export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker, onImagePicked }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker, onImagePicked, characterName }: ChatInputProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
@@ -123,7 +124,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
         ]}>
           <TextInput
             style={[styles.input, { color: t.text }]}
-            placeholder="ゆきに話しかけてみよう..."
+            placeholder={`${characterName || '友達'}に話しかけてみよう...`}
             placeholderTextColor={t.textSecondary}
             value={text}
             onChangeText={setText}

@@ -11,9 +11,6 @@ import {
   JosefinSans_300Light,
   JosefinSans_400Regular,
 } from '@expo-google-fonts/josefin-sans';
-import {
-  ShipporiMincho_700Bold,
-} from '@expo-google-fonts/shippori-mincho';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -21,11 +18,7 @@ export default function RootLayout() {
     CormorantGaramond_700Bold,
     JosefinSans_300Light,
     JosefinSans_400Regular,
-    ShipporiMincho_700Bold,
   });
-
-  // 字体未加载时不阻塞渲染（ShipporiMincho 8.5MB，会 fallback 到系统字体）
-  // if (!fontsLoaded) return null;
 
   return (
     <KeyboardProvider statusBarTranslucent navigationBarTranslucent>

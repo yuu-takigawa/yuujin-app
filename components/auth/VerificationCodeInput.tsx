@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { sendCode } from '../../services/api';
 
 interface Props {
@@ -11,8 +12,16 @@ interface Props {
   onError?: (msg: string) => void;
 }
 
+/** Convert full-width digits (０-９) to half-width (0-9) and strip non-digits */
+function normalizeDigits(input: string): string {
+  return input
+    .replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/[^0-9]/g, '');
+}
+
 export default function VerificationCodeInput({ email, type, value, onChangeText, onError }: Props) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const [countdown, setCountdown] = useState(0);
   const [sending, setSending] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -26,7 +35,7 @@ export default function VerificationCodeInput({ email, type, value, onChangeText
   const handleSend = async () => {
     if (!email || countdown > 0 || sending) return;
     if (!/\S+@\S+\.\S+/.test(email)) {
-      onError?.('有効なメールアドレスを入力してください');
+      onError?.(i('auth.invalidEmail'));
       return;
     }
     setSending(true);
@@ -43,7 +52,7 @@ export default function VerificationCodeInput({ email, type, value, onChangeText
         });
       }, 1000);
     } catch (err: any) {
-      onError?.(err?.message || 'コード送信に失敗しました');
+      onError?.(err?.message || i('auth.codeSendFailed'));
     } finally {
       setSending(false);
     }
@@ -54,14 +63,15 @@ export default function VerificationCodeInput({ email, type, value, onChangeText
   return (
     <View style={styles.row}>
       <TextInput
-        style={[styles.input, { borderColor: t.border, color: t.text, backgroundColor: t.surface }]}
-        placeholder="認証コード (6桁)"
+        style={[styles.input, { borderColor: t.border, color: t.text, backgroundColor: t.inputBg, letterSpacing: value ? 4 : 0 }]}
+        placeholder={i('auth.codePlaceholder')}
         placeholderTextColor={t.textSecondary}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={(v) => onChangeText(normalizeDigits(v))}
         keyboardType="number-pad"
         maxLength={6}
-        {...(Platform.OS === 'web' ? { autoComplete: 'one-time-code' } : {})}
+        textContentType="oneTimeCode"
+        autoComplete="one-time-code"
       />
       <TouchableOpacity
         style={[styles.sendBtn, { backgroundColor: canSend ? t.brand : t.inputBg }]}
@@ -70,7 +80,7 @@ export default function VerificationCodeInput({ email, type, value, onChangeText
         activeOpacity={0.7}
       >
         <Text style={[styles.sendText, { color: canSend ? '#FFF' : t.textSecondary }]}>
-          {sending ? '送信中...' : countdown > 0 ? `再送信 (${countdown}s)` : 'コード送信'}
+          {sending ? i('auth.sendingCode') : countdown > 0 ? `${i('auth.resendCode')} (${countdown}s)` : i('auth.sendCode')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -91,7 +101,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     fontSize: 16,
-    letterSpacing: 4,
+    letterSpacing: 0,
   },
   sendBtn: {
     flexShrink: 0,

@@ -7,8 +7,8 @@ interface ServerTopic {
 }
 
 export async function drawTopics(characterId: string): Promise<Topic[]> {
-  const result = await post<{ success: boolean; data: ServerTopic[] }>('/topics/draw', { characterId });
-  return (result.data || []).map((t, i) => ({
+  const result = await post<ServerTopic[]>('/topics/draw', { characterId });
+  return (result || []).map((t, i) => ({
     id: `ai-topic-${i}`,
     text: t.text,
     emoji: t.emoji,
@@ -17,8 +17,7 @@ export async function drawTopics(characterId: string): Promise<Topic[]> {
 }
 
 export async function shuffleTopic(characterId: string): Promise<Topic> {
-  const result = await post<{ success: boolean; data: ServerTopic }>('/topics/shuffle', { characterId });
-  const t = result.data;
+  const t = await post<ServerTopic>('/topics/shuffle', { characterId });
   return {
     id: `shuffle-${Date.now()}`,
     text: t?.text || '何か面白いことある？',

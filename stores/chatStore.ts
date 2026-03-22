@@ -169,7 +169,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         setTimeout(() => {
           getMessages(conversationId).then((msgs) => {
             if (get().conversationId === conversationId) {
-              set({ messages: msgs, error: null });
+              set({ messages: msgs });
             }
           });
         }, 1000);

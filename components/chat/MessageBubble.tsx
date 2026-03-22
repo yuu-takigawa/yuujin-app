@@ -1,21 +1,26 @@
-import { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 import Avatar from '../common/Avatar';
+import BubbleTooltip, { type BubbleAction } from './BubbleTooltip';
+import AnnotationPanel from './AnnotationPanel';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 
 interface MessageBubbleProps {
   content: string;
   role: 'user' | 'assistant';
   avatarUrl?: string;
   createdAt?: string;
-  onLongPress?: () => void;
   highlight?: boolean;
   skipEntrance?: boolean;
   imageUrl?: string;
 }
 
-// Match news ref pattern: 📰[articleId] Title
+// Match news ref pattern: [articleId] Title
 const NEWS_REF_REGEX = /^📰\[([^\]]+)\]\s*(.+)$/;
 
 function formatMessageTime(dateStr?: string): string {
@@ -29,19 +34,26 @@ export default function MessageBubble({
   role,
   avatarUrl,
   createdAt,
-  onLongPress,
   highlight,
   skipEntrance,
   imageUrl,
 }: MessageBubbleProps) {
   const isUser = role === 'user';
   const t = useTheme();
+  const { t: i } = useLocale();
   const router = useRouter();
   const timeStr = formatMessageTime(createdAt);
   const hasAvatar = !!avatarUrl;
 
   const animValue = useRef(new Animated.Value(skipEntrance ? 1 : 0)).current;
   const mounted = useRef(false);
+  const iconRef = useRef<View>(null);
+
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipAnchor, setTooltipAnchor] = useState({ x: 0, y: 0 });
+  const [annotation, setAnnotation] = useState<{ type: 'translation' | 'analysis' | 'correct' } | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!mounted.current) {
@@ -55,8 +67,43 @@ export default function MessageBubble({
     }
   }, []);
 
+  const showToast = useCallback(() => {
+    setToastVisible(true);
+    toastAnim.setValue(1);
+    Animated.timing(toastAnim, {
+      toValue: 0,
+      duration: 1200,
+      delay: 600,
+      useNativeDriver: true,
+    }).start(() => setToastVisible(false));
+  }, []);
+
+  const handleInfoPress = () => {
+    if (iconRef.current) {
+      iconRef.current.measureInWindow((x, y, _w, _h) => {
+        setTooltipAnchor({ x, y });
+        setTooltipVisible(true);
+      });
+    }
+  };
+
+  const handleAction = async (action: BubbleAction) => {
+    setTooltipVisible(false);
+    if (action === 'copy') {
+      showToast();
+    } else if (action === 'translate') {
+      setAnnotation({ type: 'translation' });
+    } else if (action === 'analyze') {
+      setAnnotation({ type: 'analysis' });
+    } else if (action === 'correct') {
+      setAnnotation({ type: 'correct' });
+    }
+    // 'read' is handled inside BubbleTooltip directly
+  };
+
   // Check if this is a news reference message
   const newsMatch = content.match(NEWS_REF_REGEX);
+  const isSpecialMessage = !!newsMatch || !!imageUrl;
 
   const renderContent = () => {
     // Image message
@@ -85,8 +132,17 @@ export default function MessageBubble({
       );
     }
 
-    // Normal text
-    return <Text style={[styles.text, { color: t.text }]}>{content}</Text>;
+    // Normal text with info icon
+    return (
+      <View style={styles.textRow}>
+        <Text style={[styles.text, { color: t.text, flex: 1 }]}>{content}</Text>
+        <View ref={iconRef} collapsable={false} style={styles.infoIconWrap}>
+          <TouchableOpacity onPress={handleInfoPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="information-circle-outline" size={14} color={t.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -96,7 +152,7 @@ export default function MessageBubble({
     }]}>
       {!isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={styles.bubbleWrap}>
-        <TouchableOpacity
+        <View
           style={[
             styles.bubble,
             isUser
@@ -104,12 +160,9 @@ export default function MessageBubble({
               : [styles.bubbleAI, { backgroundColor: t.bubbleAI }],
             highlight && { borderWidth: 2, borderColor: t.brand },
           ]}
-          onLongPress={onLongPress}
-          activeOpacity={0.8}
-          delayLongPress={300}
         >
           {renderContent()}
-        </TouchableOpacity>
+        </View>
         {timeStr ? (
           <Text
             style={[
@@ -121,8 +174,34 @@ export default function MessageBubble({
             {timeStr}
           </Text>
         ) : null}
+
+        {/* Annotation panel (translation / analysis / correct) */}
+        {annotation && (
+          <AnnotationPanel
+            content={content}
+            type={annotation.type}
+            onClose={() => setAnnotation(null)}
+          />
+        )}
+
+        {/* Copy toast */}
+        {toastVisible && (
+          <Animated.View style={[styles.toast, { backgroundColor: t.text, opacity: toastAnim }]}>
+            <Text style={[styles.toastText, { color: t.background }]}>{i('bubble.copied')}</Text>
+          </Animated.View>
+        )}
       </View>
       {isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
+
+      <BubbleTooltip
+        visible={tooltipVisible}
+        content={content}
+        role={role}
+        anchorY={tooltipAnchor.y}
+        anchorX={tooltipAnchor.x}
+        onClose={() => setTooltipVisible(false)}
+        onAction={handleAction}
+      />
     </Animated.View>
   );
 }
@@ -156,6 +235,14 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 18,
     borderBottomLeftRadius: 18,
   },
+  textRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  infoIconWrap: {
+    paddingBottom: 4,
+  },
   text: {
     fontSize: 17,
     lineHeight: 25.5,
@@ -188,5 +275,17 @@ const styles = StyleSheet.create({
   },
   timeUser: {
     textAlign: 'right',
+  },
+  toast: {
+    position: 'absolute',
+    bottom: -24,
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  toastText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

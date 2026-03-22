@@ -9,6 +9,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { uploadAvatar, getAvatarPresets } from '../../../services/api';
 import type { AvatarPreset } from '../../../services/api';
 import ImageCropper from '../../../components/common/ImageCropper';
+import { PRESET_AVATARS } from '../../../constants/characterData';
 
 function safeDisplayName(username: string | undefined, email: string | undefined): string {
   if (!username || username.trim().length === 0) return email?.split('@')[0] || '';
@@ -158,11 +159,16 @@ export default function EditProfileScreen() {
           <Text style={[styles.uploadHint, { color: t.textSecondary }]}>タップして写真を変更</Text>
         </View>
 
-        {/* Preset avatar grid (いらすとや) */}
-        {presets.length > 0 && (
-          <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
-            <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>アバターを選択</Text>
+        {/* Preset avatar grid (server presets + DiceBear) */}
+        <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+          <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>アバターを選択</Text>
+          <ScrollView
+            style={{ height: (64 + 10) * 3 + 10 }}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
             <View style={styles.presetGrid}>
+              {/* Server presets first */}
               {presets.map((preset) => {
                 const selected = avatarUrl === preset.url;
                 return (
@@ -182,9 +188,29 @@ export default function EditProfileScreen() {
                   </TouchableOpacity>
                 );
               })}
+              {/* DiceBear avatars (exclude those already from server) */}
+              {PRESET_AVATARS.filter((url) => !presets.some((p) => p.url === url)).map((url) => {
+                const selected = avatarUrl === url;
+                return (
+                  <TouchableOpacity
+                    key={url}
+                    style={[
+                      styles.presetCell,
+                      selected && { borderColor: t.brand, borderWidth: 2 },
+                    ]}
+                    onPress={() => {
+                      setAvatarUrl(url);
+                      setSelectedEmoji('');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: url }} style={styles.presetImage} />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          </View>
-        )}
+          </ScrollView>
+        </View>
 
         {/* Username */}
         <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>

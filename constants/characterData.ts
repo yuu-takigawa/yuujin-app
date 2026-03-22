@@ -150,9 +150,11 @@ export function randomAge(): number {
   return 18 + Math.floor(Math.random() * 22); // 18-39
 }
 
-// 预设头像 OSS URL
+// 预设头像 OSS URL (99个 - いらすとや 14个 + DiceBear多风格 85个)
 const PRESET_AVATAR_BASE = 'https://yuujin-assets.oss-cn-hangzhou.aliyuncs.com/avatars/presets';
+
 export const PRESET_AVATARS = [
+  // いらすとや original (14個)
   `${PRESET_AVATAR_BASE}/boy-01.png`,
   `${PRESET_AVATAR_BASE}/boy-02.png`,
   `${PRESET_AVATAR_BASE}/boy-03.png`,
@@ -167,4 +169,8 @@ export const PRESET_AVATARS = [
   `${PRESET_AVATAR_BASE}/girl-05.png`,
   `${PRESET_AVATAR_BASE}/girl-06.png`,
   `${PRESET_AVATAR_BASE}/girl-07.png`,
+  // OSS hosted avatars (85個: face-15 ~ face-99)
+  ...Array.from({ length: 85 }, (_, i) =>
+    `${PRESET_AVATAR_BASE}/face-${String(i + 15).padStart(2, '0')}.png`
+  ),
 ];

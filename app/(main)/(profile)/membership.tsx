@@ -38,6 +38,7 @@ const PLANS: Plan[] = [
     priceNote: '/ 月',
     dailyCredits: '500pt',
     color: '#3B82F6',
+    badgeText: '🎉 無料キャンペーン中',
     features: ['毎日500ポイント', '全ての Free 機能', 'DeepSeek V3 利用可', '通義千問 キャラモデル利用可'],
     models: ['通義 Flash キャラ', 'DeepSeek V3', '通義 Plus キャラ', '通義千問 Plus'],
   },
@@ -48,7 +49,7 @@ const PLANS: Plan[] = [
     priceNote: '/ 月',
     dailyCredits: '2000pt',
     color: '#E85B3A',
-    badgeText: 'おすすめ',
+    badgeText: '近日公開',
     features: ['毎日2000ポイント', '全ての Pro 機能', '通義千問 Max（最高品質）', '優先サポート'],
     models: ['全モデル対応（通義千問 Max 含む）'],
   },
@@ -207,30 +208,24 @@ export default function MembershipScreen() {
               </View>
 
               {/* CTA */}
-              {!isCurrent && isUpgrade && (
+              {!isCurrent && isUpgrade && plan.tier === 'max' && (
+                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
+                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>近日公開</Text>
+                </View>
+              )}
+              {!isCurrent && isUpgrade && plan.tier !== 'max' && (
                 <TouchableOpacity
                   style={[styles.ctaBtn, { backgroundColor: isUpgrading ? plan.color + '88' : plan.color }]}
                   activeOpacity={0.8}
                   disabled={isUpgrading}
-                  onPress={() =>
-                    Alert.alert(
-                      `${plan.name}にアップグレード`,
-                      `毎日${plan.dailyCredits}ポイントが利用可能になります。\n\n※現在テスト中のため無料でアップグレードできます。`,
-                      [
-                        { text: 'キャンセル', style: 'cancel' },
-                        {
-                          text: 'アップグレード', onPress: async () => {
-                            try {
-                              await upgradePlan(plan.tier as 'pro' | 'max');
-                              Alert.alert('🎉 アップグレード完了', `${plan.name}になりました！`);
-                            } catch {
-                              Alert.alert('エラー', 'アップグレードに失敗しました。');
-                            }
-                          },
-                        },
-                      ],
-                    )
-                  }
+                  onPress={async () => {
+                    try {
+                      await upgradePlan(plan.tier as 'pro' | 'max');
+                      Alert.alert('🎉', `${plan.name}にアップグレードしました！`);
+                    } catch {
+                      Alert.alert('エラー', 'アップグレードに失敗しました。');
+                    }
+                  }}
                 >
                   {isUpgrading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />

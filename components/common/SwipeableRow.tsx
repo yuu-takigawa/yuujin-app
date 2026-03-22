@@ -101,12 +101,14 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
       overshootClamping: true,
     }).start();
     isOpen.current = false;
+
   }, [translateX]);
 
   // 瞬间复位（无动画，用于置顶后列表重排）
   const resetInstant = useCallback(() => {
     translateX.setValue(0);
     isOpen.current = false;
+
   }, [translateX]);
 
   const snapOrClose = useCallback((gs: { dx: number }) => {
@@ -126,12 +128,15 @@ export default function SwipeableRow({ children, onDelete, onPin, isPinned }: Sw
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) => {
       if (Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 10) return true;
-      // 纵向滑动时，如果已打开则关闭
-      if (Math.abs(gs.dy) > 10 && isOpen.current) close();
+      // 纵向滑动时，如果已打开则关闭并让 FlatList 滚动
+      if (Math.abs(gs.dy) > 10 && isOpen.current) {
+        close();
+        return false;
+      }
       return false;
     },
-    // 一旦开始水平滑动，不允许 FlatList 抢走手势（禁止上下滚动）
-    onPanResponderTerminationRequest: () => false,
+    // 水平滑动中不释放手势；但展开静止状态下允许释放（让 FlatList 能滚动）
+    onPanResponderTerminationRequest: () => !swiping.current,
     onPanResponderGrant: () => {
       swiping.current = true;
       notifyOpen(close);

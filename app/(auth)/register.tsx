@@ -15,12 +15,14 @@ import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import { radii, spacing, fontSize } from '../../constants/theme';
 import VerificationCodeInput from '../../components/auth/VerificationCodeInput';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const register = useAuthStore((s) => s.register);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -31,34 +33,43 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('');
     if (!username.trim()) {
-      setError('ユーザー名を入力してください');
+      setError(i('auth.usernameRequired'));
       return;
     }
     if (!email.trim()) {
-      setError('メールアドレスを入力してください');
+      setError(i('auth.emailRequired'));
       return;
     }
     if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError('有効なメールアドレスを入力してください');
+      setError(i('auth.invalidEmail'));
       return;
     }
     if (!code.trim() || code.length !== 6) {
-      setError('6桁の認証コードを入力してください');
+      setError(i('auth.codeRequired'));
       return;
     }
     if (!password.trim()) {
-      setError('パスワードを入力してください');
+      setError(i('auth.passwordRequired'));
       return;
     }
-    if (password.length < 6) {
-      setError('パスワードは6文字以上で入力してください');
+    if (password.length < 6 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError(i('auth.passwordRule'));
+      return;
+    }
+    if (!inviteCode.trim()) {
+      setError(i('auth.inviteCodeRequired'));
       return;
     }
     try {
-      await register(email.trim(), password, username.trim(), code.trim());
+      await register(email.trim(), password, username.trim(), code.trim(), inviteCode.trim());
       router.replace('/');
-    } catch {
-      setError('登録に失敗しました。コードを確認してもう一度お試しください');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('招待コード') || msg.includes('invite')) {
+        setError(i('auth.inviteCodeInvalid'));
+      } else {
+        setError(i('auth.registerFailed'));
+      }
     }
   };
 
@@ -77,7 +88,7 @@ export default function RegisterScreen() {
         <View style={styles.form}>
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder="Username"
+            placeholder={i('auth.username')}
             placeholderTextColor={t.textSecondary}
             value={username}
             onChangeText={(v) => { setUsername(v); setError(''); }}
@@ -100,13 +111,18 @@ export default function RegisterScreen() {
             onError={setError}
           />
 
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+          <PasswordInput
             placeholder={i('auth.password')}
-            placeholderTextColor={t.textSecondary}
             value={password}
             onChangeText={(v) => { setPassword(v); setError(''); }}
-            secureTextEntry
+          />
+          <TextInput
+            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+            placeholder={i('auth.inviteCode')}
+            placeholderTextColor={t.textSecondary}
+            value={inviteCode}
+            onChangeText={(v) => { setInviteCode(v); setError(''); }}
+            autoCapitalize="none"
           />
           {error ? (
             <Text style={[styles.errorText, { color: t.error || '#E53935' }]}>{error}</Text>
