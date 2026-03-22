@@ -704,7 +704,7 @@ export default function NewsDetailScreen() {
       )}
 
       {/* Fixed bottom: reply indicator + input bar */}
-      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 4) }]}>
+      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 4) }]}>
         {/* Reply indicator */}
         {replyTarget && (
           <View style={[styles.replyIndicator, { borderBottomColor: t.border }]}>

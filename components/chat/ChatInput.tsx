@@ -53,7 +53,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
   // Smooth safe-area bottom padding: full when keyboard closed, 0 when open
   const { progress: kbProgress } = useReanimatedKeyboardAnimation();
   const bottomPaddingStyle = useAnimatedStyle(() => ({
-    paddingBottom: interpolate(kbProgress.value, [0, 1], [insets.bottom, 0]),
+    paddingBottom: interpolate(kbProgress.value, [0, 1], [Platform.OS === 'web' ? 8 : insets.bottom, 0]),
   }));
 
   useEffect(() => {

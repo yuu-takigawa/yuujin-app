@@ -106,7 +106,7 @@ export default function ChatListScreen() {
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 8 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: 8 }}
         onScrollBeginDrag={() => closeAllRef.current?.()}
         onMomentumScrollBegin={() => closeAllRef.current?.()}
         onScroll={() => closeAllRef.current?.()}
