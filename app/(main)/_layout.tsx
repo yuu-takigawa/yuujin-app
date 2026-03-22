@@ -46,7 +46,7 @@ export default function MainLayout() {
 
   return (
     <Tabs
-      safeAreaInsets={{ top: 0, bottom: 0 }}
+      safeAreaInsets={{ top: 0, bottom: Platform.OS === 'web' ? 0 : 0 }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: t.brand,
