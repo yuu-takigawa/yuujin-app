@@ -26,14 +26,20 @@
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior: none;
       }
+      html {
+        background-color: #F7F7F7;
+      }
       body {
         overflow: hidden;
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding-bottom: env(safe-area-inset-bottom);
+        width: 100%;
+      }
+      @media (prefers-color-scheme: dark) {
+        html { background-color: #121212; }
+      }
+      /* Fill safe area bottom with surface color matching tab bar */
+      [role="tablist"] {
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
       }
       input:focus, textarea:focus, [contenteditable]:focus {
         outline: none !important;
