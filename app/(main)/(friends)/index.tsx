@@ -15,6 +15,7 @@ import { useCharacterStore } from '../../../stores/characterStore';
 import { useFriendStore } from '../../../stores/friendStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import { spacing, fontSize } from '../../../constants/theme';
 
 const CARD_WIDTH = 280;
@@ -30,6 +31,7 @@ export default function FriendsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
 
   const user = useAuthStore((s) => s.user);
@@ -190,7 +192,7 @@ export default function FriendsScreen() {
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: t.brand }]}>友達</Text>
+        <Text style={[styles.title, { color: t.brand }]}>{i('friends.title')}</Text>
         <Text
           style={[styles.addButton, { color: t.brand }]}
           onPress={() => router.push('/create-character')}

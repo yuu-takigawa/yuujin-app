@@ -11,6 +11,7 @@ import SwipeableRow, { SwipeableProvider } from '../../../components/common/Swip
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Logo from '../../../components/common/Logo';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import { spacing, fontSize } from '../../../constants/theme';
 import type { Conversation } from '../../../services/api';
 
@@ -18,6 +19,7 @@ export default function ChatListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
 
   const user = useAuthStore((s) => s.user);
   const conversations = useFriendStore((s) => s.conversations);
@@ -91,7 +93,7 @@ export default function ChatListScreen() {
         opacity: headerAnim,
         transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }],
       }]}>
-        <Text style={[styles.headerTitle, { color: t.brand }]}>チャット</Text>
+        <Text style={[styles.headerTitle, { color: t.brand }]}>{i('chat.title')}</Text>
         <Text
           style={[styles.addButton, { color: t.brand }]}
           onPress={() => { closeAllRef.current?.(); router.push('/add-friend'); }}
@@ -136,7 +138,7 @@ export default function ChatListScreen() {
             <Logo height={32} />
             <View style={[styles.emptyDivider, { backgroundColor: t.border }]} />
             <Text style={[styles.emptyHint, { color: t.textSecondary }]}>
-              右上の ＋ から友達を追加して{'\n'}会話をはじめましょう
+              {i('chat.emptyHint')}
             </Text>
           </View>
         }
@@ -145,10 +147,10 @@ export default function ChatListScreen() {
 
       <ConfirmModal
         visible={!!deleteTarget}
-        title="会話を削除"
-        message="この会話を削除しますか？"
-        confirmText="削除"
-        cancelText="キャンセル"
+        title={i('chat.deleteTitle')}
+        message={i('chat.deleteMessage')}
+        confirmText={i('action.delete')}
+        cancelText={i('action.cancel')}
         destructive
         onConfirm={() => { if (deleteTarget) doDelete(deleteTarget); setDeleteTarget(null); }}
         onCancel={() => setDeleteTarget(null)}

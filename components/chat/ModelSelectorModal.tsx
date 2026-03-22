@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { useCreditStore } from '../../stores/creditStore';
 import HalfScreenModal from '../common/HalfScreenModal';
 
@@ -39,6 +40,7 @@ const PROVIDER_ICONS: Record<string, string> = {
 
 export default function ModelSelectorModal({ visible, onClose }: ModelSelectorModalProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const models = useCreditStore((s) => s.models);
   const selectedModelId = useCreditStore((s) => s.selectedModelId);
   const setSelectedModel = useCreditStore((s) => s.setSelectedModel);
@@ -54,11 +56,11 @@ export default function ModelSelectorModal({ visible, onClose }: ModelSelectorMo
   return (
     <HalfScreenModal visible={visible} onClose={onClose} height={480}>
       <View style={[styles.header, { borderBottomColor: t.border }]}>
-        <Text style={[styles.title, { color: t.text }]}>AIモデル選択</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('model.selectTitle')}</Text>
         <View style={[styles.creditsBadge, { backgroundColor: t.brandLight }]}>
           <Ionicons name="flash" size={12} color={t.brand} />
           <Text style={[styles.creditsText, { color: t.brand }]}>
-            {credits === -1 ? '無制限' : credits}
+            {credits === -1 ? i('model.unlimited') : credits}
           </Text>
         </View>
       </View>

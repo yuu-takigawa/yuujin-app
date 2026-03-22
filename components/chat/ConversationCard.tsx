@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Avatar from '../common/Avatar';
 import UnreadDot from '../common/UnreadDot';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { fontSize } from '../../constants/theme';
 
 interface ConversationCardProps {
@@ -14,22 +15,15 @@ interface ConversationCardProps {
   onPress: () => void;
 }
 
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor(
-    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (diffDays === 0) {
-    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-  }
-  if (diffDays === 1) return '昨日';
-  if (diffDays < 7) {
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    return days[d.getDay()] + '曜日';
-  }
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
+const DAY_KEYS = [
+  'time.sunday',
+  'time.monday',
+  'time.tuesday',
+  'time.wednesday',
+  'time.thursday',
+  'time.friday',
+  'time.saturday',
+];
 
 export default function ConversationCard({
   name,
@@ -41,6 +35,23 @@ export default function ConversationCard({
   onPress,
 }: ConversationCardProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
+
+  const formatTime = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.floor(
+      (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (diffDays === 0) {
+      return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    if (diffDays === 1) return i('time.yesterday');
+    if (diffDays < 7) {
+      return i(DAY_KEYS[d.getDay()]);
+    }
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
 
   return (
     <TouchableOpacity

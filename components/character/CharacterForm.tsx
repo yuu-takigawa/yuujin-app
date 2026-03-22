@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DiceButton from './DiceButton';
 import ImageCropper from '../common/ImageCropper';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { spacing, fontSize } from '../../constants/theme';
 import { uploadAvatar, streamGenerateBio } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -60,6 +61,7 @@ export default function CharacterForm({
   submitLabel,
 }: CharacterFormProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const user = useAuthStore((s) => s.user);
   const { width: screenW } = useWindowDimensions();
   const AVATAR_SIZE = Math.floor((screenW - spacing.md * 2 - 8 * 4) / 5); // 5列
@@ -67,10 +69,10 @@ export default function CharacterForm({
   const [name, setName] = useState(initialData?.name || '');
   const [avatarUrl, setAvatarUrl] = useState(initialData?.avatarUrl || '');
   const [age, setAge] = useState(String(initialData?.age || 25));
-  const [gender, setGender] = useState(initialData?.gender || '女性');
+  const [gender, setGender] = useState(initialData?.gender || '\u5973\u6027');
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
-  const [personality, setPersonality] = useState(initialData?.personality?.join('、') || '');
-  const [hobbies, setHobbies] = useState(initialData?.hobbies?.join('、') || '');
+  const [personality, setPersonality] = useState(initialData?.personality?.join('\u3001') || '');
+  const [hobbies, setHobbies] = useState(initialData?.hobbies?.join('\u3001') || '');
   const [location, setLocation] = useState(initialData?.location || '');
   const [bio, setBio] = useState(initialData?.bio || '');
 
@@ -91,7 +93,7 @@ export default function CharacterForm({
     if (!bio.trim()) errs.bio = true;
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      Alert.alert('入力不足', '全ての項目を入力してください');
+      Alert.alert(i('character.inputRequired'), i('character.inputRequiredMsg'));
       return false;
     }
     return true;
@@ -105,22 +107,22 @@ export default function CharacterForm({
       age: parseInt(age) || 25,
       gender,
       occupation: occupation.trim(),
-      personality: personality.split('、').filter(Boolean),
-      hobbies: hobbies.split('、').filter(Boolean),
+      personality: personality.split('\u3001').filter(Boolean),
+      hobbies: hobbies.split('\u3001').filter(Boolean),
       location: location.trim(),
       bio: bio.trim(),
     });
   };
 
   const handleRandomizeAll = () => {
-    const g = Math.random() > 0.5 ? '女性' : '男性';
+    const g = Math.random() > 0.5 ? '\u5973\u6027' : '\u7537\u6027';
     setGender(g);
     setName(randomFullName(g));
     setAge(String(randomAge()));
     setOccupation(pickRandom(OCCUPATIONS));
     setLocation(pickRandom(LOCATIONS));
-    setPersonality(pickRandomN(PERSONALITIES, 3).join('、'));
-    setHobbies(pickRandomN(HOBBIES, 3).join('、'));
+    setPersonality(pickRandomN(PERSONALITIES, 3).join('\u3001'));
+    setHobbies(pickRandomN(HOBBIES, 3).join('\u3001'));
     setAvatarUrl(pickRandom(PRESET_AVATARS));
     setErrors({});
   };
@@ -128,15 +130,15 @@ export default function CharacterForm({
   const handleGenerateBio = () => {
     const missing: string[] = [];
     const errs: Record<string, boolean> = {};
-    if (!avatarUrl) { missing.push('アバター'); errs.avatar = true; }
-    if (!name.trim()) { missing.push('名前'); errs.name = true; }
-    if (!occupation.trim()) { missing.push('職業'); errs.occupation = true; }
-    if (!personality.trim()) { missing.push('性格'); errs.personality = true; }
-    if (!hobbies.trim()) { missing.push('趣味'); errs.hobbies = true; }
-    if (!location.trim()) { missing.push('住所'); errs.location = true; }
+    if (!avatarUrl) { missing.push(i('character.avatar')); errs.avatar = true; }
+    if (!name.trim()) { missing.push(i('character.name')); errs.name = true; }
+    if (!occupation.trim()) { missing.push(i('character.occupation')); errs.occupation = true; }
+    if (!personality.trim()) { missing.push(i('character.personality')); errs.personality = true; }
+    if (!hobbies.trim()) { missing.push(i('character.hobbies')); errs.hobbies = true; }
+    if (!location.trim()) { missing.push(i('character.location')); errs.location = true; }
     if (missing.length > 0) {
       setErrors((prev) => ({ ...prev, ...errs }));
-      Alert.alert('情報不足', `先に以下を入力してください：\n${missing.join('、')}`);
+      Alert.alert(i('character.bioMissingTitle'), i('character.bioMissingMsg').replace('{fields}', missing.join('\u3001')));
       return;
     }
     setGeneratingBio(true);
@@ -150,8 +152,8 @@ export default function CharacterForm({
         age: parseInt(age) || 25,
         gender,
         occupation: occupation.trim(),
-        personality: personality.split('、').filter(Boolean),
-        hobbies: hobbies.split('、').filter(Boolean),
+        personality: personality.split('\u3001').filter(Boolean),
+        hobbies: hobbies.split('\u3001').filter(Boolean),
         location: location.trim(),
       },
       (delta) => {
@@ -161,7 +163,7 @@ export default function CharacterForm({
       () => setGeneratingBio(false),
       (err) => {
         setGeneratingBio(false);
-        Alert.alert('生成失敗', err);
+        Alert.alert(i('character.bioGenerateFailed'), err);
       },
     );
   };
@@ -169,7 +171,7 @@ export default function CharacterForm({
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('権限が必要', 'フォトライブラリへのアクセスを許可してください');
+      Alert.alert(i('character.permissionRequired'), i('character.photoPermission'));
       return;
     }
     const isWeb = Platform.OS === 'web';
@@ -197,7 +199,7 @@ export default function CharacterForm({
       setAvatarUrl(url);
       setErrors((p) => ({ ...p, avatar: false }));
     } catch (err) {
-      Alert.alert('アップロード失敗', (err as Error).message);
+      Alert.alert(i('character.uploadFailed'), (err as Error).message);
     } finally {
       setUploadingAvatar(false);
     }
@@ -211,16 +213,17 @@ export default function CharacterForm({
     <ScrollView style={[styles.container, { backgroundColor: t.background }]} keyboardShouldPersistTaps="handled">
       {/* 全てランダム */}
       <TouchableOpacity style={[styles.randomAllButton, { backgroundColor: t.brandLight }]} onPress={handleRandomizeAll}>
-        <Text style={[styles.randomAllText, { color: t.brand }]}>🎲 全てランダム</Text>
+        <Text style={[styles.randomAllText, { color: t.brand }]}>{'\ud83c\udfb2'} {i('character.randomizeAll')}</Text>
       </TouchableOpacity>
 
       {/* アバター選択 (5列, 3行可見スクロール) */}
       <View style={styles.field}>
-        <Text style={[styles.label, { color: errors.avatar ? t.error : t.text, marginBottom: 8 }]}>アバター <Text style={{ color: t.error }}>*</Text> {errors.avatar ? <Text style={{ color: t.error, fontSize: 12, fontWeight: '400' }}>選択してください</Text> : null}</Text>
+        <Text style={[styles.label, { color: errors.avatar ? t.error : t.text, marginBottom: 8 }]}>{i('character.avatar')} <Text style={{ color: t.error }}>*</Text> {errors.avatar ? <Text style={{ color: t.error, fontSize: 12, fontWeight: '400' }}>{i('character.avatarRequired')}</Text> : null}</Text>
+        <View style={{ height: (AVATAR_SIZE + 8) * 3, overflow: 'hidden', position: 'relative' }}>
         <ScrollView
-          style={{ height: (AVATAR_SIZE + 8) * 3 + 8 }}
+          style={{ height: (AVATAR_SIZE + 8) * 3 }}
           nestedScrollEnabled
-          showsVerticalScrollIndicator
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.avatarGrid}>
             {/* 自定义上传放在最前面 */}
@@ -254,39 +257,41 @@ export default function CharacterForm({
             ))}
           </View>
         </ScrollView>
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 20, background: `linear-gradient(transparent, ${t.background})` } as any} pointerEvents="none" />
+        </View>
       </View>
 
       {/* 名前 */}
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>名前 <Text style={{ color: t.error }}>*</Text></Text>
+          <Text style={[styles.label, { color: t.text }]}>{i('character.name')} <Text style={{ color: t.error }}>*</Text></Text>
           <DiceButton onPress={() => { setName(randomFullName(gender)); setErrors((p) => ({ ...p, name: false })); }} />
         </View>
-        <TextInput style={[...inputStyle, errBorder('name')]} value={name} onChangeText={(v) => { setName(v); setErrors((p) => ({ ...p, name: false })); }} placeholder="名前" placeholderTextColor={t.textSecondary} />
+        <TextInput style={[...inputStyle, errBorder('name')]} value={name} onChangeText={(v) => { setName(v); setErrors((p) => ({ ...p, name: false })); }} placeholder={i('character.name')} placeholderTextColor={t.textSecondary} />
       </View>
 
       {/* 年齢 + 性別 */}
       <View style={styles.row}>
         <View style={[styles.field, { flex: 1 }]}>
           <View style={styles.fieldHeader}>
-            <Text style={[styles.label, { color: t.text }]}>年齢</Text>
+            <Text style={[styles.label, { color: t.text }]}>{i('character.age')}</Text>
             <DiceButton onPress={() => setAge(String(randomAge()))} />
           </View>
           <TextInput style={inputStyle} value={age} onChangeText={setAge} keyboardType="numeric" />
         </View>
         <View style={[styles.field, { flex: 1 }]}>
           <View style={styles.fieldHeader}>
-            <Text style={[styles.label, { color: t.text }]}>性別</Text>
+            <Text style={[styles.label, { color: t.text }]}>{i('character.gender')}</Text>
             <View style={{ width: 36 }} />
           </View>
           <View style={styles.genderRow}>
-            {['女性', '男性'].map((g, i) => (
+            {['\u5973\u6027', '\u7537\u6027'].map((g, idx) => (
               <TouchableOpacity
                 key={g}
-                style={[styles.genderButton, { borderColor: t.border }, i === 0 && styles.genderLeft, i === 1 && styles.genderRight, gender === g && { backgroundColor: t.brand, borderColor: t.brand }]}
+                style={[styles.genderButton, { borderColor: t.border }, idx === 0 && styles.genderLeft, idx === 1 && styles.genderRight, gender === g && { backgroundColor: t.brand, borderColor: t.brand }]}
                 onPress={() => setGender(g)}
               >
-                <Text style={[styles.genderText, { color: t.text }, gender === g && { color: '#FFF' }]}>{g}</Text>
+                <Text style={[styles.genderText, { color: t.text }, gender === g && { color: '#FFF' }]}>{g === '\u5973\u6027' ? i('character.female') : i('character.male')}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -296,48 +301,48 @@ export default function CharacterForm({
       {/* 職業 */}
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>職業 <Text style={{ color: t.error }}>*</Text></Text>
+          <Text style={[styles.label, { color: t.text }]}>{i('character.occupation')} <Text style={{ color: t.error }}>*</Text></Text>
           <DiceButton onPress={() => { setOccupation(pickRandom(OCCUPATIONS)); setErrors((p) => ({ ...p, occupation: false })); }} />
         </View>
-        <TextInput style={[...inputStyle, errBorder('occupation')]} value={occupation} onChangeText={(v) => { setOccupation(v); setErrors((p) => ({ ...p, occupation: false })); }} placeholder="バリスタ" placeholderTextColor={t.textSecondary} />
+        <TextInput style={[...inputStyle, errBorder('occupation')]} value={occupation} onChangeText={(v) => { setOccupation(v); setErrors((p) => ({ ...p, occupation: false })); }} placeholder={i('character.occupation')} placeholderTextColor={t.textSecondary} />
       </View>
 
       {/* 性格 */}
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>性格（「、」区切り）<Text style={{ color: t.error }}>*</Text></Text>
-          <DiceButton onPress={() => { setPersonality(pickRandomN(PERSONALITIES, 3).join('、')); setErrors((p) => ({ ...p, personality: false })); }} />
+          <Text style={[styles.label, { color: t.text }]}>{i('character.personalitySep')}<Text style={{ color: t.error }}>*</Text></Text>
+          <DiceButton onPress={() => { setPersonality(pickRandomN(PERSONALITIES, 3).join('\u3001')); setErrors((p) => ({ ...p, personality: false })); }} />
         </View>
-        <TextInput style={[...inputStyle, errBorder('personality')]} value={personality} onChangeText={(v) => { setPersonality(v); setErrors((p) => ({ ...p, personality: false })); }} placeholder="明るい、親切" placeholderTextColor={t.textSecondary} />
+        <TextInput style={[...inputStyle, errBorder('personality')]} value={personality} onChangeText={(v) => { setPersonality(v); setErrors((p) => ({ ...p, personality: false })); }} placeholder={i('character.personality')} placeholderTextColor={t.textSecondary} />
       </View>
 
       {/* 趣味 */}
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>趣味（「、」区切り）<Text style={{ color: t.error }}>*</Text></Text>
-          <DiceButton onPress={() => { setHobbies(pickRandomN(HOBBIES, 3).join('、')); setErrors((p) => ({ ...p, hobbies: false })); }} />
+          <Text style={[styles.label, { color: t.text }]}>{i('character.hobbiesSep')}<Text style={{ color: t.error }}>*</Text></Text>
+          <DiceButton onPress={() => { setHobbies(pickRandomN(HOBBIES, 3).join('\u3001')); setErrors((p) => ({ ...p, hobbies: false })); }} />
         </View>
-        <TextInput style={[...inputStyle, errBorder('hobbies')]} value={hobbies} onChangeText={(v) => { setHobbies(v); setErrors((p) => ({ ...p, hobbies: false })); }} placeholder="料理、映画" placeholderTextColor={t.textSecondary} />
+        <TextInput style={[...inputStyle, errBorder('hobbies')]} value={hobbies} onChangeText={(v) => { setHobbies(v); setErrors((p) => ({ ...p, hobbies: false })); }} placeholder={i('character.hobbies')} placeholderTextColor={t.textSecondary} />
       </View>
 
       {/* 住所 */}
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>住所 <Text style={{ color: t.error }}>*</Text></Text>
+          <Text style={[styles.label, { color: t.text }]}>{i('character.location')} <Text style={{ color: t.error }}>*</Text></Text>
           <DiceButton onPress={() => { setLocation(pickRandom(LOCATIONS)); setErrors((p) => ({ ...p, location: false })); }} />
         </View>
-        <TextInput style={[...inputStyle, errBorder('location')]} value={location} onChangeText={(v) => { setLocation(v); setErrors((p) => ({ ...p, location: false })); }} placeholder="東京都・渋谷区" placeholderTextColor={t.textSecondary} />
+        <TextInput style={[...inputStyle, errBorder('location')]} value={location} onChangeText={(v) => { setLocation(v); setErrors((p) => ({ ...p, location: false })); }} placeholder={i('character.location')} placeholderTextColor={t.textSecondary} />
       </View>
 
       {/* 自己紹介 */}
       <View style={styles.field}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.label, { color: t.text }]}>自己紹介 <Text style={{ color: t.error }}>*</Text></Text>
+          <Text style={[styles.label, { color: t.text }]}>{i('character.bioLabel')} <Text style={{ color: t.error }}>*</Text></Text>
           <TouchableOpacity onPress={handleGenerateBio} disabled={generatingBio} style={styles.aiButton}>
             {generatingBio ? (
               <ActivityIndicator size={14} color={t.brand} />
             ) : (
-              <Text style={{ color: t.brand, fontSize: 13, fontWeight: '600' }}>🎲 AI生成</Text>
+              <Text style={{ color: t.brand, fontSize: 13, fontWeight: '600' }}>{'\ud83c\udfb2'} {i('character.generateBio')}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -345,7 +350,7 @@ export default function CharacterForm({
           style={[...inputStyle, styles.textArea, errBorder('bio')]}
           value={bio}
           onChangeText={(v) => { setBio(v); setErrors((p) => ({ ...p, bio: false })); }}
-          placeholder="自己紹介文（AI生成も可能）"
+          placeholder={i('character.bioPlaceholder')}
           placeholderTextColor={t.textSecondary}
           multiline
           numberOfLines={4}
@@ -355,14 +360,14 @@ export default function CharacterForm({
       {/* ボタン */}
       <View style={styles.buttons}>
         <TouchableOpacity style={[styles.cancelButton, { backgroundColor: t.surface, borderColor: t.border }]} onPress={onCancel}>
-          <Text style={[styles.cancelText, { color: t.textSecondary }]}>キャンセル</Text>
+          <Text style={[styles.cancelText, { color: t.textSecondary }]}>{i('action.cancel')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.submitButton, { backgroundColor: t.brand, opacity: isLoading ? 0.6 : 1 }]}
           onPress={handleSubmit}
           disabled={isLoading}
         >
-          <Text style={styles.submitText}>{isLoading ? '保存中...' : (submitLabel || '作成する')}</Text>
+          <Text style={styles.submitText}>{isLoading ? i('character.saving') : (submitLabel || i('character.create'))}</Text>
         </TouchableOpacity>
       </View>
 

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import ModelSelectorModal from '../../../components/chat/ModelSelectorModal';
 
 type Tier = 'free' | 'pro' | 'max' | 'admin';
@@ -63,6 +64,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
 
   // 5 stagger sections: userCard, credits, membership, menu, logout
   const anims = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(0))).current;
@@ -70,16 +72,16 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadCredits();
     loadModels();
-    anims.forEach((anim, i) => {
+    anims.forEach((anim, idx) => {
       setTimeout(() => {
         Animated.timing(anim, { toValue: 1, duration: 280, useNativeDriver: true }).start();
-      }, i * 80);
+      }, idx * 80);
     });
   }, []);
 
-  const staggerStyle = (i: number) => ({
-    opacity: anims[i],
-    transform: [{ translateY: anims[i].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+  const staggerStyle = (idx: number) => ({
+    opacity: anims[idx],
+    transform: [{ translateY: anims[idx].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
   });
 
   const handleLogout = () => {
@@ -104,13 +106,13 @@ export default function ProfileScreen() {
   const menuItems = [
     {
       icon: 'trophy-outline' as const,
-      label: '会員プラン',
+      label: i('profile.membershipPlan'),
       iconColor: t.brand,
       onPress: () => router.push('/membership'),
     },
     {
       icon: 'settings-outline' as const,
-      label: '設定',
+      label: i('settings.title'),
       iconColor: t.textSecondary,
       onPress: () => router.push('/settings'),
     },
@@ -120,7 +122,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header bar */}
       <View style={styles.headerBar}>
-        <Text style={[styles.headerTitle, { color: t.brand }]}>マイページ</Text>
+        <Text style={[styles.headerTitle, { color: t.brand }]}>{i('profile.title')}</Text>
         <TouchableOpacity onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={22} color={t.brand} />
         </TouchableOpacity>
@@ -198,7 +200,7 @@ export default function ProfileScreen() {
           <View style={[styles.creditsCard, { backgroundColor: t.surface, borderColor: t.border }]}>
             <View style={styles.creditsHeader}>
               <Ionicons name="flash-outline" size={16} color={t.brand} />
-              <Text style={[styles.creditsTitle, { color: t.text }]}>ポイント残高</Text>
+              <Text style={[styles.creditsTitle, { color: t.text }]}>{i('profile.pointsBalance')}</Text>
             </View>
 
             <View style={styles.creditsRow}>
@@ -206,14 +208,14 @@ export default function ProfileScreen() {
                 <Text style={[styles.creditsValue, { color: isAdmin ? '#7C3AED' : t.brand }]}>
                   {isAdmin ? '∞' : credits.toLocaleString()}
                 </Text>
-                <Text style={[styles.creditsLabel, { color: t.textSecondary }]}>残りポイント</Text>
+                <Text style={[styles.creditsLabel, { color: t.textSecondary }]}>{i('profile.remainingPoints')}</Text>
               </View>
               <View style={[styles.creditsDivider, { backgroundColor: t.border }]} />
               <View style={styles.creditsStat}>
                 <Text style={[styles.creditsValue, { color: t.text }]}>
                   {isAdmin ? '∞' : dailyCredits.toLocaleString()}
                 </Text>
-                <Text style={[styles.creditsLabel, { color: t.textSecondary }]}>日額上限</Text>
+                <Text style={[styles.creditsLabel, { color: t.textSecondary }]}>{i('profile.dailyLimit')}</Text>
               </View>
             </View>
 
@@ -231,7 +233,7 @@ export default function ProfileScreen() {
                   />
                 </View>
                 <Text style={[styles.creditsNote, { color: t.textSecondary }]}>
-                  毎日 0:00 にリセットされます
+                  {i('profile.resetTime')}
                 </Text>
               </>
             )}
@@ -245,10 +247,10 @@ export default function ProfileScreen() {
             <View style={[styles.memberCard, { backgroundColor: '#7C3AED18', borderColor: '#7C3AED60' }]}>
               <View style={styles.memberRow}>
                 <Ionicons name="shield-checkmark" size={20} color="#7C3AED" />
-                <Text style={[styles.memberTitle, { color: '#7C3AED' }]}>管理者アカウント</Text>
+                <Text style={[styles.memberTitle, { color: '#7C3AED' }]}>{i('profile.adminAccount')}</Text>
               </View>
               <Text style={[styles.memberDesc, { color: t.textSecondary }]}>
-                全モデル・ポイント無制限
+                {i('profile.adminDesc')}
               </Text>
               <TouchableOpacity
                 style={[styles.modelSelectBtn, { backgroundColor: '#7C3AED12', borderColor: '#7C3AED40' }]}
@@ -256,35 +258,67 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="sparkles" size={16} color="#7C3AED" />
-                <Text style={[styles.modelSelectLabel, { color: t.textSecondary }]}>使用中モデル</Text>
+                <Text style={[styles.modelSelectLabel, { color: t.textSecondary }]}>{i('profile.currentModel')}</Text>
                 <Text style={[styles.modelSelectValue, { color: '#7C3AED' }]} numberOfLines={1}>
-                  {models.find((m) => m.id === selectedModelId)?.name || '自動選択'}
+                  {models.find((m) => m.id === selectedModelId)?.name || i('profile.autoSelect')}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color="#7C3AED" />
               </TouchableOpacity>
             </View>
           ) : tier === 'max' ? (
-            /* Max card - show current plan details */
+            /* Max card - show current plan details + model selector */
             <View style={[styles.memberCard, { backgroundColor: t.brandLight, borderColor: t.brand + '60' }]}>
               <View style={styles.memberRow}>
                 <Ionicons name="trophy" size={20} color={t.brand} />
-                <Text style={[styles.memberTitle, { color: t.brand }]}>Max 会員</Text>
+                <Text style={[styles.memberTitle, { color: t.brand }]}>{i('profile.maxMember')}</Text>
               </View>
               <Text style={[styles.memberDesc, { color: t.textSecondary }]}>
-                全モデル対応 · 通義千問 Max 利用可 · 毎日2000pt
+                {i('profile.maxDesc')}
               </Text>
+              <TouchableOpacity
+                style={[styles.modelSelectBtn, { backgroundColor: t.brand + '12', borderColor: t.brand + '40' }]}
+                onPress={() => setModelModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles" size={16} color={t.brand} />
+                <Text style={[styles.modelSelectLabel, { color: t.textSecondary }]}>{i('profile.currentModel')}</Text>
+                <Text style={[styles.modelSelectValue, { color: t.brand }]} numberOfLines={1}>
+                  {models.find((m) => m.id === selectedModelId)?.name || i('profile.autoSelect')}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={t.brand} />
+              </TouchableOpacity>
+            </View>
+          ) : tier === 'pro' ? (
+            /* Pro card - show current plan details + model selector */
+            <View style={[styles.memberCard, { backgroundColor: '#3B82F618', borderColor: '#3B82F660' }]}>
+              <View style={styles.memberRow}>
+                <Ionicons name="trophy" size={20} color="#3B82F6" />
+                <Text style={[styles.memberTitle, { color: '#3B82F6' }]}>Pro</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.modelSelectBtn, { backgroundColor: '#3B82F612', borderColor: '#3B82F640' }]}
+                onPress={() => setModelModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles" size={16} color="#3B82F6" />
+                <Text style={[styles.modelSelectLabel, { color: t.textSecondary }]}>{i('profile.currentModel')}</Text>
+                <Text style={[styles.modelSelectValue, { color: '#3B82F6' }]} numberOfLines={1}>
+                  {models.find((m) => m.id === selectedModelId)?.name || i('profile.autoSelect')}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color="#3B82F6" />
+              </TouchableOpacity>
             </View>
           ) : (
-            /* Upgrade ad for free / pro */
+            /* Upgrade ad for free */
             <View style={[styles.upgradeCard, { backgroundColor: t.surface, borderColor: t.border }]}>
               <View style={styles.upgradeHeader}>
                 <View style={[styles.upgradeIcon, { backgroundColor: t.brandLight }]}>
                   <Ionicons name="trophy" size={22} color={t.brand} />
                 </View>
                 <View style={styles.upgradeText}>
-                  <Text style={[styles.upgradeTitle, { color: t.text }]}>Max にアップグレード</Text>
+                  <Text style={[styles.upgradeTitle, { color: t.text }]}>{i('profile.upgradeToMax')}</Text>
                   <Text style={[styles.upgradeSub, { color: t.textSecondary }]}>
-                    毎日2000pt · 通義千問 Max 利用可
+                    {i('profile.upgradeDesc')}
                   </Text>
                 </View>
               </View>
@@ -293,7 +327,7 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/membership')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.upgradeBtnText}>プランを見る</Text>
+                <Text style={styles.upgradeBtnText}>{i('profile.viewPlans')}</Text>
                 <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
@@ -303,13 +337,13 @@ export default function ProfileScreen() {
         {/* ── Menu ── */}
         <Animated.View style={staggerStyle(3)}>
           <View style={[styles.menuGroup, { borderColor: t.border }]}>
-            {menuItems.map((item, i) => (
+            {menuItems.map((item, idx) => (
               <TouchableOpacity
-                key={i}
+                key={idx}
                 style={[
                   styles.menuItem,
                   { backgroundColor: t.surface },
-                  i < menuItems.length - 1 && {
+                  idx < menuItems.length - 1 && {
                     borderBottomColor: t.border,
                     borderBottomWidth: StyleSheet.hairlineWidth,
                   },
@@ -335,7 +369,7 @@ export default function ProfileScreen() {
             activeOpacity={0.6}
           >
             <Ionicons name="log-out-outline" size={18} color={t.textSecondary} />
-            <Text style={[styles.logoutText, { color: t.textSecondary }]}>ログアウト</Text>
+            <Text style={[styles.logoutText, { color: t.textSecondary }]}>{i('profile.logout')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>

@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { radii } from '../../constants/theme';
 
 interface CharacterCardProps {
@@ -33,6 +34,7 @@ export default function CharacterCard({
   onChat,
 }: CharacterCardProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
 
   return (
     <TouchableOpacity
@@ -45,24 +47,24 @@ export default function CharacterCard({
 
       {/* Type badge */}
       <View style={[styles.typeBadge, { borderColor: t.border, backgroundColor: t.surface }]}>
-        <Text style={[styles.typeBadgeText, { color: t.textSecondary }]}>{isPreset ? '公式' : 'カスタム'}</Text>
+        <Text style={[styles.typeBadgeText, { color: t.textSecondary }]}>{isPreset ? i('character.official') : i('character.custom')}</Text>
       </View>
 
       {/* Name + age row */}
       <View style={styles.nameRow}>
         <Text style={[styles.name, { color: t.text }]}>{name}</Text>
-        <Text style={[styles.age, { color: t.textSecondary }]}>{age}歳</Text>
+        <Text style={[styles.age, { color: t.textSecondary }]}>{age}{'\u6b73'}</Text>
       </View>
 
       {/* Info line */}
       <Text style={[styles.infoLine, { color: t.textSecondary }]}>
-        {occupation} · {location}
+        {occupation} {'\u00b7'} {location}
       </Text>
 
       {/* Personality tags */}
       <View style={styles.tags}>
-        {personality.slice(0, 3).map((tag, i) => (
-          <View key={i} style={[styles.tag, { backgroundColor: t.brandLight }]}>
+        {personality.slice(0, 3).map((tag, idx) => (
+          <View key={idx} style={[styles.tag, { backgroundColor: t.brandLight }]}>
             <Text style={[styles.tagText, { color: t.brand }]}>{tag}</Text>
           </View>
         ))}
@@ -83,7 +85,7 @@ export default function CharacterCard({
         onPress={onChat || onPress}
         activeOpacity={0.7}
       >
-        <Text style={styles.ctaButtonText}>チャットを始める</Text>
+        <Text style={styles.ctaButtonText}>{i('character.startChat')}</Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -91,6 +93,7 @@ export default function CharacterCard({
 
 export function AddCharacterCard({ onPress }: { onPress: () => void }) {
   const t = useTheme();
+  const { t: i } = useLocale();
 
   return (
     <TouchableOpacity
@@ -101,8 +104,8 @@ export function AddCharacterCard({ onPress }: { onPress: () => void }) {
       <View style={[styles.addIconCircle, { backgroundColor: t.brandLight }]}>
         <Text style={[styles.addIconText, { color: t.brand }]}>+</Text>
       </View>
-      <Text style={[styles.addTitle, { color: t.text }]}>新しいキャラクター</Text>
-      <Text style={[styles.addSub, { color: t.textSecondary }]}>オリジナルの友達を作ろう</Text>
+      <Text style={[styles.addTitle, { color: t.text }]}>{i('character.addNew')}</Text>
+      <Text style={[styles.addSub, { color: t.textSecondary }]}>{i('character.addNewSub')}</Text>
     </TouchableOpacity>
   );
 }

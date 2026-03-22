@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import { spacing, fontSize } from '../../../constants/theme';
 import NewsCard from '../../../components/news/NewsCard';
 import ShareModal from '../../../components/common/ShareModal';
@@ -24,18 +25,19 @@ import type { NewsArticle } from '../../../services/api';
 
 const PAGE_SIZE = 20;
 
-const CATEGORIES = [
-  { key: '', label: 'すべて' },
-  { key: 'ai', label: 'AI・IT' },
-  { key: 'music', label: '音楽' },
-  { key: 'comic', label: '漫画' },
-  { key: 'tech', label: 'テクノロジー' },
-  { key: 'lifestyle', label: '暮らし' },
+const CATEGORY_KEYS = [
+  { key: '', i18nKey: 'news.all' },
+  { key: 'ai', i18nKey: 'news.aiIt' },
+  { key: 'music', i18nKey: 'news.music' },
+  { key: 'comic', i18nKey: 'news.comic' },
+  { key: 'tech', i18nKey: 'news.technology' },
+  { key: 'lifestyle', i18nKey: 'news.lifestyle' },
 ];
 
 export default function NewsScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
   const router = useRouter();
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,7 +181,7 @@ export default function NewsScreen() {
     <View style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: t.brand }]}>ニュース</Text>
+        <Text style={[styles.headerTitle, { color: t.brand }]}>{i('news.title')}</Text>
         {showScrollTop ? (
           <Text style={[styles.scrollTopBtn, { color: t.brand }]} onPress={scrollToTop}>↑</Text>
         ) : (
@@ -194,7 +196,7 @@ export default function NewsScreen() {
         contentContainerStyle={styles.tabRow}
         style={styles.tabScroll}
       >
-        {CATEGORIES.map((cat) => {
+        {CATEGORY_KEYS.map((cat) => {
           const active = category === cat.key;
           return (
             <TouchableOpacity
@@ -207,7 +209,7 @@ export default function NewsScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.tabText, { color: active ? '#FFFFFF' : t.textSecondary }]}>
-                {cat.label}
+                {i(cat.i18nKey)}
               </Text>
             </TouchableOpacity>
           );
@@ -260,7 +262,7 @@ export default function NewsScreen() {
             ) : (
               <View style={styles.emptyWrap}>
                 <Text style={[styles.emptyText, { color: t.textSecondary }]}>
-                  ニュースはまだありません
+                  {i('news.empty')}
                 </Text>
               </View>
             )
@@ -277,7 +279,7 @@ export default function NewsScreen() {
             ) : !hasMore && articles.length > 0 ? (
               <View style={styles.footerWrap}>
                 <Text style={[styles.footerText, { color: t.textSecondary }]}>
-                  すべてのニュースを読みました
+                  {i('news.allRead')}
                 </Text>
               </View>
             ) : null

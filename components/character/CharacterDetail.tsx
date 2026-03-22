@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { spacing, fontSize, radii } from '../../constants/theme';
 import type { Character } from '../../services/api';
 
@@ -21,6 +22,7 @@ export default function CharacterDetail({
   onDelete,
 }: CharacterDetailProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.background }]}>
@@ -28,23 +30,23 @@ export default function CharacterDetail({
         <Avatar imageUrl={character.avatarUrl} name={character.name} size={96} />
         <Text style={[styles.name, { color: t.text }]}>{character.name}</Text>
         <Text style={[styles.sub, { color: t.textSecondary }]}>
-          {character.age}歳 · {character.gender} · {character.occupation}
+          {character.age}{'\u6b73'} {'\u00b7'} {character.gender} {'\u00b7'} {character.occupation}
         </Text>
         <Text style={[styles.location, { color: t.textSecondary }]}>
-          📍 {character.location}
+          {'\ud83d\udccd'} {character.location}
         </Text>
 
         {/* Type badge */}
         <View style={[styles.typeBadge, { backgroundColor: character.isPreset ? t.brand : t.success }]}>
-          <Text style={styles.typeBadgeText}>{character.isPreset ? '公式キャラ' : 'カスタムキャラ'}</Text>
+          <Text style={styles.typeBadgeText}>{character.isPreset ? i('character.officialChar') : i('character.customChar')}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: t.text }]}>性格</Text>
+        <Text style={[styles.sectionTitle, { color: t.text }]}>{i('character.personality')}</Text>
         <View style={styles.tags}>
-          {character.personality.map((tag, i) => (
-            <View key={i} style={[styles.tag, { backgroundColor: t.brandLight }]}>
+          {character.personality.map((tag, idx) => (
+            <View key={idx} style={[styles.tag, { backgroundColor: t.brandLight }]}>
               <Text style={[styles.tagText, { color: t.brand }]}>{tag}</Text>
             </View>
           ))}
@@ -52,10 +54,10 @@ export default function CharacterDetail({
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: t.text }]}>趣味</Text>
+        <Text style={[styles.sectionTitle, { color: t.text }]}>{i('character.hobbies')}</Text>
         <View style={styles.tags}>
-          {character.hobbies.map((tag, i) => (
-            <View key={i} style={[styles.tag, { backgroundColor: t.inputBg }]}>
+          {character.hobbies.map((tag, idx) => (
+            <View key={idx} style={[styles.tag, { backgroundColor: t.inputBg }]}>
               <Text style={[styles.tagText, { color: t.text }]}>{tag}</Text>
             </View>
           ))}
@@ -63,7 +65,7 @@ export default function CharacterDetail({
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: t.text }]}>自己紹介</Text>
+        <Text style={[styles.sectionTitle, { color: t.text }]}>{i('character.bio')}</Text>
         <Text style={[styles.bio, { color: t.text }]}>{character.bio}</Text>
       </View>
 
@@ -75,7 +77,7 @@ export default function CharacterDetail({
           activeOpacity={0.7}
         >
           <Ionicons name="chatbubble-ellipses" size={20} color="#FFFFFF" />
-          <Text style={styles.chatButtonText}>チャットを始める</Text>
+          <Text style={styles.chatButtonText}>{i('character.startChat')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -88,7 +90,7 @@ export default function CharacterDetail({
               onPress={onEdit}
             >
               <Ionicons name="pencil" size={16} color={t.text} />
-              <Text style={[styles.actionButtonText, { color: t.text }]}>編集</Text>
+              <Text style={[styles.actionButtonText, { color: t.text }]}>{i('character.edit')}</Text>
             </TouchableOpacity>
           )}
           {onDelete && (
@@ -97,7 +99,7 @@ export default function CharacterDetail({
               onPress={onDelete}
             >
               <Ionicons name="trash-outline" size={16} color={t.error} />
-              <Text style={[styles.actionButtonText, { color: t.error }]}>削除</Text>
+              <Text style={[styles.actionButtonText, { color: t.error }]}>{i('character.delete')}</Text>
             </TouchableOpacity>
           )}
         </View>

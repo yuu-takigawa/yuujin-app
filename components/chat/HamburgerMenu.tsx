@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { fontSize } from '../../constants/theme';
 import { useCreditStore } from '../../stores/creditStore';
 import HalfScreenModal from '../common/HalfScreenModal';
@@ -33,9 +34,10 @@ export default function HamburgerMenu({
   onModelSelect,
 }: HamburgerMenuProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const models = useCreditStore((s) => s.models);
   const selectedModelId = useCreditStore((s) => s.selectedModelId);
-  const currentModelName = models.find((m) => m.id === selectedModelId)?.name || '自動選択';
+  const currentModelName = models.find((m) => m.id === selectedModelId)?.name || i('profile.autoSelect');
   const [confirmType, setConfirmType] = useState<'clearChat' | 'deleteFriend' | null>(null);
 
   const handleConfirmAction = (type: 'clearChat' | 'deleteFriend') => {
@@ -44,11 +46,11 @@ export default function HamburgerMenu({
   };
 
   const items = [
-    { icon: 'person-outline' as const, label: '角色詳細', onPress: onViewCharacter },
-    { icon: (isMuted ? 'notifications-outline' : 'notifications-off-outline') as const, label: isMuted ? '通知オン' : '通知オフ', onPress: onToggleMute },
-    { icon: (isPinned ? 'pin' : 'pin-outline') as const, label: isPinned ? 'ピン解除' : 'ピン留め', onPress: onTogglePin },
-    { icon: 'trash-outline' as const, label: 'チャット削除', onPress: () => handleConfirmAction('clearChat'), needsConfirm: true },
-    { icon: 'person-remove-outline' as const, label: '友達を削除', onPress: () => handleConfirmAction('deleteFriend'), isDestructive: true, needsConfirm: true },
+    { icon: 'person-outline' as const, label: i('menu.characterDetail'), onPress: onViewCharacter },
+    { icon: (isMuted ? 'notifications-outline' : 'notifications-off-outline') as const, label: isMuted ? i('menu.notificationOn') : i('menu.notificationOff'), onPress: onToggleMute },
+    { icon: (isPinned ? 'pin' : 'pin-outline') as const, label: isPinned ? i('menu.unpin') : i('menu.pin'), onPress: onTogglePin },
+    { icon: 'trash-outline' as const, label: i('menu.clearChat'), onPress: () => handleConfirmAction('clearChat'), needsConfirm: true },
+    { icon: 'person-remove-outline' as const, label: i('menu.deleteFriend'), onPress: () => handleConfirmAction('deleteFriend'), isDestructive: true, needsConfirm: true },
   ];
 
   const handleItemPress = (item: typeof items[number]) => {
@@ -64,7 +66,7 @@ export default function HamburgerMenu({
     <>
     <HalfScreenModal visible={visible} onClose={onClose} height={430}>
       <View style={[styles.header, { borderBottomColor: t.border }]}>
-        <Text style={[styles.title, { color: t.text }]}>メニュー</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('menu.title')}</Text>
       </View>
 
       {/* Model selector row */}
@@ -74,18 +76,18 @@ export default function HamburgerMenu({
         activeOpacity={0.7}
       >
         <Ionicons name="sparkles" size={18} color={t.brand} />
-        <Text style={[styles.modelLabel, { color: t.textSecondary }]}>AIモデル</Text>
+        <Text style={[styles.modelLabel, { color: t.textSecondary }]}>{i('menu.aiModel')}</Text>
         <Text style={[styles.modelValue, { color: t.brand }]} numberOfLines={1}>{currentModelName}</Text>
         <Ionicons name="chevron-forward" size={14} color={t.textSecondary} />
       </TouchableOpacity>
 
       <View style={styles.menuList}>
-        {items.map((item, i) => (
+        {items.map((item, idx) => (
           <TouchableOpacity
-            key={i}
+            key={idx}
             style={[
               styles.item,
-              i < items.length - 1 && { borderBottomColor: t.border, borderBottomWidth: StyleSheet.hairlineWidth },
+              idx < items.length - 1 && { borderBottomColor: t.border, borderBottomWidth: StyleSheet.hairlineWidth },
             ]}
             onPress={() => handleItemPress(item)}
             activeOpacity={0.6}
@@ -111,10 +113,10 @@ export default function HamburgerMenu({
 
       <ConfirmModal
         visible={confirmType === 'clearChat'}
-        title="チャット削除"
-        message="チャット履歴を削除しますか？"
-        confirmText="削除"
-        cancelText="キャンセル"
+        title={i('menu.clearChatConfirmTitle')}
+        message={i('menu.clearChatConfirmMsg')}
+        confirmText={i('action.delete')}
+        cancelText={i('action.cancel')}
         destructive
         onConfirm={() => { setConfirmType(null); onClearChat(); }}
         onCancel={() => setConfirmType(null)}
@@ -122,10 +124,10 @@ export default function HamburgerMenu({
 
       <ConfirmModal
         visible={confirmType === 'deleteFriend'}
-        title="友達を削除"
-        message="この友達を削除しますか？会話履歴もすべて削除されます。"
-        confirmText="削除"
-        cancelText="キャンセル"
+        title={i('menu.deleteFriendConfirmTitle')}
+        message={i('menu.deleteFriendConfirmMsg')}
+        confirmText={i('action.delete')}
+        cancelText={i('action.cancel')}
         destructive
         onConfirm={() => { setConfirmType(null); onDeleteFriend(); }}
         onCancel={() => setConfirmType(null)}

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import { ActivityIndicator } from 'react-native';
 
 type Tier = 'free' | 'pro' | 'max' | 'admin';
@@ -12,11 +13,11 @@ interface Plan {
   tier: Tier;
   name: string;
   price: string;
-  priceNote: string;
+  priceNoteKey: string;
   dailyCredits: string;
   color: string;
-  badgeText?: string;
-  features: string[];
+  badgeTextKey?: string;
+  featureKeys: string[];
   models: string[];
 }
 
@@ -24,34 +25,34 @@ const PLANS: Plan[] = [
   {
     tier: 'free',
     name: 'Free',
-    price: '¥0',
-    priceNote: 'ずっと無料',
+    price: '\u00a50',
+    priceNoteKey: 'membership.freeForever',
     dailyCredits: '100pt',
     color: '#9CA3AF',
-    features: ['毎日100ポイント', 'AI日本語会話', '新聞閲覧', 'ニュースフィード'],
+    featureKeys: ['membership.feat.free1', 'membership.feat.free2', 'membership.feat.free3', 'membership.feat.free4'],
     models: ['ERNIE Speed', 'ERNIE Lite'],
   },
   {
     tier: 'pro',
     name: 'Pro',
-    price: '¥9.9',
-    priceNote: '/ 月',
+    price: '\u00a59.9',
+    priceNoteKey: 'membership.perMonth',
     dailyCredits: '500pt',
     color: '#3B82F6',
-    badgeText: '🎉 無料キャンペーン中',
-    features: ['毎日500ポイント', '全ての Free 機能', 'DeepSeek V3 利用可', '通義千問 キャラモデル利用可'],
-    models: ['通義 Flash キャラ', 'DeepSeek V3', '通義 Plus キャラ', '通義千問 Plus'],
+    badgeTextKey: 'membership.freeCampaign',
+    featureKeys: ['membership.feat.pro1', 'membership.feat.pro2', 'membership.feat.pro3', 'membership.feat.pro4'],
+    models: ['\u901a\u7fa9 Flash \u30ad\u30e3\u30e9', 'DeepSeek V3', '\u901a\u7fa9 Plus \u30ad\u30e3\u30e9', '\u901a\u7fa9\u5343\u554f Plus'],
   },
   {
     tier: 'max',
     name: 'Max',
-    price: '¥29.9',
-    priceNote: '/ 月',
+    price: '\u00a529.9',
+    priceNoteKey: 'membership.perMonth',
     dailyCredits: '2000pt',
     color: '#E85B3A',
-    badgeText: '近日公開',
-    features: ['毎日2000ポイント', '全ての Pro 機能', '通義千問 Max（最高品質）', '優先サポート'],
-    models: ['全モデル対応（通義千問 Max 含む）'],
+    badgeTextKey: 'membership.comingSoon',
+    featureKeys: ['membership.feat.max1', 'membership.feat.max2', 'membership.feat.max3', 'membership.feat.max4'],
+    models: [],
   },
 ];
 
@@ -61,6 +62,7 @@ export default function MembershipScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
   const membership = useCreditStore((s) => s.membership) as Tier;
   const credits = useCreditStore((s) => s.credits);
   const dailyCredits = useCreditStore((s) => s.dailyCredits);
@@ -75,9 +77,9 @@ export default function MembershipScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: t.border, backgroundColor: t.surface }]}>
         <TouchableOpacity style={styles.back} onPress={() => router.back()} activeOpacity={0.6}>
-          <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
+          <Text style={[styles.backText, { color: t.brand }]}>{'\u2039'}</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.text }]}>会員プラン</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]}>{i('membership.headerTitle')}</Text>
         <View style={styles.back} />
       </View>
 
@@ -85,9 +87,9 @@ export default function MembershipScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Ionicons name="trophy" size={40} color={t.brand} />
-          <Text style={[styles.heroTitle, { color: t.text }]}>プランを選ぼう</Text>
+          <Text style={[styles.heroTitle, { color: t.text }]}>{i('membership.selectPlan')}</Text>
           <Text style={[styles.heroSub, { color: t.textSecondary }]}>
-            ポイントで AI キャラと自由に会話。{'\n'}会員になるとより多くのモデルが使えます。
+            {i('membership.subtitle')}
           </Text>
         </View>
 
@@ -96,15 +98,15 @@ export default function MembershipScreen() {
           <View style={[styles.adminCard, { backgroundColor: '#7C3AED18', borderColor: '#7C3AED' }]}>
             <View style={styles.adminRow}>
               <Ionicons name="shield-checkmark" size={22} color="#7C3AED" />
-              <Text style={[styles.adminTitle, { color: '#7C3AED' }]}>管理者アカウント</Text>
+              <Text style={[styles.adminTitle, { color: '#7C3AED' }]}>{i('profile.adminAccount')}</Text>
             </View>
             <Text style={[styles.adminDesc, { color: t.textSecondary }]}>
-              全モデル利用可 · ポイント無制限 · 通義千問 Max 含む
+              {i('membership.adminAllModels')}
             </Text>
             <View style={styles.adminStats}>
-              <Text style={[styles.adminStat, { color: '#7C3AED' }]}>∞ pt 残り</Text>
+              <Text style={[styles.adminStat, { color: '#7C3AED' }]}>{'\u221e'} pt {i('membership.remainPt')}</Text>
               <Text style={[styles.adminStatSep, { color: t.border }]}>|</Text>
-              <Text style={[styles.adminStat, { color: '#7C3AED' }]}>∞ pt / 日</Text>
+              <Text style={[styles.adminStat, { color: '#7C3AED' }]}>{'\u221e'} pt {i('membership.dailyPt')}</Text>
             </View>
           </View>
         )}
@@ -112,14 +114,14 @@ export default function MembershipScreen() {
         {/* Current plan summary (non-admin) */}
         {!isAdmin && (
           <View style={[styles.currentCard, { backgroundColor: t.surface, borderColor: t.border }]}>
-            <Text style={[styles.currentLabel, { color: t.textSecondary }]}>現在のプラン</Text>
+            <Text style={[styles.currentLabel, { color: t.textSecondary }]}>{i('membership.currentPlan')}</Text>
             <View style={styles.currentRow}>
               <Text style={[styles.currentName, { color: t.text }]}>
-                {PLANS.find((p) => p.tier === membership)?.name ?? '無料プラン'}
+                {PLANS.find((p) => p.tier === membership)?.name ?? 'Free'}
               </Text>
               <View style={[styles.tierBadge, { backgroundColor: (PLANS.find((p) => p.tier === membership)?.color ?? '#9CA3AF') + '20' }]}>
                 <Text style={[styles.tierBadgeText, { color: PLANS.find((p) => p.tier === membership)?.color ?? '#9CA3AF' }]}>
-                  {PLANS.find((p) => p.tier === membership)?.dailyCredits ?? '100pt'} / 日
+                  {PLANS.find((p) => p.tier === membership)?.dailyCredits ?? '100pt'} {i('membership.dailyPt')}
                 </Text>
               </View>
             </View>
@@ -135,7 +137,7 @@ export default function MembershipScreen() {
               />
             </View>
             <Text style={[styles.creditsText, { color: t.textSecondary }]}>
-              残り {credits} pt / {dailyCredits} pt
+              {i('membership.remainPt')} {credits} pt / {dailyCredits} pt
             </Text>
           </View>
         )}
@@ -161,27 +163,27 @@ export default function MembershipScreen() {
               <View style={styles.planHeader}>
                 <View style={styles.planTitleRow}>
                   <Text style={[styles.planName, { color: t.text }]}>{plan.name}</Text>
-                  {plan.badgeText && (
+                  {plan.badgeTextKey && (
                     <View style={[styles.recommendBadge, { backgroundColor: plan.color }]}>
-                      <Text style={styles.recommendText}>⭐ {plan.badgeText}</Text>
+                      <Text style={styles.recommendText}>{plan.badgeTextKey === 'membership.freeCampaign' ? '\u2b50 ' : ''}{i(plan.badgeTextKey)}</Text>
                     </View>
                   )}
                   {isCurrent && (
                     <View style={[styles.currentBadge, { backgroundColor: plan.color + '20', borderColor: plan.color }]}>
-                      <Text style={[styles.currentBadgeText, { color: plan.color }]}>現在</Text>
+                      <Text style={[styles.currentBadgeText, { color: plan.color }]}>{i('membership.current')}</Text>
                     </View>
                   )}
                 </View>
 
                 <View style={styles.priceRow}>
                   <Text style={[styles.price, { color: isCurrent ? plan.color : t.text }]}>{plan.price}</Text>
-                  <Text style={[styles.priceNote, { color: t.textSecondary }]}>{plan.priceNote}</Text>
+                  <Text style={[styles.priceNote, { color: t.textSecondary }]}>{i(plan.priceNoteKey)}</Text>
                 </View>
 
                 <View style={[styles.creditsPill, { backgroundColor: plan.color + '18' }]}>
                   <Ionicons name="flash" size={13} color={plan.color} />
                   <Text style={[styles.creditsPillText, { color: plan.color }]}>
-                    毎日 {plan.dailyCredits} ポイント
+                    {i('membership.dailyPoints').replace('{x}', plan.dailyCredits.replace('pt', ''))}
                   </Text>
                 </View>
               </View>
@@ -191,26 +193,30 @@ export default function MembershipScreen() {
 
               {/* Features */}
               <View style={styles.featureList}>
-                {plan.features.map((f, i) => (
-                  <View key={i} style={styles.featureRow}>
+                {plan.featureKeys.map((fk, idx) => (
+                  <View key={idx} style={styles.featureRow}>
                     <Ionicons name="checkmark-circle" size={16} color={plan.color} />
-                    <Text style={[styles.featureText, { color: t.text }]}>{f}</Text>
+                    <Text style={[styles.featureText, { color: t.text }]}>{i(fk)}</Text>
                   </View>
                 ))}
               </View>
 
               {/* Models */}
               <View style={[styles.modelBox, { backgroundColor: t.inputBg, borderColor: t.border }]}>
-                <Text style={[styles.modelLabel, { color: t.textSecondary }]}>利用可能なモデル</Text>
-                {plan.models.map((m, i) => (
-                  <Text key={i} style={[styles.modelItem, { color: t.text }]}>· {m}</Text>
-                ))}
+                <Text style={[styles.modelLabel, { color: t.textSecondary }]}>{i('membership.availableModels')}</Text>
+                {plan.tier === 'max' ? (
+                  <Text style={[styles.modelItem, { color: t.text }]}>{'\u00b7'} {i('membership.allModels')}</Text>
+                ) : (
+                  plan.models.map((m, idx) => (
+                    <Text key={idx} style={[styles.modelItem, { color: t.text }]}>{'\u00b7'} {m}</Text>
+                  ))
+                )}
               </View>
 
               {/* CTA */}
               {!isCurrent && isUpgrade && plan.tier === 'max' && (
                 <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
-                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>近日公開</Text>
+                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.comingSoon')}</Text>
                 </View>
               )}
               {!isCurrent && isUpgrade && plan.tier !== 'max' && (
@@ -221,22 +227,22 @@ export default function MembershipScreen() {
                   onPress={async () => {
                     try {
                       await upgradePlan(plan.tier as 'pro' | 'max');
-                      Alert.alert('🎉', `${plan.name}にアップグレードしました！`);
+                      Alert.alert('\ud83c\udf89', i('membership.upgradeSuccess').replace('{name}', plan.name));
                     } catch {
-                      Alert.alert('エラー', 'アップグレードに失敗しました。');
+                      Alert.alert('\u26a0\ufe0f', i('membership.upgradeFailed'));
                     }
                   }}
                 >
                   {isUpgrading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.ctaBtnText}>アップグレード</Text>
+                    <Text style={styles.ctaBtnText}>{i('membership.upgrade')}</Text>
                   )}
                 </TouchableOpacity>
               )}
               {isCurrent && (
                 <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
-                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>現在のプラン</Text>
+                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.currentPlan')}</Text>
                 </View>
               )}
             </View>
@@ -245,8 +251,7 @@ export default function MembershipScreen() {
 
         {/* Bottom note */}
         <Text style={[styles.footnote, { color: t.textSecondary }]}>
-          ※ 支払い機能は近日公開予定です。{'\n'}
-          全プラン自動更新なし、いつでもキャンセル可能。
+          {i('membership.paymentNote')}
         </Text>
       </ScrollView>
     </View>
