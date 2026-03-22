@@ -18,6 +18,7 @@ interface MessageBubbleProps {
   skipEntrance?: boolean;
   imageUrl?: string;
   dismissSignal?: number;
+  onRequestScroll?: () => void;
 }
 
 // Match news ref pattern: [articleId] Title
@@ -38,6 +39,7 @@ export default function MessageBubble({
   skipEntrance,
   imageUrl,
   dismissSignal,
+  onRequestScroll,
 }: MessageBubbleProps) {
   const isUser = role === 'user';
   const t = useTheme();
@@ -96,10 +98,13 @@ export default function MessageBubble({
       showToast();
     } else if (action === 'translate') {
       setAnnotation({ type: 'translation' });
+      setTimeout(() => onRequestScroll?.(), 300);
     } else if (action === 'analyze') {
       setAnnotation({ type: 'analysis' });
+      setTimeout(() => onRequestScroll?.(), 300);
     } else if (action === 'correct') {
       setAnnotation({ type: 'correct' });
+      setTimeout(() => onRequestScroll?.(), 300);
     }
     // 'read' is handled inside BubbleTooltip directly
   };

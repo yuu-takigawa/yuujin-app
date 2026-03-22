@@ -331,6 +331,7 @@ export default function ConversationScreen() {
                 highlight={isSearchHit}
                 skipEntrance={item.data.id === skipEntranceId}
                 dismissSignal={scrollSignal}
+                onRequestScroll={() => flatListRef.current?.scrollToEnd({ animated: true })}
               />
             );
           }}
