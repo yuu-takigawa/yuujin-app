@@ -129,7 +129,6 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           >
             <Ionicons name="arrow-up" size={14} color={canSend ? '#FFFFFF' : t.textSecondary} />
           </TouchableOpacity>
-          )}
         </View>
 
         {/* AI assist button */}
