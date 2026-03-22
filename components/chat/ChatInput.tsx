@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import * as ImagePicker from 'expo-image-picker';
-import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
+// Voice recorder removed — users can use system keyboard voice input
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -46,30 +46,6 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
     }
   }, [suggestedText]);
 
-  // 语音录制
-  const micPulse = useRef(new Animated.Value(1)).current;
-  const { state: voiceState, startRecording, stopRecording } = useVoiceRecorder({
-    onTranscribed: (transcribed) => setText((prev) => prev ? `${prev} ${transcribed}` : transcribed),
-    onError: (msg) => Alert.alert('音声認識エラー', msg),
-  });
-  const isRecording = voiceState === 'recording';
-  const isProcessing = voiceState === 'processing';
-
-  // 录音时脉冲动画
-  useEffect(() => {
-    if (isRecording) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(micPulse, { toValue: 1.4, duration: 600, useNativeDriver: true }),
-          Animated.timing(micPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ]),
-      );
-      pulse.start();
-      return () => pulse.stop();
-    } else {
-      micPulse.setValue(1);
-    }
-  }, [isRecording]);
 
   const panelAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -145,38 +121,14 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
             onSubmitEditing={Platform.OS === 'web' ? handleSend : undefined}
             blurOnSubmit={Platform.OS === 'web'}
           />
-          {hasText ? (
-            <TouchableOpacity
-              style={[styles.sendBtn, { backgroundColor: canSend ? t.brand : t.brandLight }]}
-              onPress={handleSend}
-              disabled={!canSend}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-up" size={14} color={canSend ? '#FFFFFF' : t.textSecondary} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.micBtn, {
-                backgroundColor: isRecording ? '#FF3B30' : isProcessing ? t.border : t.brandLight,
-              }]}
-              activeOpacity={0.8}
-              {...(Platform.OS === 'web'
-                ? { onPress: isRecording ? stopRecording : startRecording }
-                : { onPressIn: startRecording, onPressOut: stopRecording })}
-              disabled={disabled || isProcessing}
-            >
-              {isProcessing ? (
-                <ActivityIndicator size={10} color={t.textSecondary} />
-              ) : (
-                <Animated.View style={{ transform: [{ scale: micPulse }] }}>
-                  <Ionicons
-                    name={isRecording ? 'mic' : 'mic-outline'}
-                    size={14}
-                    color={isRecording ? '#FFFFFF' : t.textSecondary}
-                  />
-                </Animated.View>
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sendBtn, { backgroundColor: canSend ? t.brand : t.brandLight }]}
+            onPress={handleSend}
+            disabled={!canSend}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-up" size={14} color={canSend ? '#FFFFFF' : t.textSecondary} />
+          </TouchableOpacity>
           )}
         </View>
 
