@@ -32,6 +32,7 @@ export default function CreateCharacterScreen() {
     try {
       await createCharacter({
         ...data,
+        avatarEmoji: '',
         userId: user?.id || null,
       });
       router.back();

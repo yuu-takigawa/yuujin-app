@@ -325,6 +325,7 @@ export const mockTopics: Topic[] = [
 export const mockNewsDetails: Record<string, NewsArticleDetail> = {
   'news-1': {
     ...mockNewsArticles[0],
+    content: '',
     paragraphs: [
       {
         id: 'p1-1',
@@ -357,6 +358,7 @@ export const mockNewsDetails: Record<string, NewsArticleDetail> = {
   },
   'news-2': {
     ...mockNewsArticles[1],
+    content: '',
     paragraphs: [
       {
         id: 'p2-1',
@@ -379,6 +381,7 @@ export const mockNewsDetails: Record<string, NewsArticleDetail> = {
   },
   'news-3': {
     ...mockNewsArticles[2],
+    content: '',
     paragraphs: [
       {
         id: 'p3-1',

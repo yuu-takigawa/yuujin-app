@@ -47,8 +47,8 @@ export default function HamburgerMenu({
 
   const items = [
     { icon: 'person-outline' as const, label: i('menu.characterDetail'), onPress: onViewCharacter },
-    { icon: (isMuted ? 'notifications-outline' : 'notifications-off-outline') as const, label: isMuted ? i('menu.notificationOn') : i('menu.notificationOff'), onPress: onToggleMute },
-    { icon: (isPinned ? 'pin' : 'pin-outline') as const, label: isPinned ? i('menu.unpin') : i('menu.pin'), onPress: onTogglePin },
+    { icon: isMuted ? 'notifications-outline' as const : 'notifications-off-outline' as const, label: isMuted ? i('menu.notificationOn') : i('menu.notificationOff'), onPress: onToggleMute },
+    { icon: isPinned ? 'pin' as const : 'pin-outline' as const, label: isPinned ? i('menu.unpin') : i('menu.pin'), onPress: onTogglePin },
     { icon: 'trash-outline' as const, label: i('menu.clearChat'), onPress: () => handleConfirmAction('clearChat'), needsConfirm: true },
     { icon: 'person-remove-outline' as const, label: i('menu.deleteFriend'), onPress: () => handleConfirmAction('deleteFriend'), isDestructive: true, needsConfirm: true },
   ];

@@ -135,7 +135,7 @@ export default function NewsDetailScreen() {
             // 遍历 DOM 找到第 index 个 ⓘ 的 span 元素
             const spans = document.querySelectorAll('span');
             let count = 0;
-            for (const span of spans) {
+            for (const span of Array.from(spans)) {
               if (span.textContent === 'ⓘ' && span.children.length === 0) {
                 if (count === index) {
                   const rect = span.getBoundingClientRect();

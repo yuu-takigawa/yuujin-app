@@ -146,7 +146,6 @@ export default function MessageBubble({
         {content}
         <Text
           ref={iconRef as any}
-          collapsable={false}
           onPress={handleInfoPress}
           style={{ color: t.textSecondary, fontSize: 13 }}
         >{'  ⓘ'}</Text>

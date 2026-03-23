@@ -34,7 +34,7 @@ export const darkColors = {
   dateBadge: '#333333',
 } as const;
 
-export type ThemeColors = typeof lightColors;
+export type ThemeColors = { [K in keyof typeof lightColors]: string };
 
 // Keep backward-compatible default export
 export const colors = lightColors;

@@ -237,18 +237,19 @@ export default function ImageCropper({ imageUri, onConfirm, onCancel }: Props) {
           }]}
         >
           {/* 图片 */}
-          <Image
-            source={{ uri: imageUri }}
-            style={{
-              position: 'absolute',
-              width: displayW,
-              height: displayH,
-              left: (areaSize - displayW) / 2 + offset.x,
-              top: (areaSize - displayH) / 2 + offset.y,
-            }}
-            resizeMode="cover"
-            pointerEvents="none"
-          />
+          <View pointerEvents="none">
+            <Image
+              source={{ uri: imageUri }}
+              style={{
+                position: 'absolute',
+                width: displayW,
+                height: displayH,
+                left: (areaSize - displayW) / 2 + offset.x,
+                top: (areaSize - displayH) / 2 + offset.y,
+              }}
+              resizeMode="cover"
+            />
+          </View>
 
           {/* 暗角遮罩（圆形外的四角） */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
