@@ -2,13 +2,16 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <script>document.documentElement.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'#121212':'#F7F7F7'</script>
+    <meta name="theme-color" content="#F7F7F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>Yuujin・友人</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#E85B3A" />
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,28 +22,19 @@
     <link rel="icon" href="/favicon.ico" />
 
     <style id="expo-reset">
-      html,
-      body {
-        height: 100%;
+      html {
+        height: calc(100% + env(safe-area-inset-bottom, 0px) + env(safe-area-inset-bottom, 0px));
+        overflow: hidden;
         -webkit-text-size-adjust: 100%;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior: none;
-      }
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
         background-color: #F7F7F7;
       }
       body {
-        overflow: hidden;
-        position: fixed;
-        width: 100%;
-        height: 100dvh;
-        height: -webkit-fill-available;
-      }
-      #root {
         height: 100%;
+        overflow: hidden;
+        margin: 0;
+        background-color: #F7F7F7;
       }
       @media (prefers-color-scheme: dark) {
         html, body { background-color: #121212; }
@@ -60,6 +54,30 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+
+    <!-- Inline splash: visible instantly before JS loads, hidden by React -->
+    <div id="splash" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F7F7F7;z-index:9999;transition:opacity .3s ease;">
+      <img src="/logo.svg" alt="Yuujin" style="height:36px;width:180px;object-fit:contain;" />
+      <div class="spinner" style="margin-top:24px;width:24px;height:24px;border:3px solid #f0d0c4;border-top-color:#E85B3A;border-radius:50%;animation:sp .8s linear infinite;"></div>
+      <style>
+        @keyframes sp{to{transform:rotate(360deg)}}
+        @media(prefers-color-scheme:dark){
+          #splash{background:#121212 !important;}
+          #splash .spinner{border-color:#3a2520;border-top-color:#E85B3A;}
+        }
+      </style>
+    </div>
+    <script>
+      // Fade out splash once React root renders
+      var mo=new MutationObserver(function(){
+        if(document.getElementById('root').children.length>0){
+          var s=document.getElementById('splash');
+          if(s){s.style.opacity='0';setTimeout(function(){s.remove()},300);}
+          mo.disconnect();
+        }
+      });mo.observe(document.getElementById('root'),{childList:true});
+    </script>
+
     <!-- JS bundle will be injected by deploy script -->
   </body>
 </html>

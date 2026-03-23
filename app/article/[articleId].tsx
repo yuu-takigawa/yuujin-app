@@ -704,7 +704,7 @@ export default function NewsDetailScreen() {
       )}
 
       {/* Fixed bottom: reply indicator + input bar */}
-      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 4) }]}>
+      <View style={[styles.bottomContainer, { backgroundColor: t.surface, borderTopColor: t.border, paddingBottom: Math.max(insets.bottom, 4) }]}>
         {/* Reply indicator */}
         {replyTarget && (
           <View style={[styles.replyIndicator, { borderBottomColor: t.border }]}>
@@ -988,7 +988,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 1,
   },
   bottomBar: {
     flexDirection: 'row',
