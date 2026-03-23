@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
@@ -192,14 +192,13 @@ export default function MessageBubble({
           />
         )}
 
-        {/* Tooltip - rendered below bubble */}
+        {/* Tooltip - floats above the bubble */}
         {tooltipVisible && (
           <BubbleTooltip
             visible={tooltipVisible}
             content={content}
             role={role}
-            anchorY={0}
-            anchorX={0}
+            position="above"
             onClose={() => setTooltipVisible(false)}
             onAction={handleAction}
           />
@@ -228,6 +227,7 @@ const styles = StyleSheet.create({
   },
   bubbleWrap: {
     maxWidth: Dimensions.get('window').width * 0.65,
+    position: 'relative',
   },
   bubble: {
     paddingHorizontal: 14,

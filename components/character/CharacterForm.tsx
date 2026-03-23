@@ -81,6 +81,7 @@ export default function CharacterForm({
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const bioCancel = useRef<(() => void) | null>(null);
+  const avatarScrollRef = useRef<ScrollView>(null);
 
   const validate = (): boolean => {
     const errs: Record<string, boolean> = {};
@@ -115,16 +116,65 @@ export default function CharacterForm({
   };
 
   const handleRandomizeAll = () => {
+    // Cancel any in-flight bio generation
+    if (generatingBio) {
+      bioCancel.current?.();
+      bioCancel.current = null;
+      setGeneratingBio(false);
+    }
+
     const g = Math.random() > 0.5 ? '\u5973\u6027' : '\u7537\u6027';
+    const newName = randomFullName(g);
+    const newAge = String(randomAge());
+    const newOccupation = pickRandom(OCCUPATIONS);
+    const newLocation = pickRandom(LOCATIONS);
+    const newPersonality = pickRandomN(PERSONALITIES, 3).join('\u3001');
+    const newHobbies = pickRandomN(HOBBIES, 3).join('\u3001');
+    const newAvatar = pickRandom(PRESET_AVATARS);
+
     setGender(g);
-    setName(randomFullName(g));
-    setAge(String(randomAge()));
-    setOccupation(pickRandom(OCCUPATIONS));
-    setLocation(pickRandom(LOCATIONS));
-    setPersonality(pickRandomN(PERSONALITIES, 3).join('\u3001'));
-    setHobbies(pickRandomN(HOBBIES, 3).join('\u3001'));
-    setAvatarUrl(pickRandom(PRESET_AVATARS));
+    setName(newName);
+    setAge(newAge);
+    setOccupation(newOccupation);
+    setLocation(newLocation);
+    setPersonality(newPersonality);
+    setHobbies(newHobbies);
+    setAvatarUrl(newAvatar);
     setErrors({});
+
+    // Scroll avatar grid to show selected avatar
+    const avatarIndex = PRESET_AVATARS.indexOf(newAvatar);
+    if (avatarIndex >= 0 && avatarScrollRef.current) {
+      // +1 for the camera upload button at position 0
+      const row = Math.floor((avatarIndex + 1) / 5);
+      const scrollTarget = Math.max(0, row * (AVATAR_SIZE + 8) - (AVATAR_SIZE + 8));
+      setTimeout(() => avatarScrollRef.current?.scrollTo({ y: scrollTarget, animated: true }), 100);
+    }
+
+    // Auto-generate bio with a slight delay so state settles
+    setBio('');
+    setGeneratingBio(true);
+    let accumulated = '';
+    // Use setTimeout to ensure the state values above are committed
+    setTimeout(() => {
+      bioCancel.current = streamGenerateBio(
+        {
+          name: newName.trim(),
+          age: parseInt(newAge) || 25,
+          gender: g,
+          occupation: newOccupation.trim(),
+          personality: newPersonality.split('\u3001').filter(Boolean),
+          hobbies: newHobbies.split('\u3001').filter(Boolean),
+          location: newLocation.trim(),
+        },
+        (delta) => {
+          accumulated += delta;
+          setBio(accumulated);
+        },
+        () => setGeneratingBio(false),
+        () => setGeneratingBio(false),
+      );
+    }, 50);
   };
 
   const handleGenerateBio = () => {
@@ -221,6 +271,7 @@ export default function CharacterForm({
         <Text style={[styles.label, { color: errors.avatar ? t.error : t.text, marginBottom: 8 }]}>{i('character.avatar')} <Text style={{ color: t.error }}>*</Text> {errors.avatar ? <Text style={{ color: t.error, fontSize: 12, fontWeight: '400' }}>{i('character.avatarRequired')}</Text> : null}</Text>
         <View style={{ height: (AVATAR_SIZE + 8) * 3, overflow: 'hidden', position: 'relative' }}>
         <ScrollView
+          ref={avatarScrollRef}
           style={{ height: (AVATAR_SIZE + 8) * 3 }}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}

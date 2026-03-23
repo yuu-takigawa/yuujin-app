@@ -10,7 +10,7 @@ interface ServerComment {
   content: string;
   isAi: number;
   createdAt: string;
-  author: { id: string; name: string; avatarEmoji: string; isAi: boolean } | null;
+  author: { id: string; name: string; avatarUrl?: string; avatarEmoji: string; isAi: boolean } | null;
   replies?: ServerComment[];
 }
 
@@ -21,6 +21,7 @@ function mapComment(c: ServerComment, articleId: string): NewsComment {
     characterId: c.characterId || c.userId || '',
     characterName: c.author?.name || 'ゲスト',
     characterEmoji: c.author?.avatarEmoji || '👤',
+    characterAvatarUrl: c.author?.avatarUrl || '',
     content: c.content,
     createdAt: c.createdAt,
     isAi: !!c.isAi,
@@ -178,6 +179,11 @@ export function requestAIReply(
   xhr.onreadystatechange = () => {
     if (cancelled) return;
     if (xhr.readyState >= 3) {
+      // Handle HTTP errors
+      if (xhr.readyState === 4 && xhr.status !== 200) {
+        onEvent({ type: 'error', error: `Server error (${xhr.status})` });
+        return;
+      }
       const newText = xhr.responseText.substring(lastIndex);
       lastIndex = xhr.responseText.length;
       if (newText) {

@@ -21,6 +21,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
@@ -54,6 +55,10 @@ export default function RegisterScreen() {
     }
     if (password.length < 6 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError(i('auth.passwordRule'));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(i('auth.passwordMismatch'));
       return;
     }
     if (!inviteCode.trim()) {
@@ -115,6 +120,11 @@ export default function RegisterScreen() {
             placeholder={i('auth.password')}
             value={password}
             onChangeText={(v) => { setPassword(v); setError(''); }}
+          />
+          <PasswordInput
+            placeholder={i('auth.confirmPassword')}
+            value={confirmPassword}
+            onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
           />
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}

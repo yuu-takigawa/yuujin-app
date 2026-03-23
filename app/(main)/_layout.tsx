@@ -3,6 +3,7 @@ import { Text, View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { useEffect, useState } from 'react';
 import { getUnreadCount, registerPushToken } from '../../services/api';
 
@@ -30,6 +31,7 @@ async function registerForPushNotifications() {
 
 export default function MainLayout() {
   const t = useTheme();
+  const { t: i } = useLocale();
   const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -79,7 +81,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="(chat)"
         options={{
-          title: 'チャット',
+          title: i('chat.title'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={24} color={color} />
           ),
@@ -88,7 +90,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="(friends)"
         options={{
-          title: '友達',
+          title: i('friends.title'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color} />
           ),
@@ -97,7 +99,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="(news)"
         options={{
-          title: 'ニュース',
+          title: i('news.title'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'newspaper' : 'newspaper-outline'} size={24} color={color} />
           ),
@@ -106,7 +108,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="(profile)"
         options={{
-          title: 'マイページ',
+          title: i('profile.title'),
           tabBarIcon: ({ color, focused }) => (
             <View>
               <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />

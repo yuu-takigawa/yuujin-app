@@ -190,6 +190,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'news.lifestyle': '生活',
     'news.empty': '暂无新闻',
     'news.allRead': '所有新闻已读完',
+    'news.article': '文章',
+    'news.comment': '评论',
+    'news.noComments': '暂无评论',
+    'news.commentPlaceholder': '写评论...',
+    'news.replyTo': '回复 {name}',
 
     // Chat
     'chat.title': '聊天',
@@ -464,6 +469,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'news.lifestyle': 'Lifestyle',
     'news.empty': 'No news yet',
     'news.allRead': 'All caught up',
+    'news.article': 'Article',
+    'news.comment': 'Comments',
+    'news.noComments': 'No comments yet',
+    'news.commentPlaceholder': 'Write a comment...',
+    'news.replyTo': 'Reply to {name}',
 
     // Chat
     'chat.title': 'Chat',
@@ -738,6 +748,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'news.lifestyle': '暮らし',
     'news.empty': 'ニュースはまだありません',
     'news.allRead': 'すべてのニュースを読みました',
+    'news.article': '記事',
+    'news.comment': 'コメント',
+    'news.noComments': 'まだコメントはありません',
+    'news.commentPlaceholder': 'コメントを書く...',
+    'news.replyTo': '{name} に返信',
 
     // Chat
     'chat.title': 'チャット',

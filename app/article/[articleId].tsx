@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
 import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph, requestAIReply } from '../../services/api';
@@ -36,6 +37,7 @@ export default function NewsDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
   const characters = useCharacterStore((s) => s.characters);
   const friends = useFriendStore((s) => s.friends);
   const user = useAuthStore((s) => s.user);
@@ -296,11 +298,15 @@ export default function NewsDetailScreen() {
       for (const charId of aiCharIdsToReply) {
         const tempId = `streaming-${charId}-${Date.now()}`;
         const charInfo = mentionableCharacters.find((c) => c.id === charId);
+        // Show streaming reply under the first-level comment (same as server storage)
+        const streamParentId = savedReplyTarget && !savedReplyTarget.isReply
+          ? savedReplyTarget.id  // replying to a first-level comment → show under it
+          : (savedReplyTarget?.parentId || result.id); // replying to a reply → show under the first-level parent
 
         setStreamingReplies((prev) => ({
           ...prev,
           [tempId]: {
-            parentId: result.id,
+            parentId: streamParentId,
             characterName: charInfo?.name || charId,
             characterEmoji: charInfo?.emoji || '🤖',
             content: '',
@@ -477,7 +483,7 @@ export default function NewsDetailScreen() {
     return (
       <View key={comment.id}>
         <View style={[styles.commentRow, isReply && styles.replyRow]}>
-          <Avatar name={comment.characterName} size={isReply ? 28 : 36} />
+          <Avatar name={comment.characterName} imageUrl={comment.characterAvatarUrl} size={isReply ? 28 : 36} />
           <View style={styles.commentBody}>
             <View style={styles.commentHeader}>
               <Text style={[styles.commentName, { color: t.text }]}>{comment.characterName}</Text>
@@ -507,7 +513,7 @@ export default function NewsDetailScreen() {
           <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: t.text }]}>記事</Text>
+          <Text style={[styles.headerTitle, { color: t.text }]}>{i('news.article')}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIconBtn} hitSlop={8} onPress={() => setShareVisible(true)}>
@@ -641,11 +647,11 @@ export default function NewsDetailScreen() {
           onLayout={(e) => { commentSectionY.current = e.nativeEvent.layout.y; }}
         >
           <Text style={[styles.commentsTitle, { color: t.text }]}>
-            コメント{comments.length > 0 ? ` (${comments.length})` : ''}
+            {i('news.comment')}{comments.length > 0 ? ` (${comments.length})` : ''}
           </Text>
           {comments.map((comment) => renderComment(comment))}
           {comments.length === 0 && (
-            <Text style={{ color: t.textSecondary, fontSize: 13 }}>まだコメントはありません</Text>
+            <Text style={{ color: t.textSecondary, fontSize: 13 }}>{i('news.noComments')}</Text>
           )}
         </View>
         <View style={{ height: 100 }} />
@@ -709,7 +715,7 @@ export default function NewsDetailScreen() {
         {replyTarget && (
           <View style={[styles.replyIndicator, { borderBottomColor: t.border }]}>
             <Text style={{ color: t.textSecondary, fontSize: 13, flex: 1 }}>
-              {replyTarget.name} に返信
+              {i('news.replyTo').replace('{name}', replyTarget.name)}
             </Text>
             <TouchableOpacity onPress={() => { setReplyTarget(null); setCommentText(''); }}>
               <Ionicons name="close" size={18} color={t.textSecondary} />
@@ -729,7 +735,7 @@ export default function NewsDetailScreen() {
           <TextInput
             ref={commentInputRef}
             style={[styles.bottomField, { color: t.text }]}
-            placeholder="コメントを書く..."
+            placeholder={i('news.commentPlaceholder')}
             placeholderTextColor={t.textSecondary}
             value={commentText}
             onChangeText={handleCommentChange}

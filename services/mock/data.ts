@@ -84,6 +84,7 @@ export interface NewsComment {
   characterId: string;
   characterName: string;
   characterEmoji: string;
+  characterAvatarUrl?: string;
   content: string;
   createdAt: string;
   isAi?: boolean;

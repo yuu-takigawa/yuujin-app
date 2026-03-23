@@ -111,6 +111,24 @@ export default function FriendsScreen() {
     const len = totalCards;
     if (len === 0) return { transforms: [], opacity: 1 as any, zIndex: 0 };
 
+    if (len < 2) {
+      return {
+        transforms: [
+          { translateX: 0 },
+          { rotate: '0deg' },
+          { scale: 1 },
+          { translateY: 0 },
+        ],
+        opacity: 1 as any,
+        zIndex: len,
+      };
+    }
+
+    // Use a smaller inputRange window around the card index for better perf
+    const windowSize = VISIBLE_RANGE + 1;
+    const rangeStart = Math.max(0, index - windowSize);
+    const rangeEnd = Math.min(len - 1, index + windowSize);
+
     const inputRange: number[] = [];
     const translateXOut: number[] = [];
     const rotateOut: string[] = [];
@@ -118,7 +136,7 @@ export default function FriendsScreen() {
     const translateYOut: number[] = [];
     const opacityOut: number[] = [];
 
-    for (let scrollPos = 0; scrollPos < len; scrollPos++) {
+    for (let scrollPos = rangeStart; scrollPos <= rangeEnd; scrollPos++) {
       const offset = index - scrollPos;
       inputRange.push(scrollPos);
       translateXOut.push(offset * CARD_SPACING);
@@ -130,20 +148,6 @@ export default function FriendsScreen() {
       scaleOut.push(Math.max(0.76, 1 - absOffset * SIDE_SCALE_DROP));
       translateYOut.push(absOffset * ARC_Y);
       opacityOut.push(Math.max(0.1, 1 - absOffset * OPACITY_DROP));
-    }
-
-    if (inputRange.length < 2) {
-      return {
-        transforms: [
-          { translateX: 0 },
-          { rotate: '0deg' },
-          { scale: 1 },
-          { translateY: 0 },
-        ],
-        opacity: 1 as any,
-        zIndex: len,
-        blur: 0,
-      };
     }
 
     const distFromActive = Math.abs(index - activeIndex);
