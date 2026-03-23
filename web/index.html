@@ -34,6 +34,7 @@
         height: 100%;
         overflow: hidden;
         margin: 0;
+        overscroll-behavior-x: none;
         background-color: #F7F7F7;
       }
       @media (prefers-color-scheme: dark) {
@@ -72,6 +73,26 @@
         }
       </style>
     </div>
+    <script>
+      // Prevent iOS PWA swipe-back on tab pages by converting pushState to replaceState
+      // for tab navigation paths. This stops history entries from accumulating.
+      (function(){
+        var tabPaths=['/','/(chat)','/chat','/(friends)','/friends','/(news)','/news','/(profile)','/profile',
+          '/(main)/(chat)','/(main)/(friends)','/(main)/(news)','/main/chat','/main/friends','/main/news','/main/profile'];
+        var origPush=history.pushState.bind(history);
+        history.pushState=function(state,title,url){
+          if(url){
+            try{
+              var p=new URL(url,location.origin).pathname.replace(/\/+$/,'') || '/';
+              if(tabPaths.indexOf(p)!==-1){
+                return history.replaceState(state,title,url);
+              }
+            }catch(e){}
+          }
+          return origPush(state,title,url);
+        };
+      })();
+    </script>
     <script>
       // Fade out splash once React root renders
       var mo=new MutationObserver(function(){

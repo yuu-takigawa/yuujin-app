@@ -110,12 +110,6 @@ export default function ProfileScreen() {
       iconColor: t.brand,
       onPress: () => router.push('/membership'),
     },
-    {
-      icon: 'settings-outline' as const,
-      label: i('settings.title'),
-      iconColor: t.textSecondary,
-      onPress: () => router.push('/settings'),
-    },
   ];
 
   return (

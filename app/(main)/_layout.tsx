@@ -51,6 +51,7 @@ export default function MainLayout() {
       safeAreaInsets={{ top: 0, bottom: 0 }}
       screenOptions={{
         headerShown: false,
+        gestureEnabled: false,
         tabBarActiveTintColor: t.brand,
         tabBarInactiveTintColor: t.textSecondary,
         tabBarStyle: {

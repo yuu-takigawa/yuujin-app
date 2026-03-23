@@ -152,7 +152,7 @@ export async function postNewsComment(
 export interface AIReplySSEEvent {
   type: 'start' | 'delta' | 'done' | 'error';
   commentId?: string;
-  character?: { id: string; name: string; avatarEmoji: string };
+  character?: { id: string; name: string; avatarEmoji: string; avatarUrl?: string };
   content?: string;
   error?: string;
 }

@@ -53,7 +53,8 @@ export default function MessageBubble({
   const iconRef = useRef<View>(null);
 
   const [tooltipVisible, setTooltipVisible] = useState(false);
-  const [tooltipAnchor, setTooltipAnchor] = useState({ x: 0, y: 0 });
+  const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('above');
+  const bubbleRef = useRef<View>(null);
   const [annotation, setAnnotation] = useState<{ type: 'translation' | 'analysis' | 'correct' } | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
@@ -89,7 +90,22 @@ export default function MessageBubble({
   }, []);
 
   const handleInfoPress = () => {
-    setTooltipVisible(!tooltipVisible);
+    if (tooltipVisible) {
+      setTooltipVisible(false);
+      return;
+    }
+    // Measure bubble position to decide tooltip placement
+    const node = bubbleRef.current as any;
+    if (node && typeof node.measureInWindow === 'function') {
+      node.measureInWindow((x: number, y: number) => {
+        setTooltipPosition(y < 120 ? 'below' : 'above');
+        setTooltipVisible(true);
+      });
+    } else {
+      // Fallback: default to above
+      setTooltipPosition('above');
+      setTooltipVisible(true);
+    }
   };
 
   const handleAction = async (action: BubbleAction) => {
@@ -161,6 +177,7 @@ export default function MessageBubble({
       {!isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={styles.bubbleWrap}>
         <View
+          ref={bubbleRef}
           style={[
             styles.bubble,
             isUser
@@ -192,13 +209,13 @@ export default function MessageBubble({
           />
         )}
 
-        {/* Tooltip - floats above the bubble */}
+        {/* Tooltip - floats above or below the bubble based on position */}
         {tooltipVisible && (
           <BubbleTooltip
             visible={tooltipVisible}
             content={content}
             role={role}
-            position="above"
+            position={tooltipPosition}
             onClose={() => setTooltipVisible(false)}
             onAction={handleAction}
           />

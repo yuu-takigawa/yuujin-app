@@ -76,6 +76,7 @@ export default function NewsDetailScreen() {
     parentId: string;
     characterName: string;
     characterEmoji: string;
+    characterAvatarUrl: string;
     content: string;
     done: boolean;
   }>>({});
@@ -309,6 +310,7 @@ export default function NewsDetailScreen() {
             parentId: streamParentId,
             characterName: charInfo?.name || charId,
             characterEmoji: charInfo?.emoji || '🤖',
+            characterAvatarUrl: charInfo?.avatarUrl || '',
             content: '',
             done: false,
           },
@@ -318,7 +320,7 @@ export default function NewsDetailScreen() {
           if (event.type === 'start' && event.character) {
             setStreamingReplies((prev) => prev[tempId] ? {
               ...prev,
-              [tempId]: { ...prev[tempId], characterName: event.character!.name, characterEmoji: event.character!.avatarEmoji },
+              [tempId]: { ...prev[tempId], characterName: event.character!.name, characterEmoji: event.character!.avatarEmoji, characterAvatarUrl: event.character!.avatarUrl || prev[tempId].characterAvatarUrl },
             } : prev);
             // AI 开始回复时滚动到底部
             setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
@@ -358,7 +360,7 @@ export default function NewsDetailScreen() {
     const friendCharIds = new Set(friends.map((f) => f.characterId));
     return characters
       .filter((c) => friendCharIds.has(c.id))
-      .map((c) => ({ id: c.id, name: c.name, emoji: c.avatarEmoji || '🤖' }));
+      .map((c) => ({ id: c.id, name: c.name, emoji: c.avatarEmoji || '🤖', avatarUrl: c.avatarUrl || '' }));
   })();
 
   // 根据 mentionQuery 模糊匹配候选角色
@@ -430,7 +432,7 @@ export default function NewsDetailScreen() {
   // 渲染流式 AI 回复（正在生成中）
   const renderStreamingReply = (tempId: string, reply: typeof streamingReplies[string]) => (
     <View key={tempId} style={[styles.commentRow, styles.replyRow]}>
-      <Avatar name={reply.characterName} size={28} />
+      <Avatar name={reply.characterName} imageUrl={reply.characterAvatarUrl} size={28} />
       <View style={styles.commentBody}>
         <View style={styles.commentHeader}>
           <Text style={[styles.commentName, { color: t.brand }]}>{reply.characterName}</Text>
@@ -702,7 +704,7 @@ export default function NewsDetailScreen() {
               style={styles.mentionItem}
               onPress={() => handleSelectMention(char.name)}
             >
-              <Text style={styles.mentionEmoji}>{char.emoji}</Text>
+              <Avatar name={char.name} imageUrl={char.avatarUrl} size={28} />
               <Text style={[styles.mentionName, { color: t.text }]}>{char.name}</Text>
             </TouchableOpacity>
           ))}

@@ -9,8 +9,8 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(main)" />
+          <Stack.Screen name="(auth)" options={{ gestureEnabled: false, animation: 'none' }} />
+          <Stack.Screen name="(main)" options={{ gestureEnabled: false, animation: 'none' }} />
           <Stack.Screen name="conversation/[conversationId]" />
           <Stack.Screen name="add-friend" />
           <Stack.Screen name="character/[characterId]" />

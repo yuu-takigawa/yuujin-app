@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { memo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
@@ -20,7 +21,7 @@ interface CharacterCardProps {
   onChat?: () => void;
 }
 
-export default function CharacterCard({
+function CharacterCard({
   name,
   avatarEmoji,
   avatarUrl,
@@ -91,7 +92,9 @@ export default function CharacterCard({
   );
 }
 
-export function AddCharacterCard({ onPress }: { onPress: () => void }) {
+export default memo(CharacterCard);
+
+export const AddCharacterCard = memo(function AddCharacterCard({ onPress }: { onPress: () => void }) {
   const t = useTheme();
   const { t: i } = useLocale();
 
@@ -108,7 +111,7 @@ export function AddCharacterCard({ onPress }: { onPress: () => void }) {
       <Text style={[styles.addSub, { color: t.textSecondary }]}>{i('character.addNewSub')}</Text>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
