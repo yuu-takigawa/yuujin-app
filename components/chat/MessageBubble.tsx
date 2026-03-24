@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform, Pressable, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
@@ -56,6 +56,7 @@ export default function MessageBubble({
   const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('above');
   const bubbleRef = useRef<View>(null);
   const [annotation, setAnnotation] = useState<{ type: 'translation' | 'analysis' | 'correct' } | null>(null);
+  const [imageZoomVisible, setImageZoomVisible] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
@@ -134,10 +135,12 @@ export default function MessageBubble({
     if (imageUrl) {
       return (
         <View style={styles.imageWrap}>
-          <Image source={{ uri: imageUrl }} style={styles.chatImage} resizeMode="cover" />
-          {content && !content.startsWith('[image]') && (
+          <TouchableOpacity activeOpacity={0.8} onPress={() => setImageZoomVisible(true)}>
+            <Image source={{ uri: imageUrl }} style={styles.chatImage} resizeMode="cover" />
+          </TouchableOpacity>
+          {content ? (
             <Text style={[styles.text, { color: t.text }]}>{content}</Text>
-          )}
+          ) : null}
         </View>
       );
     }
@@ -173,6 +176,7 @@ export default function MessageBubble({
     <Animated.View style={[styles.row, isUser && styles.rowUser, {
       opacity: animValue,
       transform: [{ translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+      ...(tooltipVisible ? { zIndex: 999 } : undefined),
     }]}>
       {!isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={styles.bubbleWrap}>
@@ -229,6 +233,20 @@ export default function MessageBubble({
         )}
       </View>
       {isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
+
+      {/* Image zoom modal */}
+      {imageUrl && imageZoomVisible && (
+        <Modal
+          visible={imageZoomVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setImageZoomVisible(false)}
+        >
+          <Pressable style={styles.zoomOverlay} onPress={() => setImageZoomVisible(false)}>
+            <Image source={{ uri: imageUrl }} style={styles.zoomImage} resizeMode="contain" />
+          </Pressable>
+        </Modal>
+      )}
     </Animated.View>
   );
 }
@@ -307,5 +325,15 @@ const styles = StyleSheet.create({
   toastText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  zoomOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.8,
   },
 });

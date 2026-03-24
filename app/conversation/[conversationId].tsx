@@ -323,14 +323,20 @@ export default function ConversationScreen() {
             }
             const isSearchHit = searchQuery.trim() !== '' &&
               item.data.content.toLowerCase().includes(searchQuery.toLowerCase());
+            // Parse [image] prefix or use imageUrl from metadata
+            const isImageMsg = item.data.content.startsWith('[image]');
+            const parsedImageUrl = item.data.imageUrl
+              || (isImageMsg ? item.data.content.match(/https?:\/\/\S+/)?.[0] : undefined);
+            const displayContent = isImageMsg ? '' : item.data.content;
             return (
               <MessageBubble
-                content={item.data.content}
+                content={displayContent}
                 role={item.data.role}
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
                 highlight={isSearchHit}
                 skipEntrance={item.data.id === skipEntranceId}
+                imageUrl={parsedImageUrl}
                 dismissSignal={scrollSignal}
                 onRequestScroll={() => flatListRef.current?.scrollToEnd({ animated: true })}
               />
@@ -370,9 +376,9 @@ export default function ConversationScreen() {
           onImagePicked={async (uri) => {
             try {
               const imageUrl = await uploadChatImage(uri);
-              sendMessage(`[image] ${imageUrl}`);
+              sendMessage('[image]', imageUrl);
             } catch {
-              sendMessage('[image] upload failed');
+              // silently fail - don't send broken message
             }
           }}
         />

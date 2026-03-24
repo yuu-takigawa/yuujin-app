@@ -53,6 +53,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   language?: 'ja' | 'zh' | 'mixed';
+  imageUrl?: string;
   createdAt: string;
 }
 

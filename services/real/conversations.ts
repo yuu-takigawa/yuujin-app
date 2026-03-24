@@ -18,6 +18,7 @@ interface ServerMessage {
   role: string;
   content: string;
   language?: string;
+  metadata?: { imageUrl?: string };
   createdAt: string;
 }
 
@@ -38,6 +39,7 @@ function mapMessage(s: ServerMessage): Message {
     role: s.role as 'user' | 'assistant',
     content: s.content,
     language: s.language as Message['language'],
+    imageUrl: s.metadata?.imageUrl,
     createdAt: s.createdAt,
   };
 }
@@ -72,12 +74,14 @@ export function addMessageToConversation(
   conversationId: string,
   role: 'user' | 'assistant',
   content: string,
+  imageUrl?: string,
 ): Message {
   return {
     id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     conversationId,
     role,
     content,
+    imageUrl,
     createdAt: new Date().toISOString(),
   };
 }

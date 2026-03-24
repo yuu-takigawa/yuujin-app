@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Message } from '../services/api';
 import {
   streamResponse,
+  streamResponseWithImage,
   streamText,
   getMessages,
   addMessageToConversation,
@@ -23,7 +24,7 @@ interface ChatState {
   error: string | null;
 
   loadConversation: (conversationId: string, characterId: string) => Promise<void>;
-  sendMessage: (content: string) => void;
+  sendMessage: (content: string, imageUrl?: string) => void;
   stopStreaming: () => void;
   clearChat: () => Promise<void>;
   clearError: () => void;
@@ -79,13 +80,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: (content) => {
+  sendMessage: (content, imageUrl) => {
     const { conversationId, cancelStream } = get();
     if (!conversationId || get().isStreaming) return;
 
     if (cancelStream) cancelStream();
 
-    const userMsg = addMessageToConversation(conversationId, 'user', content);
+    const userMsg = addMessageToConversation(conversationId, 'user', content, imageUrl);
     set((s) => ({
       messages: [...s.messages, userMsg],
       isStreaming: true,
@@ -143,7 +144,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }, CHAR_INTERVAL_MS);
     };
 
-    const cancel = streamResponse(conversationId, content, (event) => {
+    const handleEvent = (event: import('../services/api').SSEEvent) => {
       if (event.type === 'delta' && event.content) {
         accumulated += event.content;
         startDisplayTimer();
@@ -174,7 +175,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
         }, 1000);
       }
-    });
+    };
+
+    const cancel = imageUrl
+      ? streamResponseWithImage(conversationId, content, imageUrl, handleEvent)
+      : streamResponse(conversationId, content, handleEvent);
 
     set({
       cancelStream: () => {
