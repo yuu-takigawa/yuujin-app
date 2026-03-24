@@ -23,6 +23,7 @@ export default function ChatListScreen() {
 
   const user = useAuthStore((s) => s.user);
   const conversations = useFriendStore((s) => s.conversations);
+  const isLoading = useFriendStore((s) => s.isLoading);
   const friends = useFriendStore((s) => s.friends);
   const fetchConversations = useFriendStore((s) => s.fetchConversations);
   const fetchFriends = useFriendStore((s) => s.fetchFriends);
@@ -30,6 +31,7 @@ export default function ChatListScreen() {
   const removeFriend = useFriendStore((s) => s.removeFriend);
   const togglePin = useFriendStore((s) => s.togglePin);
   const closeAllRef = useRef<(() => void) | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const characters = useCharacterStore((s) => s.characters);
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters);
@@ -37,7 +39,7 @@ export default function ChatListScreen() {
   const headerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetchConversations();
+    fetchConversations().then(() => { setHasFetched(true); });
     fetchCharacters();
     if (user) fetchFriends(user.id);
     Animated.timing(headerAnim, {
@@ -134,13 +136,15 @@ export default function ChatListScreen() {
           );
         }}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Logo height={32} />
-            <View style={[styles.emptyDivider, { backgroundColor: t.border }]} />
-            <Text style={[styles.emptyHint, { color: t.textSecondary }]}>
-              {i('chat.emptyHint')}
-            </Text>
-          </View>
+          hasFetched ? (
+            <View style={styles.empty}>
+              <Logo height={32} />
+              <View style={[styles.emptyDivider, { backgroundColor: t.border }]} />
+              <Text style={[styles.emptyHint, { color: t.textSecondary }]}>
+                {i('chat.emptyHint')}
+              </Text>
+            </View>
+          ) : null
         }
       />
       </SwipeableProvider>
