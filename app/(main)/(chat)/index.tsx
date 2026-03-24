@@ -144,7 +144,20 @@ export default function ChatListScreen() {
                 {i('chat.emptyHint')}
               </Text>
             </View>
-          ) : null
+          ) : (
+            <View>
+              {[0, 1, 2, 3, 4].map((idx) => (
+                <View key={idx} style={[styles.skeletonRow, { borderBottomColor: t.border }]}>
+                  <View style={[styles.skeletonAvatar, { backgroundColor: t.border }]} />
+                  <View style={styles.skeletonTexts}>
+                    <View style={[styles.skeletonLine, { width: 80, height: 14, backgroundColor: t.border }]} />
+                    <View style={[styles.skeletonLine, { width: '90%', height: 12, backgroundColor: t.border }]} />
+                  </View>
+                  <View style={[styles.skeletonLine, { width: 32, height: 10, backgroundColor: t.border }]} />
+                </View>
+              ))}
+            </View>
+          )
         }
       />
       </SwipeableProvider>
@@ -203,5 +216,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  skeletonAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    opacity: 0.5,
+  },
+  skeletonTexts: {
+    flex: 1,
+    gap: 8,
+  },
+  skeletonLine: {
+    borderRadius: 6,
+    opacity: 0.4,
   },
 });

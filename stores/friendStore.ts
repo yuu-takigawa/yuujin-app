@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Friendship, Conversation } from '../services/api';
 import {
   getFriends as apiGetFriends,
@@ -9,6 +10,8 @@ import {
   deleteConversation as apiDeleteConversation,
   markAsRead as apiMarkAsRead,
 } from '../services/api';
+
+const CONV_CACHE_KEY = 'yuujin:conversations_cache';
 
 interface FriendState {
   friends: Friendship[];
@@ -35,9 +38,18 @@ export const useFriendStore = create<FriendState>((set, get) => ({
   },
 
   fetchConversations: async () => {
+    // Load from cache first for instant render
+    if (get().conversations.length === 0) {
+      try {
+        const cached = await AsyncStorage.getItem(CONV_CACHE_KEY);
+        if (cached) set({ conversations: JSON.parse(cached) });
+      } catch { /* ignore */ }
+    }
     set({ isLoading: true });
     const convs = await apiGetConversations();
     set({ conversations: convs, isLoading: false });
+    // Update cache in background
+    AsyncStorage.setItem(CONV_CACHE_KEY, JSON.stringify(convs)).catch(() => {});
   },
 
   addFriend: async (userId, characterId) => {
