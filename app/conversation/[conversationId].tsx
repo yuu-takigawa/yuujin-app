@@ -308,7 +308,6 @@ export default function ConversationScreen() {
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
-          onTouchStart={() => setScrollSignal((s) => s + 1)}
           onScroll={() => setScrollSignal((s) => s + 1)}
           scrollEventThrottle={200}
           renderItem={({ item }) => {
