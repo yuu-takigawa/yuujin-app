@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { API_BASE_URL, getToken } from '../http';
 
 export interface SSEEvent {
@@ -190,24 +191,34 @@ export function streamSuggest(
 /**
  * Upload an image for chat (multipart/form-data → OSS → returns URL)
  */
+const MAX_IMAGE_DIMENSION = 1200;
+const JPEG_QUALITY = 0.7;
+
+async function compressImage(uri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: MAX_IMAGE_DIMENSION } }],
+    { compress: JPEG_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
+  );
+  return result.uri;
+}
+
 export async function uploadChatImage(uri: string): Promise<string> {
+  // Compress: resize to 1200px wide + JPEG 70% quality (~100-300KB)
+  const compressedUri = await compressImage(uri);
+
   const token = getToken();
   const formData = new FormData();
-
-  const filename = uri.split('/').pop() || 'photo.jpg';
-  const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
-  const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+  const filename = 'photo.jpg';
 
   if (Platform.OS === 'web') {
-    // Web: uri is blob:// or data:// — fetch it to get a real Blob
-    const blob = await (await fetch(uri)).blob();
+    const blob = await (await fetch(compressedUri)).blob();
     formData.append('file', blob, filename);
   } else {
-    // React Native: RN fetch polyfill handles { uri, name, type } natively
     formData.append('file', {
-      uri,
+      uri: compressedUri,
       name: filename,
-      type: mimeType,
+      type: 'image/jpeg',
     } as unknown as Blob);
   }
 
