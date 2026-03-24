@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { API_BASE_URL, getToken } from '../http';
 
 export interface SSEEvent {
@@ -193,16 +194,22 @@ export async function uploadChatImage(uri: string): Promise<string> {
   const token = getToken();
   const formData = new FormData();
 
-  // React Native / Web compatible
   const filename = uri.split('/').pop() || 'photo.jpg';
   const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
 
-  formData.append('file', {
-    uri,
-    name: filename,
-    type: mimeType,
-  } as unknown as Blob);
+  if (Platform.OS === 'web') {
+    // Web: uri is blob:// or data:// — fetch it to get a real Blob
+    const blob = await (await fetch(uri)).blob();
+    formData.append('file', blob, filename);
+  } else {
+    // React Native: RN fetch polyfill handles { uri, name, type } natively
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as unknown as Blob);
+  }
 
   const response = await fetch(`${API_BASE_URL}/chat/image`, {
     method: 'POST',

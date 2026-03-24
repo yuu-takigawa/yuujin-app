@@ -275,6 +275,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Model selector
     'model.selectTitle': 'AI模型选择',
     'model.unlimited': '无限',
+    'model.costPerChat': 'pt/次',
   },
 
   en: {
@@ -551,6 +552,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Model selector
     'model.selectTitle': 'Select AI Model',
     'model.unlimited': 'Unlimited',
+    'model.costPerChat': 'pt/chat',
   },
 
   ja: {
@@ -827,6 +829,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Model selector
     'model.selectTitle': 'AIモデル選択',
     'model.unlimited': '無制限',
+    'model.costPerChat': 'pt/回',
   },
 };
 

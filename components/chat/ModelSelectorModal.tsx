@@ -103,7 +103,7 @@ export default function ModelSelectorModal({ visible, onClose }: ModelSelectorMo
                   </View>
                 </View>
                 <Text style={[styles.costText, { color: t.textSecondary }]}>
-                  {model.creditsPerChat}pt/回
+                  {model.creditsPerChat}{i('model.costPerChat')}
                 </Text>
               </View>
 
