@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ViewStyle } from 'react-native';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
@@ -19,6 +19,7 @@ interface CharacterCardProps {
   isFriend: boolean;
   onPress: () => void;
   onChat?: () => void;
+  cardHeight?: number;
 }
 
 function CharacterCard({
@@ -33,18 +34,20 @@ function CharacterCard({
   isPreset,
   onPress,
   onChat,
+  cardHeight,
 }: CharacterCardProps) {
   const t = useTheme();
   const { t: i } = useLocale();
+  const isCompact = cardHeight !== undefined && cardHeight < 440;
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: t.cardBackground }]}
+      style={[styles.card, { backgroundColor: t.cardBackground }, cardHeight !== undefined && { height: cardHeight }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
       {/* Avatar */}
-      <Avatar imageUrl={avatarUrl} name={name} size={90} />
+      <Avatar imageUrl={avatarUrl} name={name} size={isCompact ? 70 : 90} />
 
       {/* Type badge */}
       <View style={[styles.typeBadge, { borderColor: t.border, backgroundColor: t.surface }]}>
@@ -73,7 +76,7 @@ function CharacterCard({
 
       {/* Bio */}
       {bio ? (
-        <Text style={[styles.bio, { color: t.textSecondary }]} numberOfLines={3}>
+        <Text style={[styles.bio, { color: t.textSecondary }]} numberOfLines={isCompact ? 2 : 3}>
           {bio}
         </Text>
       ) : null}
@@ -94,13 +97,13 @@ function CharacterCard({
 
 export default memo(CharacterCard);
 
-export const AddCharacterCard = memo(function AddCharacterCard({ onPress }: { onPress: () => void }) {
+export const AddCharacterCard = memo(function AddCharacterCard({ onPress, cardHeight }: { onPress: () => void; cardHeight?: number }) {
   const t = useTheme();
   const { t: i } = useLocale();
 
   return (
     <TouchableOpacity
-      style={[styles.card, styles.addCard, { backgroundColor: t.surface, borderColor: t.border, borderWidth: 2, borderStyle: 'dashed' }]}
+      style={[styles.card, styles.addCard, { backgroundColor: t.surface, borderColor: t.border, borderWidth: 2, borderStyle: 'dashed' }, cardHeight !== undefined && { height: cardHeight }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -115,17 +118,20 @@ export const AddCharacterCard = memo(function AddCharacterCard({ onPress }: { on
 
 const styles = StyleSheet.create({
   card: {
-    width: 280,
+    width: '100%',
     height: 480,
     borderRadius: 20,
     padding: 24,
     paddingTop: 28,
     alignItems: 'center',
+    // 轻量阴影 — 安卓 WebView 重阴影会导致滑动卡顿
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 30,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
   typeBadge: {
     paddingHorizontal: 10,

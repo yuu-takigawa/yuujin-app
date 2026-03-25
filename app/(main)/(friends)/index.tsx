@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   PanResponder,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -18,11 +19,11 @@ import { useTheme } from '../../../hooks/useTheme';
 import { useLocale } from '../../../hooks/useLocale';
 import { spacing, fontSize } from '../../../constants/theme';
 
-const CARD_WIDTH = 280;
+const BASE_CARD_WIDTH = 280;
 const CARD_SPACING = 220;
 const MAX_ROTATION = 6;
 const SIDE_SCALE_DROP = 0.12;
-const VISIBLE_RANGE = 3;
+const VISIBLE_RANGE = 2;
 const ARC_Y = 20;
 const OPACITY_DROP = 0.3;
 const SWIPE_VELOCITY_THRESHOLD = 0.3;
@@ -32,7 +33,7 @@ export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const { t: i } = useLocale();
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
   const user = useAuthStore((s) => s.user);
   const characters = useCharacterStore((s) => s.characters);
@@ -40,6 +41,12 @@ export default function FriendsScreen() {
   const friends = useFriendStore((s) => s.friends);
   const conversations = useFriendStore((s) => s.conversations);
   const addFriend = useFriendStore((s) => s.addFriend);
+
+  // 小屏适配：根据屏幕高度缩放卡片
+  // 需要减去：insets.top + header(56) + dots(40) + count(28) + tabBar(60) + 余量(20)
+  const availableHeight = SCREEN_HEIGHT - insets.top - 56 - 40 - 28 - 60 - 20;
+  const CARD_HEIGHT = Math.min(480, Math.max(320, availableHeight));
+  const CARD_WIDTH = Math.min(BASE_CARD_WIDTH, SCREEN_WIDTH - 80);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -67,17 +74,17 @@ export default function FriendsScreen() {
     }
   };
 
-  const snapToIndex = (index: number) => {
+  const snapToIndex = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(index, totalCardsRef.current - 1));
     activeIndexRef.current = clamped;
     setActiveIndex(clamped);
     Animated.spring(scrollX, {
       toValue: clamped,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
       tension: 100,
       friction: 14,
     }).start();
-  };
+  }, [scrollX]);
 
   const panResponder = useMemo(() =>
     PanResponder.create({
@@ -221,6 +228,7 @@ export default function FriendsScreen() {
               style={[
                 styles.fanCard,
                 {
+                  width: CARD_WIDTH,
                   zIndex,
                   opacity,
                   transform: transforms,
@@ -230,6 +238,7 @@ export default function FriendsScreen() {
               {isAddCard ? (
                 <AddCharacterCard
                   onPress={() => router.push('/create-character')}
+                  cardHeight={CARD_HEIGHT}
                 />
               ) : (
                 <CharacterCard
@@ -245,6 +254,7 @@ export default function FriendsScreen() {
                   isFriend={isFriend(char.id)}
                   onPress={() => router.push(`/character/${char.id}`)}
                   onChat={() => handleChat(char.id)}
+                  cardHeight={CARD_HEIGHT}
                 />
               )}
             </Animated.View>
@@ -301,10 +311,11 @@ const styles = StyleSheet.create({
   },
   fanCard: {
     position: 'absolute',
-    width: CARD_WIDTH,
     backgroundColor: 'transparent',
     borderRadius: 20,
     overflow: 'hidden',
+    // @ts-ignore — web-only: 提示浏览器启用 GPU 合成层
+    ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : {}),
   },
   dots: {
     flexDirection: 'row',
