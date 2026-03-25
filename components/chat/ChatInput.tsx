@@ -242,6 +242,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     ...Platform.select({
       web: { outlineStyle: 'none' } as any,
@@ -253,6 +254,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   micBtn: {
     width: 24,
