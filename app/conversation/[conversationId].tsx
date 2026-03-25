@@ -316,7 +316,7 @@ export default function ConversationScreen() {
           onScroll={(e) => {
             setScrollSignal((s) => s + 1);
             // Load more when scrolled near top
-            if (e.nativeEvent.contentOffset.y < 200 && hasMore && !loadingMore) {
+            if (e.nativeEvent.contentOffset.y < 600 && hasMore && !loadingMore) {
               loadMoreMessages();
             }
           }}
