@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import ReAnimated, { useAnimatedStyle, useAnimatedReaction, runOnJS } from 'react-native-reanimated';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
@@ -61,6 +62,9 @@ export default function ConversationScreen() {
   const clearError = useChatStore((s) => s.clearError);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const loadConversation = useChatStore((s) => s.loadConversation);
+  const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
+  const hasMore = useChatStore((s) => s.hasMore);
+  const loadingMore = useChatStore((s) => s.loadingMore);
   const clearChat = useChatStore((s) => s.clearChat);
 
   const convs = useFriendStore((s) => s.conversations);
@@ -307,9 +311,21 @@ export default function ConversationScreen() {
           onContentSizeChange={handleContentSizeChange}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
-          onScroll={() => setScrollSignal((s) => s + 1)}
+          onScroll={(e) => {
+            setScrollSignal((s) => s + 1);
+            // Load more when scrolled near top
+            if (e.nativeEvent.contentOffset.y < 200 && hasMore && !loadingMore) {
+              loadMoreMessages();
+            }
+          }}
           scrollEventThrottle={200}
+          ListHeaderComponent={loadingMore ? (
+            <View style={styles.loadingMore}>
+              <ActivityIndicator size="small" color={t.textSecondary} />
+            </View>
+          ) : null}
           renderItem={({ item }) => {
             if (item.type === 'date') {
               return (
@@ -465,5 +481,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     paddingVertical: 4,
+  },
+  loadingMore: {
+    alignItems: 'center',
+    paddingVertical: 12,
   },
 });

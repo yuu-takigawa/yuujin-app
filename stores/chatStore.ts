@@ -13,17 +13,21 @@ import { useCreditStore } from './creditStore';
 
 // ~30 chars per second ≈ 33ms per character
 const CHAR_INTERVAL_MS = 33;
+const PAGE_SIZE = 30;
 
 interface ChatState {
   conversationId: string | null;
   characterId: string | null;
   messages: Message[];
+  hasMore: boolean;
+  loadingMore: boolean;
   isStreaming: boolean;
   streamingContent: string;
   cancelStream: (() => void) | null;
   error: string | null;
 
   loadConversation: (conversationId: string, characterId: string) => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
   sendMessage: (content: string, imageUrl?: string) => void;
   stopStreaming: () => void;
   clearChat: () => Promise<void>;
@@ -34,6 +38,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   conversationId: null,
   characterId: null,
   messages: [],
+  hasMore: false,
+  loadingMore: false,
   isStreaming: false,
   streamingContent: '',
   cancelStream: null,
@@ -41,11 +47,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadConversation: async (conversationId, characterId) => {
     set({ error: null });
-    const msgs = await getMessages(conversationId);
+    const { messages: msgs, hasMore } = await getMessages(conversationId, { limit: PAGE_SIZE });
     set({
       conversationId,
       characterId,
       messages: msgs,
+      hasMore,
       streamingContent: '',
       isStreaming: false,
     });
@@ -78,6 +85,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({ cancelStream: cancel });
       }
     }
+  },
+
+  loadMoreMessages: async () => {
+    const { conversationId, messages, hasMore, loadingMore } = get();
+    if (!conversationId || !hasMore || loadingMore) return;
+
+    set({ loadingMore: true });
+    const oldest = messages[0];
+    const before = oldest?.createdAt;
+    const { messages: older, hasMore: moreAvailable } = await getMessages(conversationId, {
+      limit: PAGE_SIZE,
+      before,
+    });
+    set((s) => ({
+      messages: [...older, ...s.messages],
+      hasMore: moreAvailable,
+      loadingMore: false,
+    }));
   },
 
   sendMessage: (content, imageUrl) => {
@@ -118,7 +143,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       } else {
         // No content received - reload from server
         set({ isStreaming: false, streamingContent: '', cancelStream: null });
-        getMessages(conversationId).then((msgs) => {
+        getMessages(conversationId).then(({ messages: msgs }) => {
           if (get().conversationId === conversationId) {
             set({ messages: msgs });
           }
@@ -168,7 +193,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         });
         // Server may have saved the AI response - reload after delay
         setTimeout(() => {
-          getMessages(conversationId).then((msgs) => {
+          getMessages(conversationId).then(({ messages: msgs }) => {
             if (get().conversationId === conversationId) {
               set({ messages: msgs });
             }
@@ -202,7 +227,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { conversationId } = get();
     if (!conversationId) return;
     await clearMessages(conversationId);
-    set({ messages: [] });
+    set({ messages: [], hasMore: false });
   },
 
   clearError: () => set({ error: null }),

@@ -49,11 +49,17 @@ export async function getConversations(): Promise<Conversation[]> {
   return list.map(mapConversation);
 }
 
-export async function getMessages(conversationId: string): Promise<Message[]> {
-  const result = await get<{ conversation: ServerConversation; messages: ServerMessage[] }>(
-    `/conversations/${conversationId}`,
-  );
-  return result.messages.map(mapMessage);
+export async function getMessages(
+  conversationId: string,
+  options?: { limit?: number; before?: string },
+): Promise<{ messages: Message[]; hasMore: boolean }> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.before) params.set('before', options.before);
+  const qs = params.toString();
+  const url = `/conversations/${conversationId}${qs ? `?${qs}` : ''}`;
+  const result = await get<{ conversation: ServerConversation; messages: ServerMessage[]; hasMore: boolean }>(url);
+  return { messages: result.messages.map(mapMessage), hasMore: result.hasMore };
 }
 
 export async function deleteConversation(conversationId: string): Promise<void> {
