@@ -49,6 +49,7 @@ export default function FriendsScreen() {
   const CARD_WIDTH = Math.min(BASE_CARD_WIDTH, SCREEN_WIDTH - 80);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const enterAnim = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current;
   const activeIndexRef = useRef(0);
   // Total items = characters + 1 add card at the end
@@ -58,6 +59,11 @@ export default function FriendsScreen() {
 
   useEffect(() => {
     fetchCharacters();
+    Animated.timing(enterAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const isFriend = (charId: string) =>
@@ -213,7 +219,10 @@ export default function FriendsScreen() {
       </View>
 
       {/* Fan-shaped Card Carousel */}
-      <View style={styles.swiperContainer} {...panResponder.panHandlers}>
+      <Animated.View style={[styles.swiperContainer, {
+        opacity: enterAnim,
+        transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+      }]} {...panResponder.panHandlers}>
         {Array.from({ length: totalCards }, (_, index) => {
           const distFromActive = Math.abs(index - activeIndex);
           if (distFromActive > VISIBLE_RANGE) return null;
@@ -260,7 +269,7 @@ export default function FriendsScreen() {
             </Animated.View>
           );
         })}
-      </View>
+      </Animated.View>
 
       {/* Dots */}
       <View style={styles.dots}>
