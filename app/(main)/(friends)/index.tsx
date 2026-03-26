@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import StaggerItem from '../../../components/common/StaggerItem';
 import {
   View,
   Text,
@@ -214,7 +213,6 @@ export default function FriendsScreen() {
       </View>
 
       {/* Fan-shaped Card Carousel */}
-      <StaggerItem index={0}>
       <View style={styles.swiperContainer} {...panResponder.panHandlers}>
         {Array.from({ length: totalCards }, (_, index) => {
           const distFromActive = Math.abs(index - activeIndex);
@@ -263,7 +261,6 @@ export default function FriendsScreen() {
           );
         })}
       </View>
-      </StaggerItem>
 
       {/* Dots */}
       <View style={styles.dots}>
