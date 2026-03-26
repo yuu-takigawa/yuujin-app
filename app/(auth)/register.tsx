@@ -53,7 +53,7 @@ export default function RegisterScreen() {
       setError(i('auth.passwordRequired'));
       return;
     }
-    if (password.length < 6 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+    if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError(i('auth.passwordRule'));
       return;
     }

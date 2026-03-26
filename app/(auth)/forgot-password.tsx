@@ -40,7 +40,7 @@ export default function ForgotPasswordScreen() {
       setError(i('auth.codeRequired'));
       return;
     }
-    if (newPassword.length < 6 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    if (newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
       setError(i('auth.passwordRule'));
       return;
     }
