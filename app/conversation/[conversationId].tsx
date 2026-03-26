@@ -273,6 +273,7 @@ export default function ConversationScreen() {
 
       <ReAnimated.View style={[styles.contentArea, contentTranslateStyle]}>
         <FlatList
+          key={conversationId}
           ref={flatListRef as any}
           style={styles.list}
           inverted
