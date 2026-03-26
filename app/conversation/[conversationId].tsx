@@ -53,6 +53,9 @@ export default function ConversationScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const flatListRef = useRef<FlatList<Message>>(null);
+  const skipAllEntranceRef = useRef(true);
+  const prevContentHeightRef = useRef(0);
+  const isLoadingMoreRef = useRef(false);
 
   const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages);
@@ -130,6 +133,9 @@ export default function ConversationScreen() {
 
   useEffect(() => {
     initialScrollDone.current = false;
+    skipAllEntranceRef.current = true;
+    prevContentHeightRef.current = 0;
+    isLoadingMoreRef.current = false;
     if (conversationId && conv?.characterId) {
       loadConversation(conversationId, conv.characterId);
       markAsRead(conversationId);
@@ -146,24 +152,38 @@ export default function ConversationScreen() {
     isStreamingRef.current = isStreaming;
   }, [isStreaming, messages]);
 
-  // Backup: initial scroll via setTimeout (native devices may need this)
+  // Scroll to bottom on initial load only (not on loadMore prepend)
   useEffect(() => {
     if (!initialScrollDone.current && messages.length > 0) {
       const scroll = () => flatListRef.current?.scrollToOffset({ offset: 999999, animated: false });
       setTimeout(scroll, 100);
-      setTimeout(scroll, 400);
+      setTimeout(() => {
+        scroll();
+        // After initial scroll completes, allow entrance animations for future new messages
+        skipAllEntranceRef.current = false;
+      }, 400);
     }
   }, [messages]);
 
   // Scroll to bottom on content size change — only during streaming or initial load
-  // This avoids unwanted scrolling when AnnotationPanel expands
+  // On loadMore prepend: compensate scroll position so visible content stays in place
   const handleContentSizeChange = (_w: number, contentHeight: number) => {
-    if (!initialScrollDone.current || isStreamingRef.current) {
+    if (isLoadingMoreRef.current) {
+      const heightDiff = contentHeight - prevContentHeightRef.current;
+      if (heightDiff > 0) {
+        flatListRef.current?.scrollToOffset({
+          offset: heightDiff,
+          animated: false,
+        });
+      }
+      isLoadingMoreRef.current = false;
+    } else if (!initialScrollDone.current || isStreamingRef.current) {
       flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
     }
     if (!initialScrollDone.current && messages.length > 0) {
       initialScrollDone.current = true;
     }
+    prevContentHeightRef.current = contentHeight;
   };
 
   type ChatItem =
@@ -317,7 +337,11 @@ export default function ConversationScreen() {
             setScrollSignal((s) => s + 1);
             // Load more when scrolled near top
             if (e.nativeEvent.contentOffset.y < 600 && hasMore && !loadingMore) {
-              loadMoreMessages();
+              skipAllEntranceRef.current = true;
+              isLoadingMoreRef.current = true;
+              loadMoreMessages().then(() => {
+                setTimeout(() => { skipAllEntranceRef.current = false; }, 100);
+              });
             }
           }}
           scrollEventThrottle={200}
@@ -350,7 +374,7 @@ export default function ConversationScreen() {
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
                 highlight={isSearchHit}
-                skipEntrance={item.data.id === skipEntranceId}
+                skipEntrance={item.data.id === skipEntranceId || skipAllEntranceRef.current}
                 imageUrl={parsedImageUrl}
                 dismissSignal={scrollSignal}
                 onRequestScroll={() => flatListRef.current?.scrollToEnd({ animated: true })}
