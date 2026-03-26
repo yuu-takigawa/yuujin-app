@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bubbleWrap: {
-    maxWidth: Dimensions.get('window').width * 0.65,
+    maxWidth: '65%',
     position: 'relative',
   },
   bubble: {
