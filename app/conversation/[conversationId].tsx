@@ -54,16 +54,6 @@ export default function ConversationScreen() {
   const t = useTheme();
   const flatListRef = useRef<FlatList>(null);
 
-  // Page entrance animation (slide from right + fade in)
-  const enterAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(enterAnim, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
   const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages);
   const isStreaming = useChatStore((s) => s.isStreaming);
@@ -102,7 +92,6 @@ export default function ConversationScreen() {
   const searchAnim = useRef(new Animated.Value(0)).current;
   const prevIsStreaming = useRef(false);
   const lastStreamedMsgId = useRef<string | null>(null);
-  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const conv = convs.find((c) => c.id === conversationId);
   const character = characters.find((c) => c.id === conv?.characterId);
@@ -124,11 +113,8 @@ export default function ConversationScreen() {
   }));
 
   useEffect(() => {
-    setInitialLoaded(false);
     if (conversationId && conv?.characterId) {
-      loadConversation(conversationId, conv.characterId).then(() => {
-        setInitialLoaded(true);
-      });
+      loadConversation(conversationId, conv.characterId);
       markAsRead(conversationId);
     }
     loadCredits();
@@ -249,11 +235,8 @@ export default function ConversationScreen() {
   };
 
   return (
-    <Animated.View
-      style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }, {
-        opacity: enterAnim,
-        transform: [{ translateX: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) }],
-      }]}
+    <View
+      style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }]}
     >
       <CharacterHeader
         name={character?.name || ''}
@@ -322,7 +305,7 @@ export default function ConversationScreen() {
               <ActivityIndicator size="small" color={t.textSecondary} />
             </View>
           ) : null}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             if (item.type === 'date') {
               return (
                 <View style={styles.dateSep}>
@@ -346,7 +329,8 @@ export default function ConversationScreen() {
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
                 highlight={isSearchHit}
-                skipEntrance={item.data.id === skipEntranceId || !initialLoaded}
+                skipEntrance={item.data.id === skipEntranceId}
+                entranceDelay={index < 8 ? index * 40 : 0}
                 imageUrl={parsedImageUrl}
                 dismissSignal={scrollSignal}
                 onRequestScroll={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
@@ -422,7 +406,7 @@ export default function ConversationScreen() {
 
 
 
-    </Animated.View>
+    </View>
   );
 }
 

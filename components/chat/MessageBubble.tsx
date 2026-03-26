@@ -16,6 +16,7 @@ interface MessageBubbleProps {
   createdAt?: string;
   highlight?: boolean;
   skipEntrance?: boolean;
+  entranceDelay?: number;
   imageUrl?: string;
   dismissSignal?: number;
   onRequestScroll?: () => void;
@@ -37,6 +38,7 @@ export default function MessageBubble({
   createdAt,
   highlight,
   skipEntrance,
+  entranceDelay = 0,
   imageUrl,
   dismissSignal,
   onRequestScroll,
@@ -66,7 +68,8 @@ export default function MessageBubble({
       if (skipEntrance) return;
       Animated.timing(animValue, {
         toValue: 1,
-        duration: 280,
+        duration: 220,
+        delay: entranceDelay,
         useNativeDriver: true,
       }).start();
     }
@@ -175,7 +178,7 @@ export default function MessageBubble({
   return (
     <Animated.View style={[styles.row, isUser && styles.rowUser, {
       opacity: animValue,
-      transform: [{ translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+      transform: [{ translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
       ...(tooltipVisible ? { zIndex: 999 } : undefined),
     }]}>
       {!isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
