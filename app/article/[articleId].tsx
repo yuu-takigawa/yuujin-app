@@ -8,6 +8,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
+import StaggerItem from '../../components/common/StaggerItem';
 import { getNewsDetail, getNewsComments, postNewsComment, annotateNewsParagraph, requestAIReply } from '../../services/api';
 import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent, AIReplySSEEvent } from '../../services/api';
 import { useCharacterStore } from '../../stores/characterStore';
@@ -534,22 +535,24 @@ export default function NewsDetailScreen() {
         scrollEventThrottle={16}
       >
         {/* Article Header */}
-        <View style={styles.articleHeader}>
-          {displayImageUrl ? (
-            <Image source={{ uri: displayImageUrl }} style={styles.heroImage} resizeMode="cover" />
-          ) : (
-            <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
-              <Text style={{ fontSize: 72 }}>{displayEmoji}</Text>
+        <StaggerItem index={0}>
+          <View style={styles.articleHeader}>
+            {displayImageUrl ? (
+              <Image source={{ uri: displayImageUrl }} style={styles.heroImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.heroImage, { backgroundColor: '#2C2C2C' }]}>
+                <Text style={{ fontSize: 72 }}>{displayEmoji}</Text>
+              </View>
+            )}
+            <Text style={[styles.articleTitle, { color: t.text }]}>{displayTitle}</Text>
+            <View style={styles.metaRow}>
+              <Text style={[styles.metaText, { color: t.textSecondary }]}>{displaySource}</Text>
+              {displaySource && displayTimeAgo ? <Text style={[styles.metaText, { color: t.textSecondary }]}>·</Text> : null}
+              <Text style={[styles.metaText, { color: t.textSecondary }]}>{displayTimeAgo}</Text>
             </View>
-          )}
-          <Text style={[styles.articleTitle, { color: t.text }]}>{displayTitle}</Text>
-          <View style={styles.metaRow}>
-            <Text style={[styles.metaText, { color: t.textSecondary }]}>{displaySource}</Text>
-            {displaySource && displayTimeAgo ? <Text style={[styles.metaText, { color: t.textSecondary }]}>·</Text> : null}
-            <Text style={[styles.metaText, { color: t.textSecondary }]}>{displayTimeAgo}</Text>
+            <View style={[styles.separator, { backgroundColor: t.border }]} />
           </View>
-          <View style={[styles.separator, { backgroundColor: t.border }]} />
-        </View>
+        </StaggerItem>
 
         {/* Skeleton while loading */}
         {loading ? (
