@@ -46,16 +46,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
 
   loadConversation: async (conversationId, characterId) => {
-    set({ error: null });
+    // Clear old conversation immediately to avoid stale messages showing
+    set({ error: null, conversationId, characterId, messages: [], hasMore: false, streamingContent: '', isStreaming: false });
     const { messages: msgs, hasMore } = await getMessages(conversationId, { limit: PAGE_SIZE });
-    set({
-      conversationId,
-      characterId,
-      messages: msgs,
-      hasMore,
-      streamingContent: '',
-      isStreaming: false,
-    });
+    // Only apply if still on the same conversation (user may have navigated away)
+    if (get().conversationId !== conversationId) return;
+    set({ messages: msgs, hasMore });
 
     // If no messages, stream the greeting (fallback for edge cases)
     if (msgs.length === 0) {
