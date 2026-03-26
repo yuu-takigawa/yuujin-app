@@ -9,7 +9,7 @@ import {
   Animated,
   ActivityIndicator,
 } from 'react-native';
-import ReAnimated, { useAnimatedStyle, useAnimatedReaction, runOnJS, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
+import ReAnimated, { useAnimatedStyle, useAnimatedReaction, runOnJS } from 'react-native-reanimated';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -55,14 +55,14 @@ export default function ConversationScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   // Page entrance animation (slide from right + fade in)
-  const enterProgress = useSharedValue(0);
+  const enterAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    enterProgress.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+    Animated.timing(enterAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
   }, []);
-  const pageEnterStyle = useAnimatedStyle(() => ({
-    opacity: enterProgress.value,
-    transform: [{ translateX: (1 - enterProgress.value) * 60 }],
-  }));
 
   const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages);
@@ -249,8 +249,11 @@ export default function ConversationScreen() {
   };
 
   return (
-    <ReAnimated.View
-      style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }, pageEnterStyle]}
+    <Animated.View
+      style={[styles.container, { backgroundColor: t.background, paddingTop: insets.top }, {
+        opacity: enterAnim,
+        transform: [{ translateX: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) }],
+      }]}
     >
       <CharacterHeader
         name={character?.name || ''}
@@ -419,7 +422,7 @@ export default function ConversationScreen() {
 
 
 
-    </ReAnimated.View>
+    </Animated.View>
   );
 }
 
