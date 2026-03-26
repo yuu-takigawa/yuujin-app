@@ -61,6 +61,7 @@ export default function ConversationScreen() {
   const chatError = useChatStore((s) => s.error);
   const clearError = useChatStore((s) => s.clearError);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const storeConversationId = useChatStore((s) => s.conversationId);
   const loadConversation = useChatStore((s) => s.loadConversation);
   const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
   const hasMore = useChatStore((s) => s.hasMore);
@@ -136,7 +137,9 @@ export default function ConversationScreen() {
     | { type: 'date'; label: string; key: string };
 
   // Build chat items in chronological order, then reverse for inverted FlatList
+  // Guard: if store hasn't caught up to the current route yet, show nothing
   const chatItems = useMemo<ChatItem[]>(() => {
+    if (storeConversationId !== conversationId) return [];
     const items: ChatItem[] = [];
     let lastDateStr = '';
 
@@ -154,7 +157,7 @@ export default function ConversationScreen() {
     // Reverse: inverted FlatList renders index 0 at the bottom
     items.reverse();
     return items;
-  }, [messages]);
+  }, [messages, storeConversationId, conversationId]);
 
   const handleDeleteFriend = async () => {
     if (user && conv?.characterId) {
