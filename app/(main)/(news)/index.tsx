@@ -250,16 +250,18 @@ export default function NewsScreen() {
             loading ? (
               <View style={styles.skeletonList}>
                 {[0, 1, 2, 3].map((i) => (
-                  <View key={i} style={[styles.skeletonCard, { borderBottomColor: t.border }]}>
-                    <View style={[styles.skeletonImage, { backgroundColor: t.border }]} />
-                    <View style={[styles.skeletonLine, { width: '85%', height: 16, backgroundColor: t.border }]} />
-                    <View style={[styles.skeletonLine, { width: '100%', height: 12, backgroundColor: t.border }]} />
-                    <View style={[styles.skeletonLine, { width: '60%', height: 12, backgroundColor: t.border }]} />
-                    <View style={styles.skeletonMeta}>
-                      <View style={[styles.skeletonLine, { width: 48, height: 10, backgroundColor: t.border }]} />
-                      <View style={[styles.skeletonLine, { width: 60, height: 10, backgroundColor: t.border }]} />
+                  <StaggerItem key={i} index={i}>
+                    <View style={[styles.skeletonCard, { borderBottomColor: t.border }]}>
+                      <View style={[styles.skeletonImage, { backgroundColor: t.border }]} />
+                      <View style={[styles.skeletonLine, { width: '85%', height: 16, backgroundColor: t.border }]} />
+                      <View style={[styles.skeletonLine, { width: '100%', height: 12, backgroundColor: t.border }]} />
+                      <View style={[styles.skeletonLine, { width: '60%', height: 12, backgroundColor: t.border }]} />
+                      <View style={styles.skeletonMeta}>
+                        <View style={[styles.skeletonLine, { width: 48, height: 10, backgroundColor: t.border }]} />
+                        <View style={[styles.skeletonLine, { width: 60, height: 10, backgroundColor: t.border }]} />
+                      </View>
                     </View>
-                  </View>
+                  </StaggerItem>
                 ))}
               </View>
             ) : (
