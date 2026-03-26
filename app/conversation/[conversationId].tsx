@@ -53,9 +53,10 @@ export default function ConversationScreen() {
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const flatListRef = useRef<FlatList<Message>>(null);
-  const skipAllEntranceRef = useRef(true);
   const prevContentHeightRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
+  const listReadyRef = useRef(false);
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [listReady, setListReady] = useState(false);
 
   const user = useAuthStore((s) => s.user);
@@ -134,10 +135,11 @@ export default function ConversationScreen() {
 
   useEffect(() => {
     initialScrollDone.current = false;
-    skipAllEntranceRef.current = true;
     prevContentHeightRef.current = 0;
     isLoadingMoreRef.current = false;
+    listReadyRef.current = false;
     setListReady(false);
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
     if (conversationId && conv?.characterId) {
       loadConversation(conversationId, conv.characterId);
       markAsRead(conversationId);
@@ -154,7 +156,18 @@ export default function ConversationScreen() {
     isStreamingRef.current = isStreaming;
   }, [isStreaming, messages]);
 
-  // Handle all scroll positioning in one place via content size changes
+  // Reveal list after initial scroll settles — debounced so FlatList batch
+  // rendering can finish before we show the list
+  const scheduleReveal = useCallback(() => {
+    if (listReadyRef.current) return;
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = setTimeout(() => {
+      listReadyRef.current = true;
+      initialScrollDone.current = true;
+      setListReady(true);
+    }, 150);
+  }, []);
+
   const handleContentSizeChange = (_w: number, contentHeight: number) => {
     if (isLoadingMoreRef.current) {
       // LoadMore prepend: compensate scroll so visible content stays in place
@@ -163,14 +176,11 @@ export default function ConversationScreen() {
         flatListRef.current?.scrollToOffset({ offset: heightDiff, animated: false });
       }
       isLoadingMoreRef.current = false;
-    } else if (!initialScrollDone.current) {
-      // Initial load: scroll to bottom, then reveal list
+    } else if (!listReadyRef.current) {
+      // Initial load: keep scrolling to bottom on every batch render
       flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
-      initialScrollDone.current = true;
-      skipAllEntranceRef.current = false;
-      requestAnimationFrame(() => setListReady(true));
+      scheduleReveal();
     } else if (isStreamingRef.current) {
-      // Streaming: keep scrolled to bottom
       flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
     }
     prevContentHeightRef.current = contentHeight;
@@ -327,11 +337,8 @@ export default function ConversationScreen() {
             setScrollSignal((s) => s + 1);
             // Load more when scrolled near top
             if (e.nativeEvent.contentOffset.y < 600 && hasMore && !loadingMore) {
-              skipAllEntranceRef.current = true;
               isLoadingMoreRef.current = true;
-              loadMoreMessages().then(() => {
-                setTimeout(() => { skipAllEntranceRef.current = false; }, 100);
-              });
+              loadMoreMessages();
             }
           }}
           scrollEventThrottle={200}
@@ -364,7 +371,7 @@ export default function ConversationScreen() {
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
                 highlight={isSearchHit}
-                skipEntrance={item.data.id === skipEntranceId || skipAllEntranceRef.current}
+                skipEntrance={item.data.id === skipEntranceId || !listReady}
                 imageUrl={parsedImageUrl}
                 dismissSignal={scrollSignal}
                 onRequestScroll={() => flatListRef.current?.scrollToEnd({ animated: true })}
