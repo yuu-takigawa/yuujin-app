@@ -52,12 +52,7 @@ export default function ConversationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
-  const flatListRef = useRef<FlatList<Message>>(null);
-  const prevContentHeightRef = useRef(0);
-  const isLoadingMoreRef = useRef(false);
-  const listReadyRef = useRef(false);
-  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [listReady, setListReady] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages);
@@ -96,8 +91,7 @@ export default function ConversationScreen() {
   const searchAnim = useRef(new Animated.Value(0)).current;
   const prevIsStreaming = useRef(false);
   const lastStreamedMsgId = useRef<string | null>(null);
-  const isStreamingRef = useRef(false);
-  const initialScrollDone = useRef(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const conv = convs.find((c) => c.id === conversationId);
   const character = characters.find((c) => c.id === conv?.characterId);
@@ -118,30 +112,12 @@ export default function ConversationScreen() {
     transform: [{ translateY: kbHeight.value }],
   }));
 
-  // Scroll to bottom when keyboard opens (replaces Keyboard.addListener)
-  const scrollToBottom = useCallback(() => {
-    flatListRef.current?.scrollToOffset({ offset: 999999, animated: false });
-  }, []);
-
-  useAnimatedReaction(
-    () => kbHeight.value,
-    (cur, prev) => {
-      // Scroll to bottom when keyboard moves in either direction
-      if (prev !== null && cur !== prev) {
-        runOnJS(scrollToBottom)();
-      }
-    },
-  );
-
   useEffect(() => {
-    initialScrollDone.current = false;
-    prevContentHeightRef.current = 0;
-    isLoadingMoreRef.current = false;
-    listReadyRef.current = false;
-    setListReady(false);
-    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    setInitialLoaded(false);
     if (conversationId && conv?.characterId) {
-      loadConversation(conversationId, conv.characterId);
+      loadConversation(conversationId, conv.characterId).then(() => {
+        setInitialLoaded(true);
+      });
       markAsRead(conversationId);
     }
     loadCredits();
@@ -153,43 +129,13 @@ export default function ConversationScreen() {
       lastStreamedMsgId.current = messages[messages.length - 1].id;
     }
     prevIsStreaming.current = isStreaming;
-    isStreamingRef.current = isStreaming;
   }, [isStreaming, messages]);
-
-  // Reveal list after initial scroll settles — debounced so FlatList batch
-  // rendering can finish before we show the list
-  const scheduleReveal = useCallback(() => {
-    if (listReadyRef.current) return;
-    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
-    revealTimerRef.current = setTimeout(() => {
-      listReadyRef.current = true;
-      initialScrollDone.current = true;
-      setListReady(true);
-    }, 150);
-  }, []);
-
-  const handleContentSizeChange = (_w: number, contentHeight: number) => {
-    if (isLoadingMoreRef.current) {
-      // LoadMore prepend: compensate scroll so visible content stays in place
-      const heightDiff = contentHeight - prevContentHeightRef.current;
-      if (heightDiff > 0) {
-        flatListRef.current?.scrollToOffset({ offset: heightDiff, animated: false });
-      }
-      isLoadingMoreRef.current = false;
-    } else if (!listReadyRef.current) {
-      // Initial load: keep scrolling to bottom on every batch render
-      flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
-      scheduleReveal();
-    } else if (isStreamingRef.current) {
-      flatListRef.current?.scrollToOffset({ offset: contentHeight, animated: false });
-    }
-    prevContentHeightRef.current = contentHeight;
-  };
 
   type ChatItem =
     | { type: 'message'; data: Message }
     | { type: 'date'; label: string; key: string };
 
+  // Build chat items in chronological order, then reverse for inverted FlatList
   const chatItems = useMemo<ChatItem[]>(() => {
     const items: ChatItem[] = [];
     let lastDateStr = '';
@@ -205,6 +151,8 @@ export default function ConversationScreen() {
       lastDateStr = dateStr;
       items.push({ type: 'message', data: msg });
     }
+    // Reverse: inverted FlatList renders index 0 at the bottom
+    items.reverse();
     return items;
   }, [messages]);
 
@@ -323,26 +271,36 @@ export default function ConversationScreen() {
       <ReAnimated.View style={[styles.contentArea, contentTranslateStyle]}>
         <FlatList
           ref={flatListRef as any}
-          style={[styles.list, !listReady && { opacity: 0 }]}
+          style={styles.list}
+          inverted
           data={chatItems}
           keyExtractor={(item) => item.type === 'date' ? item.key : item.data.id}
-          contentContainerStyle={[styles.messageList, { paddingBottom: 60, paddingTop: 12 }]}
-          initialNumToRender={20}
-          onContentSizeChange={handleContentSizeChange}
+          contentContainerStyle={[styles.messageList, { paddingTop: 60, paddingBottom: 12 }]}
+          initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
-          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-          onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
-          onScroll={(e) => {
-            setScrollSignal((s) => s + 1);
-            // Load more when scrolled near top
-            if (e.nativeEvent.contentOffset.y < 600 && hasMore && !loadingMore) {
-              isLoadingMoreRef.current = true;
+          onEndReached={() => {
+            if (hasMore && !loadingMore) {
               loadMoreMessages();
             }
           }}
+          onEndReachedThreshold={1.5}
+          onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
+          onScroll={() => setScrollSignal((s) => s + 1)}
           scrollEventThrottle={200}
-          ListHeaderComponent={loadingMore ? (
+          ListHeaderComponent={
+            isStreaming ? (
+              streamingContent ? (
+                <StreamingText
+                  content={streamingContent}
+                  avatarUrl={character?.avatarUrl}
+                />
+              ) : (
+                <TypingIndicator avatarUrl={character?.avatarUrl} />
+              )
+            ) : null
+          }
+          ListFooterComponent={loadingMore ? (
             <View style={styles.loadingMore}>
               <ActivityIndicator size="small" color={t.textSecondary} />
             </View>
@@ -371,25 +329,13 @@ export default function ConversationScreen() {
                 avatarUrl={item.data.role === 'assistant' ? character?.avatarUrl : user?.avatarUrl}
                 createdAt={item.data.createdAt}
                 highlight={isSearchHit}
-                skipEntrance={item.data.id === skipEntranceId || !listReady}
+                skipEntrance={item.data.id === skipEntranceId || !initialLoaded}
                 imageUrl={parsedImageUrl}
                 dismissSignal={scrollSignal}
-                onRequestScroll={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                onRequestScroll={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
               />
             );
           }}
-          ListFooterComponent={
-            isStreaming ? (
-              streamingContent ? (
-                <StreamingText
-                  content={streamingContent}
-                  avatarUrl={character?.avatarUrl}
-                />
-              ) : (
-                <TypingIndicator avatarUrl={character?.avatarUrl} />
-              )
-            ) : null
-          }
         />
         {chatError ? (
           <TouchableOpacity
