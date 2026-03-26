@@ -7,6 +7,7 @@ import { useFriendStore } from '../../../stores/friendStore';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { useAuthStore } from '../../../stores/authStore';
 import ConversationCard from '../../../components/chat/ConversationCard';
+import StaggerItem from '../../../components/common/StaggerItem';
 import SwipeableRow, { SwipeableProvider } from '../../../components/common/SwipeableRow';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Logo from '../../../components/common/Logo';
@@ -113,26 +114,28 @@ export default function ChatListScreen() {
         onMomentumScrollBegin={() => closeAllRef.current?.()}
         onScroll={() => closeAllRef.current?.()}
         scrollEventThrottle={100}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const char = getCharacter(item.characterId);
           const friend = getFriend(item.characterId);
           if (!char) return null;
           return (
-            <SwipeableRow
-              onDelete={() => handleDelete(item)}
-              onPin={() => handlePin(item)}
-              isPinned={friend?.isPinned || false}
-            >
-              <ConversationCard
-                name={char.name}
-                avatarUrl={char.avatarUrl}
-                lastMessage={item.lastMessage}
-                time={item.lastMessageAt}
-                hasUnread={item.hasUnread}
+            <StaggerItem index={index}>
+              <SwipeableRow
+                onDelete={() => handleDelete(item)}
+                onPin={() => handlePin(item)}
                 isPinned={friend?.isPinned || false}
-                onPress={() => { closeAllRef.current?.(); router.push(`/conversation/${item.id}`); }}
-              />
-            </SwipeableRow>
+              >
+                <ConversationCard
+                  name={char.name}
+                  avatarUrl={char.avatarUrl}
+                  lastMessage={item.lastMessage}
+                  time={item.lastMessageAt}
+                  hasUnread={item.hasUnread}
+                  isPinned={friend?.isPinned || false}
+                  onPress={() => { closeAllRef.current?.(); router.push(`/conversation/${item.id}`); }}
+                />
+              </SwipeableRow>
+            </StaggerItem>
           );
         }}
         ListEmptyComponent={

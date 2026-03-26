@@ -13,6 +13,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import StaggerItem from '../../../components/common/StaggerItem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../hooks/useTheme';
@@ -233,12 +234,14 @@ export default function NewsScreen() {
           data={loading ? [] : articles}
           keyExtractor={(item: NewsArticle) => item.id}
           contentContainerStyle={[styles.list, (loading || articles.length === 0) && { flex: 1 }]}
-          renderItem={({ item }) => (
-            <NewsCard
-              article={item}
-              onPress={() => router.push({ pathname: `/article/${item.id}`, params: { title: item.title, imageUrl: item.imageUrl || '', imageEmoji: item.imageEmoji, source: item.source, timeAgo: item.timeAgo } })}
-              onShare={() => handleShare(item)}
-            />
+          renderItem={({ item, index }) => (
+            <StaggerItem index={index}>
+              <NewsCard
+                article={item}
+                onPress={() => router.push({ pathname: `/article/${item.id}`, params: { title: item.title, imageUrl: item.imageUrl || '', imageEmoji: item.imageEmoji, source: item.source, timeAgo: item.timeAgo } })}
+                onShare={() => handleShare(item)}
+              />
+            </StaggerItem>
           )}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.brand} colors={[t.brand]} />
