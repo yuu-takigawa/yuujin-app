@@ -65,22 +65,35 @@ function pcm16ToFloat32(bytes: Uint8Array): Float32Array {
 
 /**
  * TTS 文本预处理 — 清除不适合朗读的内容
- * 1. 括号内的中文翻译（N5/初心者向け）: 「いい天気だね！（天气真好！）」→「いい天気だね！」
- * 2. Emoji
- * 3. 「笑」「w」「草」等テキスト表現（念のため）
+ *
+ * Qwen3-TTS 会尝试读出所有字符，包括特殊符号。
+ * 必须在送入 TTS 前彻底清理。
  */
 function preprocessForTTS(text: string): string {
   let t = text;
-  // 括号内的中文（全角/半角括号）— 匹配含中文字符的括号内容
+  // 1. 括号内的中文翻译（N5/初心者向け）
   t = t.replace(/[（(][^）)]*[\u4e00-\u9fff][^）)]*[）)]/g, '');
-  // Emoji（Unicode emoji 范围）
-  t = t.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+/gu, '');
-  // 文末「笑」「w」「W」「草」（仅清理独立出现的）
+  // 2. テキスト表現（笑/w/草/泣）— 任意位置
   t = t.replace(/[（(]?笑[）)]?/g, '');
-  t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, '');
+  t = t.replace(/[（(]?泣[）)]?/g, '');
+  t = t.replace(/[wWｗＷ]{2,}/g, '');           // ww, www 等
+  t = t.replace(/(?<=[^\w])[wWｗＷ](?=\s|$)/g, ''); // 文末单个 w
   t = t.replace(/草(?=[。！？!?\s]|$)/g, '');
-  // 清理多余空格
+  // 3. 特殊记号 — TTS 会读成奇怪的音
+  t = t.replace(/[〜～]/g, '');    // 波浪线 → 去掉
+  t = t.replace(/…+/g, '、');      // 省略号 → 短停顿
+  t = t.replace(/・{2,}/g, '、');   // 中点连续 → 短停顿
+  t = t.replace(/ⓘ/g, '');        // UI info icon
+  t = t.replace(/[♪♫♬♩]/g, '');   // 音符
+  t = t.replace(/[★☆※→←↑↓]/g, '');
+  // 4. Emoji — 广范围匹配（包括组合 emoji）
+  t = t.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
+  // 5. 顔文字残骸（括号内非日文内容）
+  t = t.replace(/[（(][^）)]*[_^;><][^）)]*[）)]/g, '');
+  // 6. 清理残余
   t = t.replace(/\s+/g, ' ').trim();
+  // 7. 去掉句首句尾的无意义标点
+  t = t.replace(/^[、，,.\s]+/, '').replace(/[、，,.\s]+$/, '');
   return t;
 }
 
@@ -117,10 +130,23 @@ function getOrCreateAudioContext(): AudioContext {
   return sharedAudioCtx;
 }
 
-/** 必须在用户手势同步栈内调用（iOS Safari 要求） */
+/**
+ * 必须在用户手势同步栈内调用（iOS Safari 要求）
+ * 播放一个静音 buffer 来真正解锁 AudioContext
+ */
 function ensureAudioContextResumed(): AudioContext {
   const ctx = getOrCreateAudioContext();
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+    // iOS Safari 需要在用户手势栈内实际播放一个 buffer 才算解锁
+    try {
+      const silent = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const src = ctx.createBufferSource();
+      src.buffer = silent;
+      src.connect(ctx.destination);
+      src.start();
+    } catch { /* ok */ }
+  }
   return ctx;
 }
 
@@ -130,11 +156,12 @@ interface SentenceState {
   chunks: Float32Array[];  // 已解码的 PCM 数据
   sampleRate: number;
   headerParsed: boolean;
-  done: boolean;           // SSE 流结束
+  done: boolean;           // 播放完毕
   error: boolean;
-  /** 缓存命中时的 URL（用 Audio 元素播放） */
+  /** 缓存命中时的 URL */
   cachedUrl?: string;
-  cachedAudio?: HTMLAudioElement;
+  /** fetch 已发起（防重入） */
+  cachedFetching?: boolean;
 }
 
 // ─── Hook ───
@@ -168,13 +195,7 @@ export function useTTS() {
       try { src.disconnect(); } catch { /* ok */ }
     }
     allSourcesRef.current = [];
-    // 停止缓存 Audio 元素
-    for (const state of sentenceStatesRef.current) {
-      if (state.cachedAudio) {
-        state.cachedAudio.pause();
-        state.cachedAudio.src = '';
-      }
-    }
+    // 缓存句子的播放通过 Web Audio（已在 allSourcesRef 里 stop/disconnect）
     // 停止系统 TTS
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
@@ -201,29 +222,37 @@ export function useTTS() {
       const idx = playingSentenceRef.current;
       const state = states[idx];
 
-      // 缓存命中的句子：用 Audio 元素播放
-      if (state.cachedUrl && !state.cachedAudio) {
-        const audio = new Audio(state.cachedUrl);
-        state.cachedAudio = audio;
-        audio.onended = () => {
-          state.done = true;
-          schedulePlayback(audioCtx, text);
-        };
-        audio.onerror = () => {
-          state.done = true;
-          state.error = true;
-          schedulePlayback(audioCtx, text);
-        };
-        audio.play().catch(() => {
-          state.done = true;
-          state.error = true;
-          schedulePlayback(audioCtx, text);
-        });
-        break; // 等 Audio 播完再调度下一句
+      // 缓存命中的句子：fetch + Web Audio decodeAudioData
+      // （不用 new Audio() — iOS Safari 异步回调里 .play() 会被拒）
+      if (state.cachedUrl && !state.cachedFetching) {
+        state.cachedFetching = true;
+        fetch(state.cachedUrl)
+          .then(res => res.arrayBuffer())
+          .then(buf => audioCtx.decodeAudioData(buf))
+          .then(decoded => {
+            if (playingTextRef.current !== text) return;
+            const source = audioCtx.createBufferSource();
+            source.buffer = decoded;
+            source.connect(audioCtx.destination);
+            const startAt = Math.max(audioCtx.currentTime, nextTimeRef.current);
+            source.start(startAt);
+            nextTimeRef.current = startAt + decoded.duration;
+            allSourcesRef.current.push(source);
+            source.onended = () => {
+              state.done = true;
+              schedulePlayback(audioCtx, text);
+            };
+          })
+          .catch(() => {
+            state.done = true;
+            state.error = true;
+            schedulePlayback(audioCtx, text);
+          });
+        break; // 等 fetch+decode+播放 完成
       }
 
-      // 缓存句子正在播放中，等待
-      if (state.cachedAudio && !state.done) break;
+      // 缓存句子正在加载/播放中，等待
+      if (state.cachedUrl && !state.done) break;
 
       // 流式句子：播放尚未播放的 chunk
       for (let i = played[idx]; i < state.chunks.length; i++) {
