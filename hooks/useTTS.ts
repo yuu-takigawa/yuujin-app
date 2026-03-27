@@ -15,25 +15,38 @@ function isPremiumTier(): boolean {
   return membership === 'pro' || membership === 'max' || membership === 'admin';
 }
 
-/** 按句号/问号/感叹号/换行切分，保留标点，确保每段≥20字 */
+/**
+ * 智能分句：硬切点 + 软切点 + 最短长度保障
+ * - 硬切点（。？！\n!?）：累积≥20字时立即切分
+ * - 软切点（，、；,;）：累积≥20字时切分，不足则继续累积
+ * - 尾句：无论长度，LLM 结束时剩余文本必须发送
+ */
 function splitSentences(text: string): string[] {
-  const raw = text.split(/(?<=[。！？\n!?])/g).map(s => s.trim()).filter(Boolean);
-  if (raw.length <= 1) return raw.length > 0 ? raw : [text];
-  // 合并过短的片段
-  const merged: string[] = [];
+  const MIN_LEN = 20;
+  const result: string[] = [];
   let buf = '';
-  for (const part of raw) {
-    buf += part;
-    if (buf.length >= 20) {
-      merged.push(buf);
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    buf += ch;
+
+    const isHard = '。？！!?\n'.includes(ch);
+    const isSoft = '，、；,;'.includes(ch);
+
+    if ((isHard || isSoft) && buf.length >= MIN_LEN) {
+      result.push(buf);
       buf = '';
     }
   }
-  if (buf) {
-    if (merged.length > 0) merged[merged.length - 1] += buf;
-    else merged.push(buf);
+  // 尾句：无论多少字都发送
+  if (buf.trim()) {
+    if (result.length > 0 && buf.trim().length < MIN_LEN) {
+      result[result.length - 1] += buf;
+    } else {
+      result.push(buf);
+    }
   }
-  return merged;
+  return result.length > 0 ? result : [text];
 }
 
 /** 带重试的 TTS 请求 */
