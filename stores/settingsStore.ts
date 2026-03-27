@@ -13,6 +13,8 @@ interface SettingsState {
   // 兼容旧代码：darkMode getter
   darkMode: boolean;
   jpLevel: JpLevel;
+  /** 新闻朗读使用的 TTS 音色 */
+  newsVoice: string;
   hydrated: boolean;
   hydrate: () => Promise<void>;
   setNativeLanguage: (lang: string) => void;
@@ -20,6 +22,7 @@ interface SettingsState {
   setThemeMode: (mode: ThemeMode) => void;
   setDarkMode: (enabled: boolean) => void;
   setJpLevel: (level: JpLevel) => void;
+  setNewsVoice: (voice: string) => void;
 }
 
 function save(partial: Record<string, unknown>) {
@@ -29,6 +32,7 @@ function save(partial: Record<string, unknown>) {
     targetLanguage: state.targetLanguage,
     themeMode: state.themeMode,
     jpLevel: state.jpLevel,
+    newsVoice: state.newsVoice,
     ...partial,
   };
   AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
@@ -40,6 +44,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'system',
   darkMode: false,
   jpLevel: 'N4',
+  newsVoice: 'Ebona',
   hydrated: false,
 
   hydrate: async () => {
@@ -52,6 +57,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           jpLevel: data.jpLevel ?? 'N4',
           nativeLanguage: data.nativeLanguage ?? '中文',
           targetLanguage: data.targetLanguage ?? '日本語',
+          newsVoice: data.newsVoice ?? 'Ebona',
         });
       }
     } catch { /* ignore */ }
@@ -63,4 +69,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setThemeMode: (mode) => { set({ themeMode: mode }); save({ themeMode: mode }); },
   setDarkMode: (enabled) => { set({ themeMode: enabled ? 'dark' : 'light' }); save({ themeMode: enabled ? 'dark' : 'light' }); },
   setJpLevel: (level) => { set({ jpLevel: level }); save({ jpLevel: level }); },
+  setNewsVoice: (voice) => { set({ newsVoice: voice }); save({ newsVoice: voice }); },
 }));

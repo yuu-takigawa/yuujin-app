@@ -332,6 +332,7 @@ export default function ConversationScreen() {
                 skipEntrance={item.data.id === skipEntranceId}
                 entranceDelay={index < 8 ? index * 40 : 0}
                 imageUrl={parsedImageUrl}
+                voice={character?.voice}
                 dismissSignal={scrollSignal}
                 onRequestScroll={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
               />

@@ -27,6 +27,7 @@ export default function CreateCharacterScreen() {
     hobbies: string[];
     location: string;
     bio: string;
+    voice: string;
   }) => {
     setIsLoading(true);
     try {

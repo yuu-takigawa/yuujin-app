@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import DiceButton from './DiceButton';
 import ImageCropper from '../common/ImageCropper';
 import { useTheme } from '../../hooks/useTheme';
@@ -21,6 +22,7 @@ import { useLocale } from '../../hooks/useLocale';
 import { spacing, fontSize } from '../../constants/theme';
 import { uploadAvatar, streamGenerateBio } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import { VOICES, getDefaultVoice } from '../../constants/voices';
 import {
   PRESET_AVATARS,
   OCCUPATIONS,
@@ -43,6 +45,7 @@ interface CharacterFormData {
   hobbies: string[];
   location: string;
   bio: string;
+  voice: string;
 }
 
 interface CharacterFormProps {
@@ -75,6 +78,8 @@ export default function CharacterForm({
   const [hobbies, setHobbies] = useState(initialData?.hobbies?.join('\u3001') || '');
   const [location, setLocation] = useState(initialData?.location || '');
   const [bio, setBio] = useState(initialData?.bio || '');
+  const [voice, setVoice] = useState(initialData?.voice || getDefaultVoice(initialData?.gender));
+  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [generatingBio, setGeneratingBio] = useState(false);
@@ -112,6 +117,7 @@ export default function CharacterForm({
       hobbies: hobbies.split('\u3001').filter(Boolean),
       location: location.trim(),
       bio: bio.trim(),
+      voice,
     });
   };
 
@@ -132,6 +138,9 @@ export default function CharacterForm({
     const newHobbies = pickRandomN(HOBBIES, 3).join('\u3001');
     const newAvatar = pickRandom(PRESET_AVATARS);
 
+    const genderVoices = VOICES.filter(v => v.gender === (g === '\u5973\u6027' ? 'female' : 'male'));
+    const randomVoice = genderVoices[Math.floor(Math.random() * genderVoices.length)];
+
     setGender(g);
     setName(newName);
     setAge(newAge);
@@ -140,6 +149,7 @@ export default function CharacterForm({
     setPersonality(newPersonality);
     setHobbies(newHobbies);
     setAvatarUrl(newAvatar);
+    setVoice(randomVoice?.id || getDefaultVoice(g));
     setErrors({});
 
     // Scroll avatar grid to show selected avatar
@@ -340,13 +350,54 @@ export default function CharacterForm({
               <TouchableOpacity
                 key={g}
                 style={[styles.genderButton, { borderColor: t.border }, idx === 0 && styles.genderLeft, idx === 1 && styles.genderRight, gender === g && { backgroundColor: t.brand, borderColor: t.brand }]}
-                onPress={() => setGender(g)}
+                onPress={() => { setGender(g); setVoice(getDefaultVoice(g)); }}
               >
                 <Text style={[styles.genderText, { color: t.text }, gender === g && { color: '#FFF' }]}>{g === '\u5973\u6027' ? i('character.female') : i('character.male')}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
+      </View>
+
+      {/* ボイス */}
+      <View style={styles.field}>
+        <View style={styles.fieldHeader}>
+          <Text style={[styles.label, { color: t.text }]}>{i('voice.label')}</Text>
+          <DiceButton onPress={() => {
+            const genderVoices = VOICES.filter(v => v.gender === (gender === '\u5973\u6027' ? 'female' : 'male'));
+            const rv = genderVoices[Math.floor(Math.random() * genderVoices.length)];
+            if (rv) setVoice(rv.id);
+          }} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+          {VOICES.filter(v => v.gender === (gender === '\u5973\u6027' ? 'female' : 'male')).map((v) => (
+            <TouchableOpacity
+              key={v.id}
+              style={[
+                { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
+                { borderColor: t.border },
+                voice === v.id && { backgroundColor: t.brand, borderColor: t.brand },
+              ]}
+              onPress={() => setVoice(v.id)}
+            >
+              <Text style={[{ fontSize: 13, fontWeight: '500' }, { color: t.text }, voice === v.id && { color: '#FFF' }]}>{v.id}</Text>
+              <TouchableOpacity
+                hitSlop={8}
+                onPress={async (e) => {
+                  e.stopPropagation?.();
+                  if (previewSound) { await previewSound.stopAsync(); await previewSound.unloadAsync(); }
+                  const { sound } = await Audio.Sound.createAsync({ uri: v.demoUrl });
+                  setPreviewSound(sound);
+                  await sound.playAsync();
+                  sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) { sound.unloadAsync(); setPreviewSound(null); } });
+                }}
+              >
+                <Ionicons name="play-circle-outline" size={18} color={voice === v.id ? '#FFF' : t.brand} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <Text style={[{ fontSize: 11, marginTop: 4 }, { color: t.textSecondary }]}>{i(`voice.${voice}`) || voice}</Text>
       </View>
 
       {/* 職業 */}

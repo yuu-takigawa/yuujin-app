@@ -86,3 +86,9 @@ export async function del<T>(path: string, body?: unknown): Promise<T> {
     body: body ? JSON.stringify(body) : undefined,
   });
 }
+
+/** TTS: 文字转语音，返回音频 URL */
+export async function tts(text: string, voice?: string): Promise<string> {
+  const result = await post<{ url: string; cached: boolean }>('/voice/tts', { text, voice });
+  return result.url;
+}

@@ -40,6 +40,7 @@ export default function EditCharacterScreen() {
     hobbies: string[];
     location: string;
     bio: string;
+    voice: string;
   }) => {
     setIsLoading(true);
     try {
@@ -71,6 +72,7 @@ export default function EditCharacterScreen() {
           hobbies: character.hobbies,
           location: character.location,
           bio: character.bio,
+          voice: character.voice,
         }}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

@@ -18,6 +18,7 @@ interface ServerCharacter {
   hobbies: string[] | string;
   location: string;
   bio: string;
+  voice?: string;
   isPreset: boolean | number;
   promptKey?: string;
 }
@@ -45,6 +46,7 @@ function mapCharacter(s: ServerCharacter): Character {
     hobbies,
     location: s.location,
     bio: s.bio,
+    voice: s.voice || undefined,
     isPreset: !!s.isPreset,
   };
 }
@@ -65,6 +67,7 @@ export async function createCharacter(data: Omit<Character, 'id' | 'isPreset'>):
     hobbies: data.hobbies,
     location: data.location,
     bio: data.bio,
+    voice: data.voice || '',
   });
   return mapCharacter(result);
 }
@@ -83,6 +86,7 @@ export async function updateCharacter(
   if (data.hobbies !== undefined) body.hobbies = data.hobbies;
   if (data.location !== undefined) body.location = data.location;
   if (data.bio !== undefined) body.bio = data.bio;
+  if (data.voice !== undefined) body.voice = data.voice;
 
   const result = await put<ServerCharacter>(`/characters/${id}`, body);
   return mapCharacter(result);

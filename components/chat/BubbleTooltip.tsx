@@ -1,8 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../hooks/useTheme';
+import { useTTS } from '../../hooks/useTTS';
 
 export type BubbleAction = 'read' | 'translate' | 'analyze' | 'copy' | 'correct';
 
@@ -10,6 +10,7 @@ interface BubbleTooltipProps {
   visible: boolean;
   content: string;
   role?: string;
+  voice?: string;
   position: 'above' | 'below';
   onClose: () => void;
   onAction: (action: BubbleAction) => void;
@@ -19,11 +20,13 @@ export default function BubbleTooltip({
   visible,
   content,
   role,
+  voice,
   position,
   onClose,
   onAction,
 }: BubbleTooltipProps) {
   const t = useTheme();
+  const { speak, stop } = useTTS();
 
   if (!visible) return null;
 
@@ -39,8 +42,8 @@ export default function BubbleTooltip({
   };
 
   const handleSpeak = () => {
-    Speech.stop();
-    Speech.speak(content, { language: 'ja-JP' });
+    stop();
+    speak(content, voice);
     onAction('read');
   };
 

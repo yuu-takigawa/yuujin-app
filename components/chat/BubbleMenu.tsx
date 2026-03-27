@@ -10,19 +10,21 @@ import {
   Share,
   Animated,
 } from 'react-native';
-import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
+import { useTTS } from '../../hooks/useTTS';
 import { spacing, fontSize, radii } from '../../constants/theme';
 
 interface BubbleMenuProps {
   visible: boolean;
   content: string;
   role?: string;
+  voice?: string;
   onClose: () => void;
 }
 
-export default function BubbleMenu({ visible, content, role, onClose }: BubbleMenuProps) {
+export default function BubbleMenu({ visible, content, role, voice, onClose }: BubbleMenuProps) {
   const t = useTheme();
+  const { speak, stop } = useTTS();
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -61,8 +63,8 @@ export default function BubbleMenu({ visible, content, role, onClose }: BubbleMe
   };
 
   const handleSpeak = () => {
-    Speech.stop();
-    Speech.speak(content, { language: 'ja-JP' });
+    stop();
+    speak(content, voice);
     onClose();
   };
 

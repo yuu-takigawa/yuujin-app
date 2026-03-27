@@ -2,7 +2,6 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform, Pressable, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import * as Speech from 'expo-speech';
 import Avatar from '../common/Avatar';
 import BubbleTooltip, { type BubbleAction } from './BubbleTooltip';
 import AnnotationPanel from './AnnotationPanel';
@@ -18,6 +17,7 @@ interface MessageBubbleProps {
   skipEntrance?: boolean;
   entranceDelay?: number;
   imageUrl?: string;
+  voice?: string;
   dismissSignal?: number;
   onRequestScroll?: () => void;
 }
@@ -40,6 +40,7 @@ export default function MessageBubble({
   skipEntrance,
   entranceDelay = 0,
   imageUrl,
+  voice,
   dismissSignal,
   onRequestScroll,
 }: MessageBubbleProps) {
@@ -222,6 +223,7 @@ export default function MessageBubble({
             visible={tooltipVisible}
             content={content}
             role={role}
+            voice={voice}
             position={tooltipPosition}
             onClose={() => setTooltipVisible(false)}
             onAction={handleAction}

@@ -3,9 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Platfo
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
+import { useTTS } from '../../hooks/useTTS';
+import { useSettingsStore } from '../../stores/settingsStore';
 import ShareModal from '../../components/common/ShareModal';
 import Avatar from '../../components/common/Avatar';
 import StaggerItem from '../../components/common/StaggerItem';
@@ -42,6 +43,8 @@ export default function NewsDetailScreen() {
   const characters = useCharacterStore((s) => s.characters);
   const friends = useFriendStore((s) => s.friends);
   const user = useAuthStore((s) => s.user);
+  const newsVoice = useSettingsStore((s) => s.newsVoice);
+  const { speak: ttsSpeak, stop: ttsStop } = useTTS();
 
   // 入场动画（Web 用 JS driver，Native 用 native driver）
   const isWeb = Platform.OS === 'web';
@@ -121,7 +124,7 @@ export default function NewsDetailScreen() {
     return () => {
       cancelRef.current?.();
       aiReplyCancelRefs.current.forEach((fn) => fn());
-      Speech.stop();
+      ttsStop();
     };
   }, [articleId]);
 
@@ -243,19 +246,14 @@ export default function NewsDetailScreen() {
 
   const handleSpeak = useCallback((index: number, text: string) => {
     if (speakingIndex === index) {
-      Speech.stop();
+      ttsStop();
       setSpeakingIndex(null);
       return;
     }
-    Speech.stop();
+    ttsStop();
     setSpeakingIndex(index);
-    Speech.speak(text, {
-      language: 'ja-JP',
-      onDone: () => setSpeakingIndex(null),
-      onStopped: () => setSpeakingIndex(null),
-      onError: () => setSpeakingIndex(null),
-    });
-  }, [speakingIndex]);
+    ttsSpeak(text, newsVoice, () => setSpeakingIndex(null));
+  }, [speakingIndex, newsVoice, ttsSpeak, ttsStop]);
 
   const handleSendComment = async () => {
     if (!commentText.trim() || !articleId || sending) return;

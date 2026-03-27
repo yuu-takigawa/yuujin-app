@@ -10,6 +10,8 @@ import { useLocale } from '../../../hooks/useLocale';
 import type { JpLevel } from '../../../services/api';
 import { updateProfile } from '../../../services/api';
 import HalfScreenModal from '../../../components/common/HalfScreenModal';
+import { VOICES } from '../../../constants/voices';
+import { Audio } from 'expo-av';
 
 const JP_LEVEL_VALUES: JpLevel[] = ['none', 'N5', 'N4', 'N3', 'N2', 'N1', 'native'];
 
@@ -65,9 +67,13 @@ export default function SettingsScreen() {
   const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
+  const newsVoice = useSettingsStore((s) => s.newsVoice);
+  const setNewsVoice = useSettingsStore((s) => s.setNewsVoice);
   const jpLevel = user?.jpLevel || 'N4';
 
   const [jpLevelPickerVisible, setJpLevelPickerVisible] = useState(false);
+  const [voicePickerVisible, setVoicePickerVisible] = useState(false);
+  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
 
   const currentLevelLabel = i(`level.${jpLevel}`);
 
@@ -109,6 +115,34 @@ export default function SettingsScreen() {
     try {
       await updateProfile({ jpLevel: level });
     } catch { /* silent */ }
+  };
+
+  const handleVoicePreview = async (demoUrl: string) => {
+    try {
+      if (previewSound) {
+        await previewSound.stopAsync();
+        await previewSound.unloadAsync();
+      }
+      const { sound } = await Audio.Sound.createAsync({ uri: demoUrl });
+      setPreviewSound(sound);
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+          setPreviewSound(null);
+        }
+      });
+    } catch { /* silent */ }
+  };
+
+  const handleVoiceSelect = (voiceId: string) => {
+    setNewsVoice(voiceId);
+    setVoicePickerVisible(false);
+    if (previewSound) {
+      previewSound.stopAsync();
+      previewSound.unloadAsync();
+      setPreviewSound(null);
+    }
   };
 
   return (
@@ -167,6 +201,22 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* 朗読 */}
+        <SectionHeader title={i('voice.label')} />
+        <View style={[styles.group, { borderColor: t.border }]}>
+          <SettingsRow
+            icon="volume-medium-outline"
+            label={i('settings.newsVoice')}
+            right={
+              <View style={styles.valueRow}>
+                <Text style={[styles.valueText, { color: t.brand }]}>{newsVoice}</Text>
+                <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
+              </View>
+            }
+            onPress={() => setVoicePickerVisible(true)}
+          />
+        </View>
+
         {/* 通知 */}
         <SectionHeader title={i('settings.notifications')} />
         <View style={[styles.group, { borderColor: t.border }]}>
@@ -220,6 +270,44 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+      </HalfScreenModal>
+
+      <HalfScreenModal visible={voicePickerVisible} onClose={() => { setVoicePickerVisible(false); if (previewSound) { previewSound.stopAsync(); previewSound.unloadAsync(); setPreviewSound(null); } }} height={480}>
+        <ScrollView style={styles.levelModal}>
+          <Text style={[styles.levelModalTitle, { color: t.text }]}>{i('voice.select')}</Text>
+          {/* 女声 */}
+          <Text style={[styles.voiceGroupLabel, { color: t.textSecondary }]}>{i('voice.female')}</Text>
+          {VOICES.filter(v => v.gender === 'female').map((v) => (
+            <TouchableOpacity
+              key={v.id}
+              style={[styles.levelOption, { backgroundColor: newsVoice === v.id ? t.brandLight : 'transparent' }]}
+              onPress={() => handleVoiceSelect(v.id)}
+            >
+              <Text style={[styles.levelOptionLabel, { color: newsVoice === v.id ? t.brand : t.text }]}>{v.id}</Text>
+              <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{i(v.labelKey)}</Text>
+              <TouchableOpacity onPress={() => handleVoicePreview(v.demoUrl)} hitSlop={8}>
+                <Ionicons name="play-circle-outline" size={22} color={t.brand} />
+              </TouchableOpacity>
+              {newsVoice === v.id && <Ionicons name="checkmark" size={18} color={t.brand} style={{ marginLeft: 4 }} />}
+            </TouchableOpacity>
+          ))}
+          {/* 男声 */}
+          <Text style={[styles.voiceGroupLabel, { color: t.textSecondary }]}>{i('voice.male')}</Text>
+          {VOICES.filter(v => v.gender === 'male').map((v) => (
+            <TouchableOpacity
+              key={v.id}
+              style={[styles.levelOption, { backgroundColor: newsVoice === v.id ? t.brandLight : 'transparent' }]}
+              onPress={() => handleVoiceSelect(v.id)}
+            >
+              <Text style={[styles.levelOptionLabel, { color: newsVoice === v.id ? t.brand : t.text }]}>{v.id}</Text>
+              <Text style={[styles.levelOptionDesc, { color: t.textSecondary }]}>{i(v.labelKey)}</Text>
+              <TouchableOpacity onPress={() => handleVoicePreview(v.demoUrl)} hitSlop={8}>
+                <Ionicons name="play-circle-outline" size={22} color={t.brand} />
+              </TouchableOpacity>
+              {newsVoice === v.id && <Ionicons name="checkmark" size={18} color={t.brand} style={{ marginLeft: 4 }} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </HalfScreenModal>
     </View>
   );
@@ -280,4 +368,5 @@ const styles = StyleSheet.create({
   levelOptionLabel: { fontSize: 15, fontWeight: '600', width: 80 },
   levelOptionDesc: { flex: 1, fontSize: 13 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
+  voiceGroupLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
 });

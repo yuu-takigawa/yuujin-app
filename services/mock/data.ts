@@ -27,6 +27,7 @@ export interface Character {
   hobbies: string[];
   location: string;
   bio: string;
+  voice?: string;
   isPreset: boolean;
 }
 
