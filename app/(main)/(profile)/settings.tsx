@@ -241,14 +241,6 @@ export default function SettingsScreen() {
             label={i('settings.changePassword')}
             onPress={() => router.push('/change-password')}
           />
-          <RowDivider />
-          <SettingsRow
-            icon="trash-outline"
-            label={i('settings.deleteAccount')}
-            destructive
-            iconColor={t.error || '#E53935'}
-            onPress={handleDeleteAccount}
-          />
         </View>
 
       </ScrollView>
