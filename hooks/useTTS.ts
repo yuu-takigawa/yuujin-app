@@ -15,9 +15,9 @@ function isPremiumTier(): boolean {
   return membership === 'pro' || membership === 'max' || membership === 'admin';
 }
 
-/** 按句号/问号/感叹号/换行切分，保留标点 */
+/** 按句号/问号/感叹号/顿号/换行切分，保留标点 */
 function splitSentences(text: string): string[] {
-  const parts = text.split(/(?<=[。！？\n!?])/g).map(s => s.trim()).filter(Boolean);
+  const parts = text.split(/(?<=[。！？、\n!?])/g).map(s => s.trim()).filter(Boolean);
   return parts.length > 0 ? parts : [text];
 }
 
