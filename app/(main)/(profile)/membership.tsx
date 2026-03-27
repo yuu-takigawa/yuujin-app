@@ -23,14 +23,15 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
-    tier: 'free',
-    name: 'Free',
-    price: '\u00a50',
-    priceNoteKey: 'membership.freeForever',
-    dailyCredits: '100pt',
-    color: '#9CA3AF',
-    featureKeys: ['membership.feat.free1', 'membership.feat.free2', 'membership.feat.free3', 'membership.feat.free4'],
-    models: ['ERNIE Speed', 'ERNIE Lite'],
+    tier: 'max',
+    name: 'Max',
+    price: '\u00a529.9',
+    priceNoteKey: 'membership.perMonth',
+    dailyCredits: '2000pt',
+    color: '#E85B3A',
+    badgeTextKey: 'membership.comingSoon',
+    featureKeys: ['membership.feat.max1', 'membership.feat.max2', 'membership.feat.tts', 'membership.feat.max3', 'membership.feat.max4'],
+    models: [],
   },
   {
     tier: 'pro',
@@ -44,15 +45,14 @@ const PLANS: Plan[] = [
     models: ['\u901a\u7fa9 Flash \u30ad\u30e3\u30e9', 'DeepSeek V3', '\u901a\u7fa9 Plus \u30ad\u30e3\u30e9', '\u901a\u7fa9\u5343\u554f Plus'],
   },
   {
-    tier: 'max',
-    name: 'Max',
-    price: '\u00a529.9',
-    priceNoteKey: 'membership.perMonth',
-    dailyCredits: '2000pt',
-    color: '#E85B3A',
-    badgeTextKey: 'membership.comingSoon',
-    featureKeys: ['membership.feat.max1', 'membership.feat.max2', 'membership.feat.tts', 'membership.feat.max3', 'membership.feat.max4'],
-    models: [],
+    tier: 'free',
+    name: 'Free',
+    price: '\u00a50',
+    priceNoteKey: 'membership.freeForever',
+    dailyCredits: '100pt',
+    color: '#9CA3AF',
+    featureKeys: ['membership.feat.free1', 'membership.feat.free2', 'membership.feat.free3', 'membership.feat.free4'],
+    models: ['ERNIE Speed', 'ERNIE Lite'],
   },
 ];
 

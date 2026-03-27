@@ -15,10 +15,25 @@ function isPremiumTier(): boolean {
   return membership === 'pro' || membership === 'max' || membership === 'admin';
 }
 
-/** 按句号/问号/感叹号/顿号/换行切分，保留标点 */
+/** 按句号/问号/感叹号/换行切分，保留标点，确保每段≥20字 */
 function splitSentences(text: string): string[] {
-  const parts = text.split(/(?<=[。！？、\n!?])/g).map(s => s.trim()).filter(Boolean);
-  return parts.length > 0 ? parts : [text];
+  const raw = text.split(/(?<=[。！？\n!?])/g).map(s => s.trim()).filter(Boolean);
+  if (raw.length <= 1) return raw.length > 0 ? raw : [text];
+  // 合并过短的片段
+  const merged: string[] = [];
+  let buf = '';
+  for (const part of raw) {
+    buf += part;
+    if (buf.length >= 20) {
+      merged.push(buf);
+      buf = '';
+    }
+  }
+  if (buf) {
+    if (merged.length > 0) merged[merged.length - 1] += buf;
+    else merged.push(buf);
+  }
+  return merged;
 }
 
 /** 带重试的 TTS 请求 */
