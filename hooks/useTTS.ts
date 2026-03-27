@@ -77,7 +77,7 @@ function preprocessForTTS(text: string): string {
   t = t.replace(/[（(]?笑[）)]?/g, '');
   t = t.replace(/[（(]?泣[）)]?/g, '');
   t = t.replace(/[wWｗＷ]{2,}/g, '');           // ww, www 等
-  t = t.replace(/(?<=[^\w])[wWｗＷ](?=\s|$)/g, ''); // 文末单个 w
+  t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, ''); // 文末 w
   t = t.replace(/草(?=[。！？!?\s]|$)/g, '');
   // 3. 特殊记号 — TTS 会读成奇怪的音
   t = t.replace(/[〜～]/g, '');    // 波浪线 → 去掉
@@ -86,8 +86,8 @@ function preprocessForTTS(text: string): string {
   t = t.replace(/ⓘ/g, '');        // UI info icon
   t = t.replace(/[♪♫♬♩]/g, '');   // 音符
   t = t.replace(/[★☆※→←↑↓]/g, '');
-  // 4. Emoji — 广范围匹配（包括组合 emoji）
-  t = t.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
+  // 4. Emoji — 显式 Unicode 范围（避免 \p{} 兼容性问题）
+  t = t.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2934}\u{2935}\u{2190}-\u{21FF}]+/gu, '');
   // 5. 顔文字残骸（括号内非日文内容）
   t = t.replace(/[（(][^）)]*[_^;><][^）)]*[）)]/g, '');
   // 6. 清理残余
