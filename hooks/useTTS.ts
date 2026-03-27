@@ -146,19 +146,11 @@ export function useTTS() {
     headerParsedRef.current = false;
     sampleRateRef.current = 24000;
     nextTimeRef.current = audioCtx.currentTime;
-    let firstChunkResolved = false;
-    let resolveFirstChunk: (() => void) | null = null;
 
-    const firstChunkPromise = new Promise<void>((resolve) => {
-      resolveFirstChunk = resolve;
-      // 超时 8 秒
-      setTimeout(() => { if (!firstChunkResolved) { firstChunkResolved = true; resolve(); } }, 8000);
-    });
-
-    const abort = ttsStream(
+    abortRef.current = ttsStream(
       text,
       voice,
-      // onChunk
+      // onChunk — 每收到一个 base64 音频分片
       (base64) => {
         if (playingTextRef.current !== text) return;
         const bytes = base64ToBytes(base64);
@@ -166,7 +158,7 @@ export function useTTS() {
 
         let pcmBytes: Uint8Array;
 
-        // 检查每个 chunk 是否含 WAV 头（RIFF 魔数 0x52494646）
+        // 检查是否含 WAV 头（RIFF 魔数）
         const hasWavHeader = bytes.length >= 44 &&
           bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
 
@@ -184,7 +176,7 @@ export function useTTS() {
           pcmBytes = bytes;
         }
 
-        if (!audioCtx || pcmBytes.length < 2) return;
+        if (pcmBytes.length < 2) return;
 
         try {
           const float32 = pcm16ToFloat32(pcmBytes);
@@ -200,15 +192,9 @@ export function useTTS() {
           source.start(startAt);
           nextTimeRef.current = startAt + buffer.duration;
           lastSourceRef.current = source;
-
-          // 首片出声
-          if (!firstChunkResolved) {
-            firstChunkResolved = true;
-            resolveFirstChunk?.();
-          }
         } catch { /* skip bad chunk */ }
       },
-      // onDone
+      // onDone — SSE 流结束
       () => {
         if (lastSourceRef.current) {
           lastSourceRef.current.onended = () => {
@@ -223,27 +209,15 @@ export function useTTS() {
           speakingRef.current = false;
           onDone?.();
         }
-        if (!firstChunkResolved) {
-          firstChunkResolved = true;
-          resolveFirstChunk?.();
-        }
       },
       // onError
       () => {
         playingTextRef.current = null;
         speakingRef.current = false;
-        if (!firstChunkResolved) {
-          firstChunkResolved = true;
-          resolveFirstChunk?.();
-        }
         onDone?.();
       },
     );
-
-    abortRef.current = abort;
-
-    // 等首片出声后 resolve（让 tooltip 关闭）
-    await firstChunkPromise;
+    // speak() 立即返回，不阻塞 — tooltip 关闭，音频后台播放
   }, [stop]);
 
   return { speak, stop };

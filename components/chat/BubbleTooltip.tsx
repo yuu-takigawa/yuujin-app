@@ -43,12 +43,11 @@ export default function BubbleTooltip({
     onAction('copy');
   };
 
-  const handleSpeak = async () => {
+  const handleSpeak = () => {
     if (speaking) return;
-    setSpeaking(true);
     stop();
-    await speak(content, voice);
-    // Audio is now playing (or failed) — close tooltip
+    speak(content, voice);
+    // 立即关闭 tooltip，音频后台流式播放
     onAction('read');
   };
 
