@@ -102,6 +102,7 @@ export default function MembershipScreen() {
             </View>
             <Text style={[styles.adminDesc, { color: t.textSecondary }]}>
               {i('membership.adminAllModels')}
+              {'\n'}{i('membership.feat.tts')}
             </Text>
             <View style={styles.adminStats}>
               <Text style={[styles.adminStat, { color: '#7C3AED' }]}>{'\u221e'} pt {i('membership.remainPt')}</Text>
@@ -143,8 +144,8 @@ export default function MembershipScreen() {
         )}
 
         {/* Plan cards */}
-        {!isAdmin && PLANS.map((plan) => {
-          const isCurrent = plan.tier === membership;
+        {PLANS.map((plan) => {
+          const isCurrent = isAdmin ? false : plan.tier === membership;
           const isUpgrade = TIER_ORDER[plan.tier] > currentTierOrder;
 
           return (
@@ -214,12 +215,19 @@ export default function MembershipScreen() {
               </View>
 
               {/* CTA */}
-              {!isCurrent && isUpgrade && plan.tier === 'max' && (
+              {isCurrent ? (
+                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
+                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.currentPlan')}</Text>
+                </View>
+              ) : isAdmin ? (
+                null
+              ) : !isUpgrade ? (
+                null
+              ) : plan.tier === 'max' ? (
                 <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
                   <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.comingSoon')}</Text>
                 </View>
-              )}
-              {!isCurrent && isUpgrade && plan.tier !== 'max' && (
+              ) : (
                 <TouchableOpacity
                   style={[styles.ctaBtn, { backgroundColor: isUpgrading ? plan.color + '88' : plan.color }]}
                   activeOpacity={0.8}
@@ -239,11 +247,6 @@ export default function MembershipScreen() {
                     <Text style={styles.ctaBtnText}>{i('membership.upgrade')}</Text>
                   )}
                 </TouchableOpacity>
-              )}
-              {isCurrent && (
-                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
-                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.currentPlan')}</Text>
-                </View>
               )}
             </View>
           );

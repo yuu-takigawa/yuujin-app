@@ -49,10 +49,19 @@
       input:-webkit-autofill:hover,
       input:-webkit-autofill:focus,
       input:-webkit-autofill:active {
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: inherit !important;
-        transition: background-color 9999s ease-in-out 0s;
-        box-shadow: 0 0 0 1000px transparent inset !important;
+        -webkit-box-shadow: 0 0 0 1000px #F0F0F0 inset !important;
+        -webkit-text-fill-color: #212121 !important;
+        caret-color: #212121;
+      }
+      @media (prefers-color-scheme: dark) {
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #2A2A2A inset !important;
+          -webkit-text-fill-color: #F0F0F0 !important;
+          caret-color: #F0F0F0;
+        }
       }
       #root {
         position: fixed;

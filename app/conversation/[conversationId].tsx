@@ -275,7 +275,7 @@ export default function ConversationScreen() {
           inverted
           data={chatItems}
           keyExtractor={(item) => item.type === 'date' ? item.key : item.data.id}
-          contentContainerStyle={[styles.messageList, { paddingTop: 60, paddingBottom: 12 }]}
+          contentContainerStyle={[styles.messageList, { paddingTop: 60, paddingBottom: 12, flexGrow: 1, justifyContent: 'flex-end' }]}
           initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
