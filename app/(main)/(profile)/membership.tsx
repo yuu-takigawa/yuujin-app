@@ -35,12 +35,12 @@ const PLANS: Plan[] = [
   {
     tier: 'pro',
     name: 'Pro',
-    price: '\u00a59.9',
+    price: '\u00a514.9',
     priceNoteKey: 'membership.perMonth',
     dailyCredits: '500pt',
     color: '#3B82F6',
     badgeTextKey: 'membership.freeCampaign',
-    featureKeys: ['membership.feat.pro1', 'membership.feat.pro2', 'membership.feat.pro3', 'membership.feat.pro4'],
+    featureKeys: ['membership.feat.pro1', 'membership.feat.pro2', 'membership.feat.tts', 'membership.feat.pro3', 'membership.feat.pro4'],
     models: ['\u901a\u7fa9 Flash \u30ad\u30e3\u30e9', 'DeepSeek V3', '\u901a\u7fa9 Plus \u30ad\u30e3\u30e9', '\u901a\u7fa9\u5343\u554f Plus'],
   },
   {
@@ -51,7 +51,7 @@ const PLANS: Plan[] = [
     dailyCredits: '2000pt',
     color: '#E85B3A',
     badgeTextKey: 'membership.comingSoon',
-    featureKeys: ['membership.feat.max1', 'membership.feat.max2', 'membership.feat.max3', 'membership.feat.max4'],
+    featureKeys: ['membership.feat.max1', 'membership.feat.max2', 'membership.feat.tts', 'membership.feat.max3', 'membership.feat.max4'],
     models: [],
   },
 ];
