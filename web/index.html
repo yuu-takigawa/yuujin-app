@@ -44,6 +44,16 @@
         outline: none !important;
         box-shadow: none !important;
       }
+      /* iOS Safari autofill 黄色背景覆盖 */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus,
+      input:-webkit-autofill:active {
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: inherit !important;
+        transition: background-color 9999s ease-in-out 0s;
+        box-shadow: 0 0 0 1000px transparent inset !important;
+      }
       #root {
         position: fixed;
         top: 0;

@@ -83,7 +83,6 @@ export default function ConversationScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrollSignal, setScrollSignal] = useState(0);
-  const [activeTooltipMsgId, setActiveTooltipMsgId] = useState<string | null>(null);
   const [suggestText, setSuggestText] = useState<string | undefined>(undefined);
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const suggestCancelRef = useRef<(() => void) | null>(null);
@@ -280,9 +279,9 @@ export default function ConversationScreen() {
           initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
-          CellRendererComponent={useCallback(({ children, cellKey, style, ...props }: any) => (
-            <View {...props} style={[style, { zIndex: cellKey === activeTooltipMsgId ? 9999 : 0 }]}>{children}</View>
-          ), [activeTooltipMsgId])}
+          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => (
+            <View {...props} style={[style, { zIndex: 1000 - (index ?? 0) }]}>{children}</View>
+          ), [])}
           onEndReached={() => {
             if (hasMore && !loadingMore) {
               loadMoreMessages();
@@ -339,7 +338,6 @@ export default function ConversationScreen() {
                 voice={character?.voice}
                 dismissSignal={scrollSignal}
                 onRequestScroll={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
-                onTooltipChange={(visible) => setActiveTooltipMsgId(visible ? item.data.id : null)}
               />
             );
           }}
