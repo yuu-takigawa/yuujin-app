@@ -145,7 +145,8 @@ export function useTTS() {
   const abortFnsRef = useRef<Array<() => void>>([]);
   const playingTextRef = useRef<string | null>(null);
   const speakingRef = useRef(false);
-  const lastSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  // 追踪所有已调度的 AudioBufferSourceNode，stop 时全部断开
+  const allSourcesRef = useRef<AudioBufferSourceNode[]>([]);
 
   // 分句播放队列状态
   const sentenceStatesRef = useRef<SentenceState[]>([]);
@@ -160,11 +161,12 @@ export function useTTS() {
     // 中止所有 SSE 连接
     for (const abort of abortFnsRef.current) abort();
     abortFnsRef.current = [];
-    // 断开最后一个 source（不 suspend AudioContext，避免恢复延迟）
-    if (lastSourceRef.current) {
-      try { lastSourceRef.current.disconnect(); } catch { /* ok */ }
-      lastSourceRef.current = null;
+    // 断开所有已调度的 AudioBufferSourceNode
+    for (const src of allSourcesRef.current) {
+      try { src.stop(); } catch { /* ok */ }
+      try { src.disconnect(); } catch { /* ok */ }
     }
+    allSourcesRef.current = [];
     // 停止缓存 Audio 元素
     for (const state of sentenceStatesRef.current) {
       if (state.cachedAudio) {
@@ -237,7 +239,7 @@ export function useTTS() {
           const startAt = Math.max(audioCtx.currentTime, nextTimeRef.current);
           source.start(startAt);
           nextTimeRef.current = startAt + buffer.duration;
-          lastSourceRef.current = source;
+          allSourcesRef.current.push(source);
         } catch { /* skip bad chunk */ }
 
         played[idx] = i + 1;
@@ -264,15 +266,14 @@ export function useTTS() {
     onDone?: () => void,
     onError?: (msg: string) => void,
   ) => {
-    // 防重叠：同一文本再次点击 → 停止
-    if (speakingRef.current) {
-      if (playingTextRef.current === text) {
-        stop();
-        onDone?.();
-      }
+    // 同一文本再次点击 → toggle 停止
+    if (speakingRef.current && playingTextRef.current === text) {
+      stop();
+      onDone?.();
       return;
     }
 
+    // 不同文本或非播放状态 → 停掉旧的，开始新的
     stop();
     speakingRef.current = true;
     onErrorRef.current = onError || null;
@@ -337,8 +338,10 @@ export function useTTS() {
       completedCount++;
       if (completedCount >= sentences.length) {
         // 所有 SSE 流结束，等最后一个 AudioBuffer 播完
-        if (lastSourceRef.current) {
-          lastSourceRef.current.onended = () => {
+        const sources = allSourcesRef.current;
+        const lastSource = sources.length > 0 ? sources[sources.length - 1] : null;
+        if (lastSource) {
+          lastSource.onended = () => {
             if (playingTextRef.current === text) {
               playingTextRef.current = null;
               speakingRef.current = false;
@@ -346,9 +349,17 @@ export function useTTS() {
             }
           };
         } else {
-          playingTextRef.current = null;
-          speakingRef.current = false;
-          onDone?.();
+          // 可能全是缓存 URL 播放，延迟检查
+          const checkCachedDone = () => {
+            const allCachedDone = states.every(s => s.done || s.error);
+            if (allCachedDone && playingTextRef.current === text) {
+              playingTextRef.current = null;
+              speakingRef.current = false;
+              onDone?.();
+            }
+          };
+          // 如果有缓存句子在播放，它们的 onended 会设 done=true
+          setTimeout(checkCachedDone, 100);
         }
       }
     };

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform, Pressable, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -36,7 +36,7 @@ function formatMessageTime(dateStr?: string): string {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function MessageBubble({
+function MessageBubble({
   content,
   role,
   avatarUrl,
@@ -202,7 +202,7 @@ export default function MessageBubble({
     <Animated.View style={[styles.row, isUser && styles.rowUser, {
       opacity: animValue,
       transform: [{ translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
-      ...(tooltipVisible ? { zIndex: 999 } : undefined),
+      ...(tooltipVisible ? { zIndex: 9999, elevation: 9999 } : undefined),
     }]}>
       {!isUser && hasAvatar && <Avatar imageUrl={avatarUrl} size={36} />}
       <View style={styles.bubbleWrap}>
@@ -363,4 +363,28 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height * 0.8,
   },
+});
+
+/**
+ * React.memo — 只在自身相关 props 变化时重渲染
+ * activeTooltipId 变化时，只有 "与自己相关" 的那个气泡需要 re-render
+ */
+export default React.memo(MessageBubble, (prev, next) => {
+  // activeTooltipId 变化：只有涉及自己的才需要 re-render
+  const prevIsActive = prev.activeTooltipId === prev.messageId;
+  const nextIsActive = next.activeTooltipId === next.messageId;
+  if (prevIsActive !== nextIsActive) return false; // 需要 re-render
+
+  // 其他 props 浅比较
+  if (prev.content !== next.content) return false;
+  if (prev.role !== next.role) return false;
+  if (prev.avatarUrl !== next.avatarUrl) return false;
+  if (prev.createdAt !== next.createdAt) return false;
+  if (prev.highlight !== next.highlight) return false;
+  if (prev.skipEntrance !== next.skipEntrance) return false;
+  if (prev.imageUrl !== next.imageUrl) return false;
+  if (prev.voice !== next.voice) return false;
+  if (prev.dismissSignal !== next.dismissSignal) return false;
+
+  return true; // 相同，不 re-render
 });
