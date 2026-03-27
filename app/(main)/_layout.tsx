@@ -51,6 +51,7 @@ export default function MainLayout() {
       safeAreaInsets={{ top: 0, bottom: 0 }}
       screenOptions={{
         headerShown: false,
+        // @ts-expect-error gestureEnabled 在 expo-router bottom-tabs 中未声明但实际有效
         gestureEnabled: false,
         tabBarActiveTintColor: t.brand,
         tabBarInactiveTintColor: t.textSecondary,

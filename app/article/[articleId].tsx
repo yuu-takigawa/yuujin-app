@@ -244,7 +244,7 @@ export default function NewsDetailScreen() {
     });
   }, [articleId, annotations]);
 
-  const handleSpeak = useCallback(async (index: number, text: string) => {
+  const handleSpeak = useCallback((index: number, text: string) => {
     if (speakingIndex === index) {
       ttsStop();
       setSpeakingIndex(null);
@@ -252,8 +252,12 @@ export default function NewsDetailScreen() {
     }
     ttsStop();
     setSpeakingIndex(index);
-    await ttsSpeak(text, newsVoice);
-    setSpeakingIndex(null);
+    ttsSpeak(text, newsVoice, () => {
+      setSpeakingIndex(null);
+    }, (err) => {
+      setSpeakingIndex(null);
+      if (err) console.warn('[TTS Error]', err);
+    });
   }, [speakingIndex, newsVoice, ttsSpeak, ttsStop]);
 
   const handleSendComment = async () => {

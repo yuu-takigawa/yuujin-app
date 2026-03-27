@@ -83,6 +83,7 @@ export default function ConversationScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrollSignal, setScrollSignal] = useState(0);
+  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
   const [suggestText, setSuggestText] = useState<string | undefined>(undefined);
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const suggestCancelRef = useRef<(() => void) | null>(null);
@@ -279,17 +280,22 @@ export default function ConversationScreen() {
           initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
-          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => (
-            <View {...props} style={[style, { zIndex: 1000 - (index ?? 0) }]}>{children}</View>
-          ), [])}
+          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => {
+            // 找到当前 cell 对应的 chatItem
+            const item = chatItems[index];
+            const isActiveTooltip = item?.type === 'message' && item.data.id === activeTooltipId;
+            return (
+              <View {...props} style={[style, { zIndex: isActiveTooltip ? 9999 : 1000 - (index ?? 0) }]}>{children}</View>
+            );
+          }, [activeTooltipId, chatItems])}
           onEndReached={() => {
             if (hasMore && !loadingMore) {
               loadMoreMessages();
             }
           }}
           onEndReachedThreshold={1.5}
-          onScrollBeginDrag={() => setScrollSignal((s) => s + 1)}
-          onScroll={() => setScrollSignal((s) => s + 1)}
+          onScrollBeginDrag={() => { setScrollSignal((s) => s + 1); setActiveTooltipId(null); }}
+          onScroll={() => { setScrollSignal((s) => s + 1); setActiveTooltipId(null); }}
           scrollEventThrottle={200}
           ListHeaderComponent={
             isStreaming ? (
@@ -337,6 +343,11 @@ export default function ConversationScreen() {
                 imageUrl={parsedImageUrl}
                 voice={character?.voice}
                 dismissSignal={scrollSignal}
+                messageId={item.data.id}
+                activeTooltipId={activeTooltipId}
+                onTooltipChange={(visible) => {
+                  setActiveTooltipId(visible ? item.data.id : null);
+                }}
                 onRequestScroll={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
               />
             );

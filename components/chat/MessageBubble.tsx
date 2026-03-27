@@ -19,6 +19,10 @@ interface MessageBubbleProps {
   imageUrl?: string;
   voice?: string;
   dismissSignal?: number;
+  /** 当前激活 tooltip 的消息 ID（由父级控制单例） */
+  activeTooltipId?: string | null;
+  /** 本消息 ID */
+  messageId?: string;
   onRequestScroll?: () => void;
   onTooltipChange?: (visible: boolean) => void;
 }
@@ -43,6 +47,8 @@ export default function MessageBubble({
   imageUrl,
   voice,
   dismissSignal,
+  activeTooltipId,
+  messageId,
   onRequestScroll,
   onTooltipChange,
 }: MessageBubbleProps) {
@@ -57,7 +63,15 @@ export default function MessageBubble({
   const mounted = useRef(false);
   const iconRef = useRef<View>(null);
 
-  const [tooltipVisible, setTooltipVisible] = useState(false);
+  // tooltip 可见性：优先使用父级控制（activeTooltipId），兜底本地 state
+  const [localTooltipVisible, setLocalTooltipVisible] = useState(false);
+  const tooltipVisible = messageId && activeTooltipId !== undefined
+    ? activeTooltipId === messageId
+    : localTooltipVisible;
+  const setTooltipVisible = useCallback((v: boolean) => {
+    setLocalTooltipVisible(v);
+    onTooltipChange?.(v);
+  }, [onTooltipChange]);
   const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('above');
   const bubbleRef = useRef<View>(null);
   const [annotation, setAnnotation] = useState<{ type: 'translation' | 'analysis' | 'correct' } | null>(null);
@@ -82,9 +96,15 @@ export default function MessageBubble({
   useEffect(() => {
     if (dismissSignal && tooltipVisible) {
       setTooltipVisible(false);
-      onTooltipChange?.(false);
     }
   }, [dismissSignal]);
+
+  // Close tooltip when another bubble's tooltip opens (parent-controlled)
+  useEffect(() => {
+    if (messageId && activeTooltipId !== undefined && activeTooltipId !== messageId && localTooltipVisible) {
+      setLocalTooltipVisible(false);
+    }
+  }, [activeTooltipId]);
 
   const showToast = useCallback(() => {
     setToastVisible(true);
@@ -100,7 +120,6 @@ export default function MessageBubble({
   const handleInfoPress = () => {
     if (tooltipVisible) {
       setTooltipVisible(false);
-      onTooltipChange?.(false);
       return;
     }
     // Measure bubble position to decide tooltip placement
@@ -109,19 +128,15 @@ export default function MessageBubble({
       node.measureInWindow((x: number, y: number) => {
         setTooltipPosition(y < 120 ? 'below' : 'above');
         setTooltipVisible(true);
-        onTooltipChange?.(true);
       });
     } else {
-      // Fallback: default to above
       setTooltipPosition('above');
       setTooltipVisible(true);
-      onTooltipChange?.(true);
     }
   };
 
   const handleAction = async (action: BubbleAction) => {
     setTooltipVisible(false);
-    onTooltipChange?.(false);
     if (action === 'copy') {
       showToast();
     } else if (action === 'translate') {

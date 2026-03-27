@@ -39,8 +39,11 @@ export default function CharacterDetail({
     }
     if (!character.bio) return;
     setSpeaking(true);
-    await speak(character.bio, character.voice);
-    setSpeaking(false);
+    speak(character.bio, character.voice, () => {
+      setSpeaking(false);
+    }, () => {
+      setSpeaking(false);
+    });
   };
 
   return (

@@ -46,7 +46,12 @@ export default function BubbleTooltip({
   const handleSpeak = () => {
     if (speaking) return;
     stop();
-    speak(content, voice);
+    speak(content, voice, undefined, (err) => {
+      // 播放失败时提示用户（简单 alert，可替换为 toast）
+      if (typeof window !== 'undefined' && err) {
+        console.warn('[TTS Error]', err);
+      }
+    });
     // 立即关闭 tooltip，音频后台流式播放
     onAction('read');
   };

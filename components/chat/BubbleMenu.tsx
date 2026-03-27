@@ -64,7 +64,9 @@ export default function BubbleMenu({ visible, content, role, voice, onClose }: B
 
   const handleSpeak = () => {
     stop();
-    speak(content, voice);
+    speak(content, voice, undefined, (err) => {
+      if (err) console.warn('[TTS Error]', err);
+    });
     onClose();
   };
 
