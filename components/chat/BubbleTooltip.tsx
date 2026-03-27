@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../hooks/useTheme';
@@ -27,6 +28,7 @@ export default function BubbleTooltip({
 }: BubbleTooltipProps) {
   const t = useTheme();
   const { speak, stop } = useTTS();
+  const [speaking, setSpeaking] = useState(false);
 
   if (!visible) return null;
 
@@ -41,22 +43,26 @@ export default function BubbleTooltip({
     onAction('copy');
   };
 
-  const handleSpeak = () => {
+  const handleSpeak = async () => {
+    if (speaking) return;
+    setSpeaking(true);
     stop();
-    speak(content, voice);
+    await speak(content, voice);
+    // Audio is now playing (or failed) — close tooltip
     onAction('read');
   };
 
   const isAI = role === 'assistant';
+  const speakItem = { label: '朗読', icon: 'volume-medium-outline' as const, onPress: handleSpeak, loading: speaking };
   const items = isAI
     ? [
-        { label: '朗読', icon: 'volume-medium-outline' as const, onPress: handleSpeak },
+        speakItem,
         { label: '翻訳', icon: 'language-outline' as const, onPress: () => onAction('translate') },
         { label: '解析', icon: 'school-outline' as const, onPress: () => onAction('analyze') },
         { label: 'コピー', icon: 'copy-outline' as const, onPress: handleCopy },
       ]
     : [
-        { label: '朗読', icon: 'volume-medium-outline' as const, onPress: handleSpeak },
+        speakItem,
         { label: '纠错', icon: 'create-outline' as const, onPress: () => onAction('correct') },
         { label: 'コピー', icon: 'copy-outline' as const, onPress: handleCopy },
       ];
@@ -71,8 +77,12 @@ export default function BubbleTooltip({
       <View style={[styles.container, { backgroundColor: 'rgba(30,30,30,0.92)' }]}>
         {items.map((item, idx) => (
           <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={styles.btn} onPress={item.onPress} activeOpacity={0.6}>
-              <Ionicons name={item.icon} size={16} color={t.brand} />
+            <TouchableOpacity style={styles.btn} onPress={item.onPress} activeOpacity={0.6} disabled={'loading' in item && item.loading}>
+              {'loading' in item && item.loading ? (
+                <ActivityIndicator size={14} color={t.brand} />
+              ) : (
+                <Ionicons name={item.icon} size={16} color={t.brand} />
+              )}
               <Text style={styles.label}>{item.label}</Text>
             </TouchableOpacity>
             {idx < items.length - 1 && <View style={styles.divider} />}

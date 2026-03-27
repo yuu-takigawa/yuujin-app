@@ -244,7 +244,7 @@ export default function NewsDetailScreen() {
     });
   }, [articleId, annotations]);
 
-  const handleSpeak = useCallback((index: number, text: string) => {
+  const handleSpeak = useCallback(async (index: number, text: string) => {
     if (speakingIndex === index) {
       ttsStop();
       setSpeakingIndex(null);
@@ -252,7 +252,8 @@ export default function NewsDetailScreen() {
     }
     ttsStop();
     setSpeakingIndex(index);
-    ttsSpeak(text, newsVoice, () => setSpeakingIndex(null));
+    await ttsSpeak(text, newsVoice);
+    setSpeakingIndex(null);
   }, [speakingIndex, newsVoice, ttsSpeak, ttsStop]);
 
   const handleSendComment = async () => {
@@ -669,9 +670,16 @@ export default function NewsDetailScreen() {
           ]} onTouchStart={(e) => e.stopPropagation()}>
             <TouchableOpacity
               style={styles.tooltipBtn}
-              onPress={() => { handleSpeak(tooltipIndex, paragraphs[tooltipIndex]); setTooltipIndex(null); }}
+              onPress={async () => {
+                await handleSpeak(tooltipIndex, paragraphs[tooltipIndex]);
+                setTooltipIndex(null);
+              }}
             >
-              <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
+              {speakingIndex === tooltipIndex ? (
+                <ActivityIndicator size={14} color={t.brand} />
+              ) : (
+                <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
+              )}
               <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />

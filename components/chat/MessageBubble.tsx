@@ -20,6 +20,7 @@ interface MessageBubbleProps {
   voice?: string;
   dismissSignal?: number;
   onRequestScroll?: () => void;
+  onTooltipChange?: (visible: boolean) => void;
 }
 
 // Match news ref pattern: [articleId] Title
@@ -43,6 +44,7 @@ export default function MessageBubble({
   voice,
   dismissSignal,
   onRequestScroll,
+  onTooltipChange,
 }: MessageBubbleProps) {
   const isUser = role === 'user';
   const t = useTheme();
@@ -80,6 +82,7 @@ export default function MessageBubble({
   useEffect(() => {
     if (dismissSignal && tooltipVisible) {
       setTooltipVisible(false);
+      onTooltipChange?.(false);
     }
   }, [dismissSignal]);
 
@@ -97,6 +100,7 @@ export default function MessageBubble({
   const handleInfoPress = () => {
     if (tooltipVisible) {
       setTooltipVisible(false);
+      onTooltipChange?.(false);
       return;
     }
     // Measure bubble position to decide tooltip placement
@@ -105,16 +109,19 @@ export default function MessageBubble({
       node.measureInWindow((x: number, y: number) => {
         setTooltipPosition(y < 120 ? 'below' : 'above');
         setTooltipVisible(true);
+        onTooltipChange?.(true);
       });
     } else {
       // Fallback: default to above
       setTooltipPosition('above');
       setTooltipVisible(true);
+      onTooltipChange?.(true);
     }
   };
 
   const handleAction = async (action: BubbleAction) => {
     setTooltipVisible(false);
+    onTooltipChange?.(false);
     if (action === 'copy') {
       showToast();
     } else if (action === 'translate') {
@@ -127,7 +134,7 @@ export default function MessageBubble({
       setAnnotation({ type: 'correct' });
       setTimeout(() => onRequestScroll?.(), 300);
     }
-    // 'read' is handled inside BubbleTooltip directly
+    // 'read' is handled inside BubbleTooltip — tooltip closes after audio starts
   };
 
   // Check if this is a news reference message

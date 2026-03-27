@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import DiceButton from './DiceButton';
 import ImageCropper from '../common/ImageCropper';
+import HalfScreenModal from '../common/HalfScreenModal';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import { spacing, fontSize } from '../../constants/theme';
@@ -80,6 +81,7 @@ export default function CharacterForm({
   const [bio, setBio] = useState(initialData?.bio || '');
   const [voice, setVoice] = useState(initialData?.voice || getDefaultVoice(initialData?.gender));
   const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
+  const [voicePickerVisible, setVoicePickerVisible] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [generatingBio, setGeneratingBio] = useState(false);
@@ -369,35 +371,16 @@ export default function CharacterForm({
             if (rv) setVoice(rv.id);
           }} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
-          {VOICES.filter(v => v.gender === (gender === '\u5973\u6027' ? 'female' : 'male')).map((v) => (
-            <TouchableOpacity
-              key={v.id}
-              style={[
-                { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
-                { borderColor: t.border },
-                voice === v.id && { backgroundColor: t.brand, borderColor: t.brand },
-              ]}
-              onPress={() => setVoice(v.id)}
-            >
-              <Text style={[{ fontSize: 13, fontWeight: '500' }, { color: t.text }, voice === v.id && { color: '#FFF' }]}>{v.id}</Text>
-              <TouchableOpacity
-                hitSlop={8}
-                onPress={async (e) => {
-                  e.stopPropagation?.();
-                  if (previewSound) { await previewSound.stopAsync(); await previewSound.unloadAsync(); }
-                  const { sound } = await Audio.Sound.createAsync({ uri: v.demoUrl });
-                  setPreviewSound(sound);
-                  await sound.playAsync();
-                  sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) { sound.unloadAsync(); setPreviewSound(null); } });
-                }}
-              >
-                <Ionicons name="play-circle-outline" size={18} color={voice === v.id ? '#FFF' : t.brand} />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <Text style={[{ fontSize: 11, marginTop: 4 }, { color: t.textSecondary }]}>{i(`voice.${voice}`) || voice}</Text>
+        <TouchableOpacity
+          style={[styles.input, { backgroundColor: t.surface, borderColor: t.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+          onPress={() => setVoicePickerVisible(true)}
+        >
+          <Text style={[{ fontSize: fontSize.body, color: t.text }]}>{voice}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontSize: 12, color: t.textSecondary }}>{i(`voice.${voice}`) || ''}</Text>
+            <Ionicons name="chevron-forward" size={16} color={t.textSecondary} />
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* 職業 */}
@@ -480,6 +463,52 @@ export default function CharacterForm({
           onCancel={() => setCropperImage(null)}
         />
       )}
+
+      <HalfScreenModal
+        visible={voicePickerVisible}
+        onClose={() => {
+          setVoicePickerVisible(false);
+          if (previewSound) { previewSound.stopAsync(); previewSound.unloadAsync(); setPreviewSound(null); }
+        }}
+        height={480}
+      >
+        <ScrollView style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', marginBottom: 12, color: t.text }}>{i('voice.select')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.5, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 4, color: t.textSecondary }}>
+            {gender === '\u5973\u6027' ? i('voice.female') : i('voice.male')}
+          </Text>
+          {VOICES.filter(v => v.gender === (gender === '\u5973\u6027' ? 'female' : 'male')).map((v) => (
+            <TouchableOpacity
+              key={v.id}
+              style={[
+                { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, gap: 8, marginBottom: 2 },
+                voice === v.id && { backgroundColor: t.brandLight },
+              ]}
+              onPress={() => {
+                setVoice(v.id);
+                setVoicePickerVisible(false);
+                if (previewSound) { previewSound.stopAsync(); previewSound.unloadAsync(); setPreviewSound(null); }
+              }}
+            >
+              <Text style={[{ fontSize: 15, fontWeight: '600', width: 80 }, { color: voice === v.id ? t.brand : t.text }]}>{v.id}</Text>
+              <Text style={{ flex: 1, fontSize: 13, color: t.textSecondary }}>{i(v.labelKey)}</Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (previewSound) { await previewSound.stopAsync(); await previewSound.unloadAsync(); }
+                  const { sound } = await Audio.Sound.createAsync({ uri: v.demoUrl });
+                  setPreviewSound(sound);
+                  await sound.playAsync();
+                  sound.setOnPlaybackStatusUpdate((s: any) => { if (s.isLoaded && s.didJustFinish) { sound.unloadAsync(); setPreviewSound(null); } });
+                }}
+                hitSlop={8}
+              >
+                <Ionicons name="play-circle-outline" size={22} color={t.brand} />
+              </TouchableOpacity>
+              {voice === v.id && <Ionicons name="checkmark" size={18} color={t.brand} style={{ marginLeft: 4 }} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </HalfScreenModal>
     </ScrollView>
   );
 }

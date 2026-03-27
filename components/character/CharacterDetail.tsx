@@ -1,9 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
+import { useTTS } from '../../hooks/useTTS';
 import { spacing, fontSize, radii } from '../../constants/theme';
+import { VOICES } from '../../constants/voices';
 import type { Character } from '../../services/api';
 
 interface CharacterDetailProps {
@@ -23,6 +26,22 @@ export default function CharacterDetail({
 }: CharacterDetailProps) {
   const t = useTheme();
   const { t: i } = useLocale();
+  const { speak, stop } = useTTS();
+  const [speaking, setSpeaking] = useState(false);
+
+  const voiceInfo = character.voice ? VOICES.find(v => v.id === character.voice) : null;
+
+  const handlePlayIntro = async () => {
+    if (speaking) {
+      stop();
+      setSpeaking(false);
+      return;
+    }
+    if (!character.bio) return;
+    setSpeaking(true);
+    await speak(character.bio, character.voice);
+    setSpeaking(false);
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.background }]}>
@@ -68,6 +87,27 @@ export default function CharacterDetail({
         <Text style={[styles.sectionTitle, { color: t.text }]}>{i('character.bio')}</Text>
         <Text style={[styles.bio, { color: t.text }]}>{character.bio}</Text>
       </View>
+
+      {/* Voice preview */}
+      {voiceInfo && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: t.text }]}>{i('voice.label')}</Text>
+          <TouchableOpacity
+            style={[styles.voiceRow, { backgroundColor: t.brandLight }]}
+            onPress={handlePlayIntro}
+            activeOpacity={0.7}
+          >
+            {speaking ? (
+              <ActivityIndicator size={16} color={t.brand} />
+            ) : (
+              <Ionicons name="volume-medium-outline" size={18} color={t.brand} />
+            )}
+            <Text style={[styles.voiceName, { color: t.brand }]}>{voiceInfo.id}</Text>
+            <Text style={[styles.voiceDesc, { color: t.textSecondary }]}>{i(voiceInfo.labelKey)}</Text>
+            <Ionicons name={speaking ? 'stop-circle-outline' : 'play-circle-outline'} size={24} color={t.brand} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Chat CTA button */}
       <View style={styles.chatSection}>
@@ -166,6 +206,22 @@ const styles = StyleSheet.create({
   bio: {
     fontSize: fontSize.body,
     lineHeight: 24,
+  },
+  voiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: radii.md,
+  },
+  voiceName: {
+    fontSize: fontSize.body,
+    fontWeight: '600',
+  },
+  voiceDesc: {
+    flex: 1,
+    fontSize: fontSize.caption,
   },
   chatSection: {
     paddingHorizontal: spacing.lg,

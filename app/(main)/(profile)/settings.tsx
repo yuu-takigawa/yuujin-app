@@ -367,6 +367,6 @@ const styles = StyleSheet.create({
   levelOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, gap: 8, marginBottom: 2 },
   levelOptionLabel: { fontSize: 15, fontWeight: '600', width: 80 },
   levelOptionDesc: { flex: 1, fontSize: 13 },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
   voiceGroupLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
 });
