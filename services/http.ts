@@ -87,8 +87,69 @@ export async function del<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
-/** TTS: 文字转语音，返回音频 URL */
+/** TTS: 文字转语音，返回音频 URL（非流式，用于缓存命中时） */
 export async function tts(text: string, voice?: string): Promise<string> {
   const result = await post<{ url: string; cached: boolean }>('/voice/tts', { text, voice });
   return result.url;
+}
+
+/**
+ * TTS 流式：SSE 接收 base64 PCM 分片
+ * @param onChunk 每个 base64 音频分片回调
+ * @param onDone  流结束回调
+ * @returns abort 函数
+ */
+export function ttsStream(
+  text: string,
+  voice: string | undefined,
+  onChunk: (base64: string) => void,
+  onDone: () => void,
+  onError?: (err: string) => void,
+): () => void {
+  const controller = new AbortController();
+
+  fetch(`${API_BASE_URL}/voice/tts-stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
+    },
+    body: JSON.stringify({ text, voice }),
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok || !res.body) {
+        onError?.(`TTS stream error: ${res.status}`);
+        onDone();
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') { onDone(); return; }
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.audio) onChunk(parsed.audio);
+            if (parsed.error) onError?.(parsed.error);
+          } catch { /* skip */ }
+        }
+      }
+      onDone();
+    })
+    .catch((err) => {
+      if (err.name !== 'AbortError') onError?.(err.message);
+      onDone();
+    });
+
+  return () => controller.abort();
 }

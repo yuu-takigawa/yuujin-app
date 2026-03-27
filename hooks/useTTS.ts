@@ -1,13 +1,13 @@
 /**
  * useTTS — 朗読 hook
  *
- * Pro/Max/Admin: 服务端 TTS（分句并行预取 + 流水线播放，低延迟）。
+ * Pro/Max/Admin: SSE 流式 TTS — 服务端逐片转发 DashScope WAV/PCM 数据，
+ *               客户端 Web Audio API 实时播放，首片即出声。
  * Free: 浏览器系统 TTS（Web Speech API）。
  */
 
 import { useRef, useCallback } from 'react';
-import { Audio } from 'expo-av';
-import { tts } from '../services/http';
+import { ttsStream } from '../services/http';
 import { useCreditStore } from '../stores/creditStore';
 
 function isPremiumTier(): boolean {
@@ -15,73 +15,88 @@ function isPremiumTier(): boolean {
   return membership === 'pro' || membership === 'max' || membership === 'admin';
 }
 
-/**
- * 智能分句：硬切点 + 软切点 + 最短长度保障
- * - 硬切点（。？！\n!?）：累积≥20字时立即切分
- * - 软切点（，、；,;）：累积≥20字时切分，不足则继续累积
- * - 尾句：无论长度，LLM 结束时剩余文本必须发送
- */
-function splitSentences(text: string): string[] {
-  const MIN_LEN = 20;
-  const result: string[] = [];
-  let buf = '';
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    buf += ch;
-
-    const isHard = '。？！!?\n'.includes(ch);
-    const isSoft = '，、；,;'.includes(ch);
-
-    if ((isHard || isSoft) && buf.length >= MIN_LEN) {
-      result.push(buf);
-      buf = '';
-    }
-  }
-  // 尾句：无论多少字都发送
-  if (buf.trim()) {
-    if (result.length > 0 && buf.trim().length < MIN_LEN) {
-      result[result.length - 1] += buf;
-    } else {
-      result.push(buf);
-    }
-  }
-  return result.length > 0 ? result : [text];
+/** base64 → Uint8Array */
+function base64ToBytes(base64: string): Uint8Array {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
-/** 带重试的 TTS 请求 */
-async function ttsWithRetry(text: string, voice?: string, retries = 2): Promise<string> {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      return await tts(text, voice);
-    } catch (err) {
-      if (i === retries) throw err;
-      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+/**
+ * 解析 WAV 头部，返回 { sampleRate, channels, bitsPerSample, dataOffset }
+ * 如果不是 WAV 返回 null
+ */
+function parseWavHeader(buf: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number } | null {
+  if (buf.length < 44) return null;
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  // RIFF magic
+  if (view.getUint32(0, false) !== 0x52494646) return null; // "RIFF"
+  // WAVE magic
+  if (view.getUint32(8, false) !== 0x57415645) return null; // "WAVE"
+  const channels = view.getUint16(22, true);
+  const sampleRate = view.getUint32(24, true);
+  const bitsPerSample = view.getUint16(34, true);
+  // 找 "data" 子块
+  let offset = 36;
+  while (offset + 8 <= buf.length) {
+    const chunkId = view.getUint32(offset, false);
+    const chunkSize = view.getUint32(offset + 4, true);
+    if (chunkId === 0x64617461) { // "data"
+      return { sampleRate, channels, bitsPerSample, dataOffset: offset + 8 };
     }
+    offset += 8 + chunkSize;
   }
-  throw new Error('TTS failed');
+  return { sampleRate, channels, bitsPerSample, dataOffset: 44 }; // fallback
+}
+
+/** PCM Int16 LE → Float32 */
+function pcm16ToFloat32(bytes: Uint8Array): Float32Array {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const numSamples = Math.floor(bytes.length / 2);
+  const float32 = new Float32Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    float32[i] = view.getInt16(i * 2, true) / 32768;
+  }
+  return float32;
+}
+
+// 全局复用 AudioContext（iOS 限制数量）
+let sharedAudioCtx: AudioContext | null = null;
+function getAudioContext(sampleRate: number): AudioContext {
+  if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') {
+    return sharedAudioCtx;
+  }
+  sharedAudioCtx = new AudioContext({ sampleRate });
+  return sharedAudioCtx;
 }
 
 export function useTTS() {
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const nextTimeRef = useRef(0);
+  const abortRef = useRef<(() => void) | null>(null);
   const playingTextRef = useRef<string | null>(null);
   const speakingRef = useRef(false);
+  const sampleRateRef = useRef(24000);
+  const headerParsedRef = useRef(false);
+  const lastSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  const stop = useCallback(async () => {
+  const stop = useCallback(() => {
     playingTextRef.current = null;
     speakingRef.current = false;
+    // 停止 SSE
+    abortRef.current?.();
+    abortRef.current = null;
+    // 停止 Web Audio（suspend，不 close — iOS 复用）
+    if (sharedAudioCtx && sharedAudioCtx.state === 'running') {
+      sharedAudioCtx.suspend().catch(() => {});
+    }
     // 停止系统 TTS
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    // 停止服务端 TTS
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch { /* ignore */ }
-      soundRef.current = null;
-    }
+    nextTimeRef.current = 0;
+    headerParsedRef.current = false;
+    lastSourceRef.current = null;
   }, []);
 
   const speak = useCallback(async (
@@ -89,17 +104,16 @@ export function useTTS() {
     voice?: string,
     onDone?: () => void,
   ) => {
-    // 防止重叠：正在朗读中不允许新的朗读
+    // 防重叠
     if (speakingRef.current) {
-      // 如果是同一段文本，停止；否则忽略
       if (playingTextRef.current === text) {
-        await stop();
+        stop();
         onDone?.();
       }
       return;
     }
 
-    await stop();
+    stop();
     speakingRef.current = true;
 
     // ── Free 用户：系统 TTS ──
@@ -119,66 +133,120 @@ export function useTTS() {
       return;
     }
 
-    // ── Premium：服务端 TTS（分句流水线）──
+    // ── Premium：SSE 流式 TTS + Web Audio ──
     playingTextRef.current = text;
-    const sentences = splitSentences(text);
+    headerParsedRef.current = false;
+    sampleRateRef.current = 24000;
+    let audioCtx: AudioContext | null = null;
+    let firstChunkResolved = false;
+    let resolveFirstChunk: (() => void) | null = null;
 
-    try {
-      // 并行预取所有分句的音频 URL
-      const urlPromises = sentences.map(s => ttsWithRetry(s, voice));
+    const firstChunkPromise = new Promise<void>((resolve) => {
+      resolveFirstChunk = resolve;
+      // 超时 8 秒
+      setTimeout(() => { if (!firstChunkResolved) { firstChunkResolved = true; resolve(); } }, 8000);
+    });
 
-      // 等待第一句
-      const firstUrl = await urlPromises[0];
-      if (playingTextRef.current !== text) { speakingRef.current = false; return; }
+    const abort = ttsStream(
+      text,
+      voice,
+      // onChunk
+      (base64) => {
+        if (playingTextRef.current !== text) return;
+        const bytes = base64ToBytes(base64);
+        if (bytes.length === 0) return;
 
-      // 播放第一句
-      const { sound } = await Audio.Sound.createAsync({ uri: firstUrl });
-      soundRef.current = sound;
-      await sound.playAsync();
-      // ← speak() 在此 resolve，tooltip 关闭，第一句已在播放
+        let pcmBytes: Uint8Array;
 
-      // 后续句子：当前句播完 → 播下一句（后台进行）
-      const playNext = async (idx: number) => {
-        if (idx >= sentences.length || playingTextRef.current !== text) {
-          soundRef.current = null;
-          playingTextRef.current = null;
-          speakingRef.current = false;
-          onDone?.();
-          return;
+        // 检查每个 chunk 是否含 WAV 头（RIFF 魔数 0x52494646）
+        const hasWavHeader = bytes.length >= 44 &&
+          bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+
+        if (hasWavHeader) {
+          const header = parseWavHeader(bytes);
+          if (header) {
+            sampleRateRef.current = header.sampleRate;
+            pcmBytes = bytes.slice(header.dataOffset);
+          } else {
+            pcmBytes = bytes;
+          }
+          if (!headerParsedRef.current) {
+            headerParsedRef.current = true;
+            audioCtx = getAudioContext(sampleRateRef.current);
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            nextTimeRef.current = audioCtx.currentTime;
+          }
+        } else if (!headerParsedRef.current) {
+          // 首个 chunk 无 WAV 头，当 raw PCM，用默认采样率
+          headerParsedRef.current = true;
+          audioCtx = getAudioContext(sampleRateRef.current);
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          nextTimeRef.current = audioCtx.currentTime;
+          pcmBytes = bytes;
+        } else {
+          pcmBytes = bytes;
         }
+
+        if (!audioCtx || pcmBytes.length < 2) return;
+
         try {
-          const url = await urlPromises[idx];
-          if (playingTextRef.current !== text) { speakingRef.current = false; return; }
-          const { sound: next } = await Audio.Sound.createAsync({ uri: url });
-          soundRef.current = next;
-          next.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              next.unloadAsync();
-              playNext(idx + 1);
+          const float32 = pcm16ToFloat32(pcmBytes);
+          if (float32.length === 0) return;
+          const buffer = audioCtx.createBuffer(1, float32.length, sampleRateRef.current);
+          buffer.getChannelData(0).set(float32);
+
+          const source = audioCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioCtx.destination);
+
+          const startAt = Math.max(audioCtx.currentTime, nextTimeRef.current);
+          source.start(startAt);
+          nextTimeRef.current = startAt + buffer.duration;
+          lastSourceRef.current = source;
+
+          // 首片出声
+          if (!firstChunkResolved) {
+            firstChunkResolved = true;
+            resolveFirstChunk?.();
+          }
+        } catch { /* skip bad chunk */ }
+      },
+      // onDone
+      () => {
+        if (lastSourceRef.current) {
+          lastSourceRef.current.onended = () => {
+            if (playingTextRef.current === text) {
+              playingTextRef.current = null;
+              speakingRef.current = false;
+              onDone?.();
             }
-          });
-          await next.playAsync();
-        } catch {
-          soundRef.current = null;
+          };
+        } else {
           playingTextRef.current = null;
           speakingRef.current = false;
           onDone?.();
         }
-      };
-
-      // 第一句播完后触发后续
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
-          playNext(1);
+        if (!firstChunkResolved) {
+          firstChunkResolved = true;
+          resolveFirstChunk?.();
         }
-      });
-    } catch {
-      // TTS 失败，不 fallback 到系统 TTS — 静默失败
-      playingTextRef.current = null;
-      speakingRef.current = false;
-      onDone?.();
-    }
+      },
+      // onError
+      () => {
+        playingTextRef.current = null;
+        speakingRef.current = false;
+        if (!firstChunkResolved) {
+          firstChunkResolved = true;
+          resolveFirstChunk?.();
+        }
+        onDone?.();
+      },
+    );
+
+    abortRef.current = abort;
+
+    // 等首片出声后 resolve（让 tooltip 关闭）
+    await firstChunkPromise;
   }, [stop]);
 
   return { speak, stop };
