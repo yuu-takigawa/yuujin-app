@@ -61,14 +61,20 @@ function pcm16ToFloat32(bytes: Uint8Array): Float32Array {
   return float32;
 }
 
-// 全局复用 AudioContext（iOS 限制数量）
+// 全局复用 AudioContext（iOS 限制数量，不指定 sampleRate 用浏览器默认）
 let sharedAudioCtx: AudioContext | null = null;
-function getAudioContext(sampleRate: number): AudioContext {
+function getOrCreateAudioContext(): AudioContext {
   if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') {
     return sharedAudioCtx;
   }
-  sharedAudioCtx = new AudioContext({ sampleRate });
+  sharedAudioCtx = new AudioContext();
   return sharedAudioCtx;
+}
+/** 必须在用户手势同步栈内调用，激活 AudioContext（iOS Safari 要求） */
+function ensureAudioContextResumed(): AudioContext {
+  const ctx = getOrCreateAudioContext();
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
 }
 
 export function useTTS() {
@@ -134,10 +140,12 @@ export function useTTS() {
     }
 
     // ── Premium：SSE 流式 TTS + Web Audio ──
+    // ⚠️ 必须在用户手势同步栈内激活 AudioContext（iOS Safari 要求）
+    const audioCtx = ensureAudioContextResumed();
     playingTextRef.current = text;
     headerParsedRef.current = false;
     sampleRateRef.current = 24000;
-    let audioCtx: AudioContext | null = null;
+    nextTimeRef.current = audioCtx.currentTime;
     let firstChunkResolved = false;
     let resolveFirstChunk: (() => void) | null = null;
 
@@ -170,20 +178,9 @@ export function useTTS() {
           } else {
             pcmBytes = bytes;
           }
-          if (!headerParsedRef.current) {
-            headerParsedRef.current = true;
-            audioCtx = getAudioContext(sampleRateRef.current);
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            nextTimeRef.current = audioCtx.currentTime;
-          }
-        } else if (!headerParsedRef.current) {
-          // 首个 chunk 无 WAV 头，当 raw PCM，用默认采样率
           headerParsedRef.current = true;
-          audioCtx = getAudioContext(sampleRateRef.current);
-          if (audioCtx.state === 'suspended') audioCtx.resume();
-          nextTimeRef.current = audioCtx.currentTime;
-          pcmBytes = bytes;
         } else {
+          if (!headerParsedRef.current) headerParsedRef.current = true;
           pcmBytes = bytes;
         }
 
