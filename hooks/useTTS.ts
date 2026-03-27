@@ -152,8 +152,9 @@ export function useTTS() {
   const sentenceStatesRef = useRef<SentenceState[]>([]);
   const playingSentenceRef = useRef(0);
   const playedChunksRef = useRef<number[]>([]);
-  // 错误回调
+  // 回调 refs
   const onErrorRef = useRef<((msg: string) => void) | null>(null);
+  const onFinishRef = useRef<(() => void) | null>(null);
 
   const stop = useCallback(() => {
     playingTextRef.current = null;
@@ -182,6 +183,7 @@ export function useTTS() {
     sentenceStatesRef.current = [];
     playingSentenceRef.current = 0;
     playedChunksRef.current = [];
+    onFinishRef.current = null;
   }, []);
 
   /**
@@ -253,10 +255,9 @@ export function useTTS() {
       }
     }
 
-    // 所有句子播放完毕？
+    // 所有句子播放完毕？（缓存句子 Audio.onended 后回到这里）
     if (playingSentenceRef.current >= states.length && states.every(s => s.done || s.error)) {
-      // 等最后一个 AudioBuffer 播完再回调 onDone
-      // 不在这里清理，由 onended 回调处理
+      onFinishRef.current?.();
     }
   }, []);
 
@@ -334,33 +335,36 @@ export function useTTS() {
 
     let completedCount = 0;
 
+    let finished = false;
+    const finishPlayback = () => {
+      if (finished) return;
+      if (playingTextRef.current !== text) return;
+      finished = true;
+      playingTextRef.current = null;
+      speakingRef.current = false;
+      onDone?.();
+    };
+    onFinishRef.current = finishPlayback;
+
     const checkAllDone = () => {
       completedCount++;
-      if (completedCount >= sentences.length) {
-        // 所有 SSE 流结束，等最后一个 AudioBuffer 播完
-        const sources = allSourcesRef.current;
-        const lastSource = sources.length > 0 ? sources[sources.length - 1] : null;
-        if (lastSource) {
-          lastSource.onended = () => {
-            if (playingTextRef.current === text) {
-              playingTextRef.current = null;
-              speakingRef.current = false;
-              onDone?.();
-            }
-          };
-        } else {
-          // 可能全是缓存 URL 播放，延迟检查
-          const checkCachedDone = () => {
-            const allCachedDone = states.every(s => s.done || s.error);
-            if (allCachedDone && playingTextRef.current === text) {
-              playingTextRef.current = null;
-              speakingRef.current = false;
-              onDone?.();
-            }
-          };
-          // 如果有缓存句子在播放，它们的 onended 会设 done=true
-          setTimeout(checkCachedDone, 100);
-        }
+      if (completedCount < sentences.length) return;
+
+      // 所有 SSE 流结束。检查是否有缓存句子仍在播放
+      const hasCachedPlaying = states.some(s => s.cachedUrl && !s.done && !s.error);
+      if (hasCachedPlaying) {
+        // 缓存句子的 Audio.onended 会设 done=true 并推进调度器
+        // 最后一个缓存句子播完时通过 schedulePlayback → 检测全部完成 → 清理
+        return;
+      }
+
+      // 纯流式路径：用 Web Audio 时间计算剩余播放时间
+      const remaining = nextTimeRef.current - audioCtx.currentTime;
+      if (remaining > 0.05) {
+        // 还有音频在排队，等它播完
+        setTimeout(finishPlayback, remaining * 1000 + 200);
+      } else {
+        finishPlayback();
       }
     };
 
@@ -419,9 +423,12 @@ export function useTTS() {
           // 尝试调度播放（只有当前句子或之前句子的 chunk 会被播放）
           schedulePlayback(audioCtx, text);
         },
-        // onDone
+        // onDone — SSE 流结束
         () => {
-          states[sentIdx].done = true;
+          // 缓存句子的 done 由 Audio.onended 设置，这里不设
+          if (!states[sentIdx].cachedUrl) {
+            states[sentIdx].done = true;
+          }
           schedulePlayback(audioCtx, text);
           checkAllDone();
         },
