@@ -129,26 +129,20 @@ async function globalSpeak(
   abortController = controller;
 
   try {
-    // 并发请求所有句子的音频 URL
-    const urlPromises = sentences.map(s => tts(s, voice));
-    const urls = await Promise.all(urlPromises);
+    // 并发请求所有句子的 URL（不等全部完成）
+    const urlPromises = sentences.map(s => tts(s, voice).catch(() => null));
 
-    // 被取消了
-    if (sid !== sessionId) return;
+    // 按顺序播放：第 i 句的 URL 到了就播，不等后面的句子
+    for (let i = 0; i < urlPromises.length; i++) {
+      const url = await urlPromises[i];
+      if (sid !== sessionId || !url) continue;
 
-    // 按顺序播放
-    for (const url of urls) {
-      if (sid !== sessionId) return;
-
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         const audio = new Audio(url);
         currentAudio = audio;
-
         audio.onended = () => resolve();
-        audio.onerror = () => resolve(); // 跳过出错的句子，继续下一句
+        audio.onerror = () => resolve();
         audio.play().catch(() => resolve());
-
-        // 监听取消
         controller.signal.addEventListener('abort', () => {
           audio.pause();
           audio.src = '';
@@ -157,7 +151,6 @@ async function globalSpeak(
       });
     }
 
-    // 全部播完
     if (sid === sessionId) {
       speaking = false;
       playingText = null;
