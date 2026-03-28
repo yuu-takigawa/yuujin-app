@@ -17,24 +17,26 @@ import { useCreditStore } from '../stores/creditStore';
 
 function cleanForTTS(text: string): string {
   let t = text;
+  // 1. 去括号内中文翻译
   t = t.replace(/[（(][^）)]*[\u4e00-\u9fff][^）)]*[）)]/g, '');
+  // 2. 聊天特有表現
   t = t.replace(/[（(]?[笑泣][）)]?/g, '');
   t = t.replace(/[wWｗＷ]{2,}/g, '');
   t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, '');
   t = t.replace(/草(?=[。！？!?\s]|$)/g, '');
+  // 3. 特殊符号转換
+  t = t.replace(/[〜～]/g, 'ー');  // 波浪线→長音符
+  t = t.replace(/…+/g, '、');      // 省略号→停顿
   t = t.replace(/[？?][！!]/g, '？');
   t = t.replace(/[！!][？?]/g, '？');
   t = t.replace(/[？?]{2,}/g, '？');
   t = t.replace(/[！!]{2,}/g, '！');
-  t = t.replace(/[〜～]/g, 'ー');  // 波浪线→長音符（保留语调）
-  t = t.replace(/…+/g, '、');
-  t = t.replace(/・{2,}/g, '、');
-  t = t.replace(/ⓘ/g, '');
-  t = t.replace(/[♪♫♬♩★☆※→←↑↓]/g, '');
-  t = t.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2934}\u{2935}\u{2190}-\u{21FF}]+/gu, '');
-  t = t.replace(/[（(][^）)]*[_^;><][^）)]*[）)]/g, '');
+  // 4. 白名单：只保留 TTS 能正确朗读的字符
+  //    平仮名・片仮名・漢字・英数字・基本标点・空格
+  t = t.replace(/[^\u3040-\u309F\u30A0-\u30FFー\u4E00-\u9FFF\u3400-\u4DBFa-zA-Z0-9０-９。、！？!?「」『』・ \n]/g, '');
+  // 5. 清理
   t = t.replace(/\s+/g, ' ').trim();
-  t = t.replace(/^[、，,.]+/, '').replace(/[、，,.]+$/, '');
+  t = t.replace(/^[、，,.。]+/, '').replace(/[、，,.。]+$/, '');
   return t;
 }
 
