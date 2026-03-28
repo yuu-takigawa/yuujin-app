@@ -15,6 +15,7 @@ import type { NewsArticleDetail, NewsComment, AnnotateSSEEvent, AIReplySSEEvent 
 import { useCharacterStore } from '../../stores/characterStore';
 import { useFriendStore } from '../../stores/friendStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useCreditStore } from '../../stores/creditStore';
 
 function formatCommentTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -106,8 +107,11 @@ export default function NewsDetailScreen() {
 
   const [contentReady, setContentReady] = useState(false);
 
+  const loadCredits = useCreditStore((s) => s.loadCredits);
+
   useEffect(() => {
     if (!articleId) return;
+    loadCredits(); // 确保 membership 已加载（TTS 需要判断会员等级）
     setLoading(true);
     setContentReady(false);
     getNewsDetail(articleId).then((detail) => {
