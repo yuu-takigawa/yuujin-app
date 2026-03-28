@@ -3,11 +3,10 @@ import type { Message } from '../services/api';
 import {
   streamResponse,
   streamResponseWithImage,
-  streamText,
+  streamGreeting,
   getMessages,
   addMessageToConversation,
   clearMessages,
-  getConversations,
 } from '../services/api';
 import { useCreditStore } from './creditStore';
 
@@ -53,33 +52,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (get().conversationId !== conversationId) return;
     set({ messages: msgs, hasMore });
 
-    // If no messages, stream the greeting (fallback for edge cases)
+    // If no messages, trigger server-side greeting (bio + translation for N5)
     if (msgs.length === 0) {
-      const convs = await getConversations();
-      const conv = convs.find((c) => c.id === conversationId);
-      const greeting = conv?.lastMessage;
-      if (greeting) {
-        set({ isStreaming: true, streamingContent: '' });
-        let accumulated = '';
-        const cancel = streamText(conversationId, greeting, (event) => {
-          if (event.type === 'delta' && event.content) {
-            accumulated += event.content;
-            set({ streamingContent: accumulated });
-          } else if (event.type === 'done') {
-            const finalContent = accumulated || greeting;
-            const aiMsg = addMessageToConversation(conversationId, 'assistant', finalContent);
-            set((s) => ({
-              messages: [...s.messages, aiMsg],
-              isStreaming: false,
-              streamingContent: '',
-              cancelStream: null,
-            }));
-          } else if (event.type === 'error') {
-            set({ isStreaming: false, streamingContent: '', cancelStream: null, error: event.error || 'Streaming error' });
-          }
-        });
-        set({ cancelStream: cancel });
-      }
+      set({ isStreaming: true, streamingContent: '' });
+      let accumulated = '';
+      const cancel = streamGreeting(conversationId, (event) => {
+        if (event.type === 'delta' && event.content) {
+          accumulated += event.content;
+          set({ streamingContent: accumulated });
+        } else if (event.type === 'done') {
+          // 服务端已持久化，重新加载消息获取正式 ID
+          getMessages(conversationId, { limit: PAGE_SIZE }).then(({ messages: freshMsgs }) => {
+            if (get().conversationId === conversationId) {
+              set({ messages: freshMsgs, isStreaming: false, streamingContent: '', cancelStream: null });
+            }
+          }).catch(() => {
+            // fallback: 用本地消息
+            if (accumulated) {
+              const aiMsg = addMessageToConversation(conversationId, 'assistant', accumulated);
+              set((s) => ({ messages: [...s.messages, aiMsg], isStreaming: false, streamingContent: '', cancelStream: null }));
+            } else {
+              set({ isStreaming: false, streamingContent: '', cancelStream: null });
+            }
+          });
+        } else if (event.type === 'error') {
+          set({ isStreaming: false, streamingContent: '', cancelStream: null });
+        }
+      });
+      set({ cancelStream: cancel });
     }
   },
 

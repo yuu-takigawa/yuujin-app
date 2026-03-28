@@ -45,6 +45,35 @@ export function streamText(
   };
 }
 
+/** 新好友第一条消息：服务端生成 bio（含翻译）+ SSE 流式返回 + 持久化 */
+export function streamGreeting(
+  conversationId: string,
+  onEvent: SSECallback,
+): () => void {
+  let cancelled = false;
+  const xhr = new XMLHttpRequest();
+  let lastIndex = 0;
+
+  xhr.open('POST', `${API_BASE_URL}/chat/greet`);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  const token = getToken();
+  if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+  xhr.onreadystatechange = () => {
+    if (cancelled) return;
+    if (xhr.readyState >= 3) {
+      const newText = xhr.responseText.slice(lastIndex);
+      lastIndex = xhr.responseText.length;
+      if (newText) parseSSELines(newText, onEvent);
+    }
+  };
+
+  xhr.onerror = () => { if (!cancelled) onEvent({ type: 'error', error: 'Network error' }); };
+  xhr.send(JSON.stringify({ conversationId }));
+
+  return () => { cancelled = true; xhr.abort(); };
+}
+
 // Parse SSE lines from a text chunk and call onEvent for each valid event
 function parseSSELines(text: string, onEvent: SSECallback): void {
   const lines = text.split('\n');
