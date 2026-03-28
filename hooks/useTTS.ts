@@ -236,7 +236,7 @@ export function useTTS() {
       return;
     }
 
-    // Premium
+    // Premium — 简化版：单请求，不分句，直接播放
     const audioCtx = ensureAudioContextResumed();
     playingTextRef.current = text;
     nextTimeRef.current = audioCtx.currentTime;
@@ -246,96 +246,77 @@ export function useTTS() {
       speakingRef.current = false; playingTextRef.current = null; onDone?.();
       return;
     }
-    const sentences = splitSentences(cleanText);
 
-    const states: SentenceState[] = sentences.map(() => ({
-      chunks: [], sampleRate: 24000, headerParsed: false, done: false, error: false,
-    }));
-    sentenceStatesRef.current = states;
-    playingSentenceRef.current = 0;
-    playedChunksRef.current = new Array(sentences.length).fill(0);
+    let sampleRate = 24000;
+    let headerParsed = false;
 
-    let completedCount = 0;
-    let finished = false;
-    const finishPlayback = () => {
-      if (finished || playingTextRef.current !== text) return;
-      finished = true;
-      playingTextRef.current = null;
-      speakingRef.current = false;
-      onDone?.();
-    };
-    onFinishRef.current = finishPlayback;
-
-    const checkAllDone = () => {
-      completedCount++;
-      if (completedCount < sentences.length) return;
-      const remaining = nextTimeRef.current - audioCtx.currentTime;
-      if (remaining > 0.05) {
-        setTimeout(finishPlayback, remaining * 1000 + 200);
-      } else {
-        finishPlayback();
-      }
-    };
-
-    const aborts: Array<() => void> = [];
-
-    sentences.forEach((sentence, sentIdx) => {
-      const abort = ttsStream(
-        sentence,
-        voice,
-        // onChunk
-        (base64) => {
-          if (playingTextRef.current !== text) return;
+    const abort = ttsStream(
+      cleanText,
+      voice,
+      // onChunk — 每个 PCM 分片立即播放
+      (base64) => {
+        if (playingTextRef.current !== text) return;
+        try {
           const bytes = base64ToBytes(base64);
           if (bytes.length === 0) return;
 
           let pcmBytes: Uint8Array;
-          const state = states[sentIdx];
 
-          const hasWavHeader = bytes.length >= 44 &&
-            bytes[0] === 0x52 && bytes[1] === 0x49 &&
-            bytes[2] === 0x46 && bytes[3] === 0x46;
-
-          if (hasWavHeader) {
+          // 首片可能带 WAV header
+          if (!headerParsed && bytes.length >= 44 &&
+              bytes[0] === 0x52 && bytes[1] === 0x49 &&
+              bytes[2] === 0x46 && bytes[3] === 0x46) {
             const header = parseWavHeader(bytes);
             if (header) {
-              state.sampleRate = header.sampleRate;
+              sampleRate = header.sampleRate;
               pcmBytes = bytes.slice(header.dataOffset);
             } else {
               pcmBytes = bytes;
             }
-            state.headerParsed = true;
+            headerParsed = true;
           } else {
-            if (!state.headerParsed) state.headerParsed = true;
+            headerParsed = true;
             pcmBytes = bytes;
           }
 
           if (pcmBytes.length < 2) return;
+
           const float32 = pcm16ToFloat32(pcmBytes);
           if (float32.length === 0) return;
 
-          state.chunks.push(float32);
-          schedulePlayback(audioCtx, text);
-        },
-        // onDone
-        () => {
-          states[sentIdx].done = true;
-          schedulePlayback(audioCtx, text);
-          checkAllDone();
-        },
-        // onError
-        (err) => {
-          states[sentIdx].error = true;
-          states[sentIdx].done = true;
-          schedulePlayback(audioCtx, text);
-          checkAllDone();
-        },
-      );
-      aborts.push(abort);
-    });
+          const buffer = audioCtx.createBuffer(1, float32.length, sampleRate);
+          buffer.getChannelData(0).set(float32);
+          const source = audioCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioCtx.destination);
+          const startAt = Math.max(audioCtx.currentTime, nextTimeRef.current);
+          source.start(startAt);
+          nextTimeRef.current = startAt + buffer.duration;
+          allSourcesRef.current.push(source);
+        } catch (e) {
+          console.warn('[TTS] chunk error:', e);
+        }
+      },
+      // onDone
+      () => {
+        const remaining = nextTimeRef.current - audioCtx.currentTime;
+        setTimeout(() => {
+          playingTextRef.current = null;
+          speakingRef.current = false;
+          onDone?.();
+        }, Math.max(remaining * 1000 + 200, 50));
+      },
+      // onError
+      (err) => {
+        playingTextRef.current = null;
+        speakingRef.current = false;
+        onError?.(err);
+        onDone?.();
+      },
+    );
 
-    abortFnsRef.current = aborts;
-  }, [stop, schedulePlayback]);
+    abortFnsRef.current = [abort];
+  }, [stop]);
 
   return { speak, stop };
 }
