@@ -248,14 +248,17 @@ export default function NewsDetailScreen() {
     if (speakingIndex === index) {
       ttsStop();
       setSpeakingIndex(null);
+      setTooltipIndex(null);
       return;
     }
     ttsStop();
     setSpeakingIndex(index);
     ttsSpeak(text, newsVoice, () => {
       setSpeakingIndex(null);
+      setTooltipIndex(null); // 播放完成后关闭 tooltip
     }, (err) => {
       setSpeakingIndex(null);
+      setTooltipIndex(null);
       if (err) console.warn('[TTS Error]', err);
     });
   }, [speakingIndex, newsVoice, ttsSpeak, ttsStop]);
@@ -674,9 +677,9 @@ export default function NewsDetailScreen() {
           ]} onTouchStart={(e) => e.stopPropagation()}>
             <TouchableOpacity
               style={styles.tooltipBtn}
-              onPress={async () => {
-                await handleSpeak(tooltipIndex, paragraphs[tooltipIndex]);
-                setTooltipIndex(null);
+              onPress={() => {
+                handleSpeak(tooltipIndex, paragraphs[tooltipIndex]);
+                // 不关闭 tooltip — loading 状态显示在这里，播放完成后 handleSpeak 的回调会清理
               }}
             >
               {speakingIndex === tooltipIndex ? (
