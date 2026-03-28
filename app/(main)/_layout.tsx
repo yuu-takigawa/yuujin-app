@@ -93,7 +93,7 @@ export default function MainLayout() {
         listeners={{
           tabPress: (e) => {
             // 已经在 chat tab 但在子页面 → 回到主页
-            if (segments[1] === '(chat)' && segments.length > 2) {
+            if ((segments as string[])[1] === '(chat)' && segments.length > 2) {
               e.preventDefault();
               router.replace('/(main)/(chat)');
             }
@@ -110,7 +110,7 @@ export default function MainLayout() {
         }}
         listeners={{
           tabPress: (e) => {
-            if (segments[1] === '(friends)' && segments.length > 2) {
+            if ((segments as string[])[1] === '(friends)' && segments.length > 2) {
               e.preventDefault();
               router.replace('/(main)/(friends)');
             }
@@ -127,7 +127,7 @@ export default function MainLayout() {
         }}
         listeners={{
           tabPress: (e) => {
-            if (segments[1] === '(news)' && segments.length > 2) {
+            if ((segments as string[])[1] === '(news)' && segments.length > 2) {
               e.preventDefault();
               router.replace('/(main)/(news)');
             }
@@ -151,7 +151,7 @@ export default function MainLayout() {
         }}
         listeners={{
           tabPress: (e) => {
-            if (segments[1] === '(profile)' && segments.length > 2) {
+            if ((segments as string[])[1] === '(profile)' && segments.length > 2) {
               e.preventDefault();
               router.replace('/(main)/(profile)');
             }
