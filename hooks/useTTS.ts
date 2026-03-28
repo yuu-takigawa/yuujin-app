@@ -90,6 +90,7 @@ async function globalSpeak(
   voice?: string,
   onDone?: () => void,
   onError?: (msg: string) => void,
+  onStart?: () => void,
 ) {
   // toggle：同一文本 → 停止
   if (speaking && playingText === text) {
@@ -133,6 +134,7 @@ async function globalSpeak(
     const urlPromises = sentences.map(s => tts(s, voice).catch(() => null));
 
     // 按顺序播放：第 i 句的 URL 到了就播，不等后面的句子
+    let started = false;
     for (let i = 0; i < urlPromises.length; i++) {
       const url = await urlPromises[i];
       if (sid !== sessionId || !url) continue;
@@ -140,6 +142,7 @@ async function globalSpeak(
       await new Promise<void>((resolve) => {
         const audio = new Audio(url);
         currentAudio = audio;
+        if (!started) { started = true; onStart?.(); }
         audio.onended = () => resolve();
         audio.onerror = () => resolve();
         audio.play().catch(() => resolve());
@@ -172,8 +175,8 @@ async function globalSpeak(
 
 export function useTTS() {
   const speak = useCallback((
-    text: string, voice?: string, onDone?: () => void, onError?: (msg: string) => void,
-  ) => { globalSpeak(text, voice, onDone, onError); }, []);
+    text: string, voice?: string, onDone?: () => void, onError?: (msg: string) => void, onStart?: () => void,
+  ) => { globalSpeak(text, voice, onDone, onError, onStart); }, []);
 
   const stop = useCallback(() => { stopAllTTS(); }, []);
 
