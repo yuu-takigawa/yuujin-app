@@ -252,18 +252,11 @@ export default function NewsDetailScreen() {
     if (speakingIndex === index) {
       ttsStop();
       setSpeakingIndex(null);
-      setTooltipIndex(null);
       return;
     }
-    // 不需要额外 ttsStop() — globalSpeak 内部会先 stop
     setSpeakingIndex(index);
     ttsSpeak(text, newsVoice, () => {
       setSpeakingIndex(null);
-      setTooltipIndex(null);
-    }, (err) => {
-      setSpeakingIndex(null);
-      setTooltipIndex(null);
-      if (err) console.warn('[TTS Error]', err);
     });
   }, [speakingIndex, newsVoice, ttsSpeak, ttsStop]);
 
@@ -683,14 +676,10 @@ export default function NewsDetailScreen() {
               style={styles.tooltipBtn}
               onPress={() => {
                 handleSpeak(tooltipIndex, paragraphs[tooltipIndex]);
-                // 不关闭 tooltip — loading 状态显示在这里，播放完成后 handleSpeak 的回调会清理
+                setTooltipIndex(null); // 立即关闭 tooltip
               }}
             >
-              {speakingIndex === tooltipIndex ? (
-                <ActivityIndicator size={14} color={t.brand} />
-              ) : (
-                <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
-              )}
+              <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
               <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />

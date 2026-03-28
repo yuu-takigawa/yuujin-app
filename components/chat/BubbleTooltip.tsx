@@ -44,23 +44,9 @@ export default function BubbleTooltip({
   };
 
   const handleSpeak = () => {
-    if (speaking) {
-      // 正在朗读中再次点击 → 停止
-      stop();
-      setSpeaking(false);
-      return;
-    }
-    setSpeaking(true);
-    speak(content, voice, () => {
-      // 播放完成 → 关闭 tooltip
-      setSpeaking(false);
-      onAction('read');
-    }, (err) => {
-      setSpeaking(false);
-      if (typeof window !== 'undefined' && err) {
-        console.warn('[TTS Error]', err);
-      }
-    });
+    stop();
+    speak(content, voice);
+    onAction('read'); // 立即关闭 tooltip，音频后台播放
   };
 
   const isAI = role === 'assistant';
