@@ -86,8 +86,6 @@ export default function ConversationScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [scrollSignal, setScrollSignal] = useState(0);
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
-  const chatItemsRef = useRef(chatItems);
-  chatItemsRef.current = chatItems;
   const [suggestText, setSuggestText] = useState<string | undefined>(undefined);
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const suggestCancelRef = useRef<(() => void) | null>(null);
@@ -172,6 +170,9 @@ export default function ConversationScreen() {
     items.reverse();
     return items;
   }, [messages, storeConversationId, conversationId]);
+
+  const chatItemsRef = useRef(chatItems);
+  chatItemsRef.current = chatItems;
 
   const handleDeleteFriend = async () => {
     if (user && conv?.characterId) {
