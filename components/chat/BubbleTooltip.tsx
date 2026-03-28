@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { useTTS } from '../../hooks/useTTS';
 
 export type BubbleAction = 'read' | 'translate' | 'analyze' | 'copy' | 'correct';
@@ -29,6 +30,7 @@ export default function BubbleTooltip({
   onAction,
 }: BubbleTooltipProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const { speak, stop } = useTTS();
   const [speaking, setSpeaking] = useState(false);
 
@@ -56,18 +58,18 @@ export default function BubbleTooltip({
   };
 
   const isAI = role === 'assistant';
-  const speakItem = { label: '朗読', icon: 'volume-medium-outline' as const, onPress: handleSpeak, loading: speaking };
+  const speakItem = { label: i('bubble.read'), icon: 'volume-medium-outline' as const, onPress: handleSpeak, loading: speaking };
   const items = isAI
     ? [
         speakItem,
-        { label: '翻訳', icon: 'language-outline' as const, onPress: () => onAction('translate') },
-        { label: '解析', icon: 'school-outline' as const, onPress: () => onAction('analyze') },
-        { label: 'コピー', icon: 'copy-outline' as const, onPress: handleCopy },
+        { label: i('bubble.translate'), icon: 'language-outline' as const, onPress: () => onAction('translate') },
+        { label: i('bubble.analyze'), icon: 'school-outline' as const, onPress: () => onAction('analyze') },
+        { label: i('bubble.copy'), icon: 'copy-outline' as const, onPress: handleCopy },
       ]
     : [
         speakItem,
-        { label: '纠错', icon: 'create-outline' as const, onPress: () => onAction('correct') },
-        { label: 'コピー', icon: 'copy-outline' as const, onPress: handleCopy },
+        { label: i('bubble.correct'), icon: 'create-outline' as const, onPress: () => onAction('correct') },
+        { label: i('bubble.copy'), icon: 'copy-outline' as const, onPress: handleCopy },
       ];
 
   const isAbove = position === 'above';

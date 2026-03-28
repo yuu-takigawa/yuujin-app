@@ -603,7 +603,7 @@ export default function NewsDetailScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.annotationHeader}>
-                    <Text style={[styles.annotationLabel, { color: t.brand }]}>翻訳</Text>
+                    <Text style={[styles.annotationLabel, { color: t.brand }]}>{i('bubble.translate')}</Text>
                     <Ionicons name="close" size={14} color={t.textSecondary} />
                   </View>
                   <Text style={[styles.annotationText, { color: t.text }]}>{trans.text}</Text>
@@ -612,7 +612,7 @@ export default function NewsDetailScreen() {
                 <View style={[styles.annotationBox, { backgroundColor: t.surface, borderLeftColor: t.brand }]}>
                   <View style={styles.annotationLoading}>
                     <ActivityIndicator size="small" color={t.brand} />
-                    <Text style={{ color: t.textSecondary, fontSize: 13, marginLeft: 8 }}>翻訳中...</Text>
+                    <Text style={{ color: t.textSecondary, fontSize: 13, marginLeft: 8 }}>{i('bubble.loading')}</Text>
                   </View>
                   {trans.text ? <Text style={[styles.annotationText, { color: t.text }]}>{trans.text}</Text> : null}
                 </View>
@@ -686,7 +686,7 @@ export default function NewsDetailScreen() {
               ) : (
                 <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
               )}
-              <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
+              <Text style={[styles.tooltipText, { color: t.text }]}>{i('bubble.read')}</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
             <TouchableOpacity
@@ -694,7 +694,7 @@ export default function NewsDetailScreen() {
               onPress={() => { handleAnnotate(tooltipIndex, 'translation'); setTooltipIndex(null); }}
             >
               <Ionicons name="language-outline" size={16} color={t.brand} />
-              <Text style={[styles.tooltipText, { color: t.text }]}>翻訳</Text>
+              <Text style={[styles.tooltipText, { color: t.text }]}>{i('bubble.translate')}</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
             <TouchableOpacity
@@ -702,7 +702,7 @@ export default function NewsDetailScreen() {
               onPress={() => { handleAnnotate(tooltipIndex, 'explanation'); setTooltipIndex(null); }}
             >
               <Ionicons name="school-outline" size={16} color={t.brand} />
-              <Text style={[styles.tooltipText, { color: t.text }]}>解説</Text>
+              <Text style={[styles.tooltipText, { color: t.text }]}>{i('bubble.analyze')}</Text>
             </TouchableOpacity>
             {/* 三角箭头 */}
             <View style={[styles.tooltipArrow, { borderTopColor: t.surface, left: tooltipPos.arrowLeft - 6 }]} />
