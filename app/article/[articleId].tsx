@@ -251,11 +251,11 @@ export default function NewsDetailScreen() {
       setTooltipIndex(null);
       return;
     }
-    ttsStop();
+    // 不需要额外 ttsStop() — globalSpeak 内部会先 stop
     setSpeakingIndex(index);
     ttsSpeak(text, newsVoice, () => {
       setSpeakingIndex(null);
-      setTooltipIndex(null); // 播放完成后关闭 tooltip
+      setTooltipIndex(null);
     }, (err) => {
       setSpeakingIndex(null);
       setTooltipIndex(null);

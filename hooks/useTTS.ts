@@ -169,7 +169,10 @@ export function stopAllTTS() {
 }
 
 function schedulePlayback(audioCtx: AudioContext, text: string, sid: number) {
-  if (sid !== g_sessionId || g_playingText !== text) return;
+  if (sid !== g_sessionId || g_playingText !== text) {
+    console.log('[TTS] schedulePlayback SKIP: sid', sid, '!= g_sid', g_sessionId, 'or text mismatch');
+    return;
+  }
 
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().then(() => schedulePlayback(audioCtx, text, sid));
@@ -228,8 +231,11 @@ function globalSpeak(
   onDone?: () => void,
   onError?: (msg: string) => void,
 ) {
+  console.log('[TTS] globalSpeak called, text:', text.slice(0, 30), 'g_speaking:', g_speaking, 'g_playingText:', g_playingText?.slice(0, 20));
+
   // toggle：同一文本再次点击 → 停止
   if (g_speaking && g_playingText === text) {
+    console.log('[TTS] toggle stop');
     stopAllTTS();
     onDone?.();
     return;
@@ -237,6 +243,7 @@ function globalSpeak(
 
   stopAllTTS();
   g_speaking = true;
+  console.log('[TTS] sessionId:', g_sessionId, 'premium:', isPremiumTier());
 
   // Free 用户：系统 TTS
   if (!isPremiumTier()) {
@@ -267,6 +274,7 @@ function globalSpeak(
     return;
   }
   const sentences = splitSentences(cleanText);
+  console.log('[TTS] sentences:', sentences.length, sentences.map(s => s.slice(0, 20)));
 
   g_states = sentences.map(() => ({
     chunks: [], sampleRate: 24000, headerParsed: false, done: false, error: false,
@@ -314,9 +322,10 @@ function globalSpeak(
       sentence,
       voice,
       (base64) => {
-        if (sid !== g_sessionId || g_playingText !== text) return;
+        if (sid !== g_sessionId || g_playingText !== text) { console.log('[TTS] chunk SKIP sid/text mismatch'); return; }
         const bytes = base64ToBytes(base64);
         if (bytes.length === 0) return;
+        console.log('[TTS] chunk received, sent#', sentIdx, 'bytes:', bytes.length);
         let pcmBytes: Uint8Array;
         const state = g_states[sentIdx];
         const hasWav = bytes.length >= 44 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
@@ -336,6 +345,7 @@ function globalSpeak(
         schedulePlayback(audioCtx, text, sid);
       },
       () => {
+        console.log('[TTS] onDone sent#', sentIdx, 'sid:', sid, 'g_sid:', g_sessionId, 'cached:', !!g_states[sentIdx]?.cachedUrl);
         if (sid !== g_sessionId) return;
         if (!g_states[sentIdx].cachedUrl) g_states[sentIdx].done = true;
         schedulePlayback(audioCtx, text, sid);
@@ -350,6 +360,7 @@ function globalSpeak(
         checkAllDone();
       },
       (url) => {
+        console.log('[TTS] cachedUrl sent#', sentIdx, 'url:', url?.slice(0, 60));
         if (sid !== g_sessionId) return;
         g_states[sentIdx].cachedUrl = url;
         schedulePlayback(audioCtx, text, sid);
