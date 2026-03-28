@@ -105,6 +105,8 @@ export function ttsStream(
   onChunk: (base64: string) => void,
   onDone: () => void,
   onError?: (err: string) => void,
+  /** 服务端缓存命中时返回 URL，前端可用 Audio 播放 */
+  onCachedUrl?: (url: string) => void,
 ): () => void {
   const controller = new AbortController();
 
@@ -139,7 +141,8 @@ export function ttsStream(
           if (payload === '[DONE]') { onDone(); return; }
           try {
             const parsed = JSON.parse(payload);
-            if (parsed.audio) onChunk(parsed.audio);
+            if (parsed.cachedUrl) { onCachedUrl?.(parsed.cachedUrl); }
+            else if (parsed.audio) onChunk(parsed.audio);
             if (parsed.error) onError?.(parsed.error);
           } catch { /* skip */ }
         }
