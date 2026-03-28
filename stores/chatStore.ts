@@ -55,31 +55,52 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // If no messages, trigger server-side greeting (bio + translation for N5)
     if (msgs.length === 0) {
       set({ isStreaming: true, streamingContent: '' });
-      let accumulated = '';
+      let fullContent = '';
+      let greetDone = false;
+
       const cancel = streamGreeting(conversationId, (event) => {
         if (event.type === 'delta' && event.content) {
-          accumulated += event.content;
-          set({ streamingContent: accumulated });
+          fullContent += event.content;
         } else if (event.type === 'done') {
-          // 服务端已持久化，重新加载消息获取正式 ID
-          getMessages(conversationId, { limit: PAGE_SIZE }).then(({ messages: freshMsgs }) => {
-            if (get().conversationId === conversationId) {
-              set({ messages: freshMsgs, isStreaming: false, streamingContent: '', cancelStream: null });
-            }
-          }).catch(() => {
-            // fallback: 用本地消息
-            if (accumulated) {
-              const aiMsg = addMessageToConversation(conversationId, 'assistant', accumulated);
-              set((s) => ({ messages: [...s.messages, aiMsg], isStreaming: false, streamingContent: '', cancelStream: null }));
-            } else {
-              set({ isStreaming: false, streamingContent: '', cancelStream: null });
-            }
-          });
+          greetDone = true;
         } else if (event.type === 'error') {
           set({ isStreaming: false, streamingContent: '', cancelStream: null });
         }
       });
       set({ cancelStream: cancel });
+
+      // 轮询等待服务端返回完整内容，然后逐字显示（typing 效果）
+      const waitAndType = () => {
+        if (!greetDone && fullContent.length === 0) {
+          setTimeout(waitAndType, 100);
+          return;
+        }
+        // 服务端可能一次性返回，也可能逐字返回 — 都用定时器逐字显示
+        const text = fullContent;
+        if (!text) {
+          set({ isStreaming: false, streamingContent: '', cancelStream: null });
+          return;
+        }
+        let idx = 0;
+        const timer = setInterval(() => {
+          if (get().conversationId !== conversationId) { clearInterval(timer); return; }
+          idx++;
+          set({ streamingContent: text.slice(0, idx) });
+          if (idx >= text.length) {
+            clearInterval(timer);
+            // 重新加载消息获取持久化的正式 ID
+            getMessages(conversationId, { limit: PAGE_SIZE }).then(({ messages: freshMsgs }) => {
+              if (get().conversationId === conversationId) {
+                set({ messages: freshMsgs, isStreaming: false, streamingContent: '', cancelStream: null });
+              }
+            }).catch(() => {
+              const aiMsg = addMessageToConversation(conversationId, 'assistant', text);
+              set((s) => ({ messages: [...s.messages, aiMsg], isStreaming: false, streamingContent: '', cancelStream: null }));
+            });
+          }
+        }, 30);
+      };
+      waitAndType();
     }
   },
 
