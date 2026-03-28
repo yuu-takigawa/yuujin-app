@@ -86,6 +86,8 @@ export default function ConversationScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [scrollSignal, setScrollSignal] = useState(0);
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
+  const chatItemsRef = useRef(chatItems);
+  chatItemsRef.current = chatItems;
   const [suggestText, setSuggestText] = useState<string | undefined>(undefined);
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const suggestCancelRef = useRef<(() => void) | null>(null);
@@ -114,6 +116,18 @@ export default function ConversationScreen() {
   const contentTranslateStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: kbHeight.value }],
   }));
+
+  // z-index boost: 直接操作 DOM 修改 cell 的 zIndex，不触发 React 重渲染
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (activeTooltipId) {
+      const el = document.getElementById(`msg-cell-${activeTooltipId}`);
+      if (el) {
+        el.style.zIndex = '9999';
+        return () => { el.style.zIndex = ''; };
+      }
+    }
+  }, [activeTooltipId]);
 
   useEffect(() => {
     if (conversationId && conv?.characterId) {
@@ -284,14 +298,14 @@ export default function ConversationScreen() {
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
           CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => {
-            const item = chatItems[index];
-            const isActive = item?.type === 'message' && item.data.id === activeTooltipId;
+            const item = chatItemsRef.current?.[index];
+            const cellId = item?.type === 'message' ? `msg-cell-${item.data.id}` : undefined;
             return (
-              <View {...props} style={[style, { zIndex: isActive ? 9999 : 1000 - (index ?? 0) }]}>
+              <View {...props} nativeID={cellId} style={[style, { zIndex: 1000 - (index ?? 0) }]}>
                 {children}
               </View>
             );
-          }, [activeTooltipId, chatItems])}
+          }, [])}
           onEndReached={() => {
             if (hasMore && !loadingMore) {
               loadMoreMessages();
