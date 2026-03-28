@@ -161,6 +161,8 @@ export function useTTS() {
   const speakingRef = useRef(false);
   // 追踪所有已调度的 AudioBufferSourceNode，stop 时全部断开
   const allSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  // 追踪所有 new Audio() 元素，stop 时停止
+  const allAudioElemsRef = useRef<HTMLAudioElement[]>([]);
 
   // 分句播放队列状态
   const sentenceStatesRef = useRef<SentenceState[]>([]);
@@ -182,7 +184,11 @@ export function useTTS() {
       try { src.disconnect(); } catch { /* ok */ }
     }
     allSourcesRef.current = [];
-    // 缓存句子的播放通过 Web Audio（已在 allSourcesRef 里 stop/disconnect）
+    // 停止所有 Audio 元素（缓存路径）
+    for (const audio of allAudioElemsRef.current) {
+      try { audio.pause(); audio.src = ''; } catch { /* ok */ }
+    }
+    allAudioElemsRef.current = [];
     // 停止系统 TTS
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
@@ -202,6 +208,12 @@ export function useTTS() {
   const schedulePlayback = useCallback((audioCtx: AudioContext, text: string) => {
     if (playingTextRef.current !== text) return;
 
+    // iOS Safari: AudioContext 可能还没 resume，等它 running 再调度
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => schedulePlayback(audioCtx, text));
+      return;
+    }
+
     const states = sentenceStatesRef.current;
     const played = playedChunksRef.current;
 
@@ -213,6 +225,7 @@ export function useTTS() {
       if (state.cachedUrl && !state.cachedFetching) {
         state.cachedFetching = true;
         const audio = new Audio(state.cachedUrl);
+        allAudioElemsRef.current.push(audio); // 追踪，stop 时可停
         audio.onended = () => {
           state.done = true;
           schedulePlayback(audioCtx, text);
