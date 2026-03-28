@@ -83,6 +83,10 @@ export default function BubbleTooltip({
         isAbove ? styles.wrapperAbove : styles.wrapperBelow,
       ]}
     >
+      {/* Below 时箭头在容器上方指向上 */}
+      {!isAbove && (
+        <View style={[styles.arrow, { borderBottomColor: 'rgba(30,30,30,0.92)', borderTopWidth: 0 }]} />
+      )}
       <View style={[styles.container, { backgroundColor: 'rgba(30,30,30,0.92)' }]}>
         {items.map((item, idx) => (
           <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -98,12 +102,10 @@ export default function BubbleTooltip({
           </View>
         ))}
       </View>
-      <View style={[
-        styles.arrow,
-        isAbove
-          ? { borderTopColor: 'rgba(30,30,30,0.92)', borderBottomWidth: 0 }
-          : { borderBottomColor: 'rgba(30,30,30,0.92)', borderTopWidth: 0 },
-      ]} />
+      {/* Above 时箭头在容器下方指向下 */}
+      {isAbove && (
+        <View style={[styles.arrow, { borderTopColor: 'rgba(30,30,30,0.92)', borderBottomWidth: 0 }]} />
+      )}
     </View>
   );
 }
