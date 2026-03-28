@@ -44,17 +44,39 @@ function cleanForTTS(text: string): string {
 }
 
 function splitSentences(text: string): string[] {
-  const raw = text.split(/(?<=[。！？!?\n])/);
-  const result: string[] = [];
+  // 先按句末标点分
+  const raw = text.split(/(?<=[。!?\n])/);
+  const merged: string[] = [];
   for (const s of raw) {
     const trimmed = s.trim();
     if (!trimmed) continue;
-    if (result.length > 0 && trimmed.length < 5) {
-      result[result.length - 1] += s;
+    if (merged.length > 0 && trimmed.length < 5) {
+      merged[merged.length - 1] += s;
     } else {
-      result.push(s);
+      merged.push(s);
     }
   }
+
+  // 长句（>30字）按 、 进一步拆分，短文本 DashScope 生成更快
+  const result: string[] = [];
+  for (const s of merged) {
+    if (s.length <= 30) {
+      result.push(s);
+    } else {
+      const parts = s.split(/(?<=、)/);
+      let current = '';
+      for (const p of parts) {
+        if (current.length + p.length > 30 && current.length > 5) {
+          result.push(current);
+          current = p;
+        } else {
+          current += p;
+        }
+      }
+      if (current.trim()) result.push(current);
+    }
+  }
+
   return result.length > 0 ? result : [text];
 }
 
