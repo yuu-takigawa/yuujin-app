@@ -117,20 +117,23 @@ function MessageBubble({
     }).start(() => setToastVisible(false));
   }, []);
 
+  const [tooltipRect, setTooltipRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
   const handleInfoPress = () => {
     if (tooltipVisible) {
       setTooltipVisible(false);
       return;
     }
-    // Measure bubble position to decide tooltip placement
     const node = bubbleRef.current as any;
     if (node && typeof node.measureInWindow === 'function') {
-      node.measureInWindow((x: number, y: number) => {
+      node.measureInWindow((x: number, y: number, w: number, h: number) => {
         setTooltipPosition(y < 120 ? 'below' : 'above');
+        setTooltipRect({ x, y, w, h });
         setTooltipVisible(true);
       });
     } else {
       setTooltipPosition('above');
+      setTooltipRect(null);
       setTooltipVisible(true);
     }
   };
@@ -247,6 +250,7 @@ function MessageBubble({
             role={role}
             voice={voice}
             position={tooltipPosition}
+            bubbleRect={tooltipRect}
             onClose={() => setTooltipVisible(false)}
             onAction={handleAction}
           />

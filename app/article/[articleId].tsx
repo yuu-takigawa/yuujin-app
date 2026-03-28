@@ -255,9 +255,11 @@ export default function NewsDetailScreen() {
       return;
     }
     setSpeakingIndex(index);
-    ttsSpeak(text, newsVoice, () => {
-      setSpeakingIndex(null);
-    });
+    ttsSpeak(text, newsVoice,
+      () => { setSpeakingIndex(null); },           // onDone
+      () => { setSpeakingIndex(null); },           // onError
+      () => { setTooltipIndex(null); },            // onStart: 开始播放才关闭 tooltip
+    );
   }, [speakingIndex, newsVoice, ttsSpeak, ttsStop]);
 
   const handleSendComment = async () => {
@@ -676,10 +678,14 @@ export default function NewsDetailScreen() {
               style={styles.tooltipBtn}
               onPress={() => {
                 handleSpeak(tooltipIndex, paragraphs[tooltipIndex]);
-                setTooltipIndex(null); // 立即关闭 tooltip
+                // 不立即关闭 — onStart 回调会在播放开始时关闭
               }}
             >
-              <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
+              {speakingIndex === tooltipIndex ? (
+                <ActivityIndicator size={14} color={t.brand} />
+              ) : (
+                <Ionicons name="volume-medium-outline" size={16} color={t.brand} />
+              )}
               <Text style={[styles.tooltipText, { color: t.text }]}>朗読</Text>
             </TouchableOpacity>
             <View style={[styles.tooltipDivider, { backgroundColor: t.border }]} />
