@@ -1,16 +1,19 @@
 /**
- * useTTS — 朗読 hook（v2：分句并发 + 顺序播放）
+ * useTTS — 朗読 hook（v3：模块级单例 + 分句并发 + 顺序播放）
+ *
+ * 所有 useTTS() 实例共享同一个播放管道（模块级状态）。
+ * 任何组件调 stop() 都会停掉全局正在播放的 TTS。
+ * 退出页面时调 stopAllTTS() 清理。
  *
  * Premium (Pro/Max/Admin):
  *   1. 文本按日语句子分割
  *   2. 所有句子同时发出 TTS-stream 请求（并发网络）
- *   3. 播放队列严格按句子顺序：当前句子的 chunk 到即播，
- *      句子结束后立即切到下一句已缓冲的 chunk
+ *   3. 播放队列严格按句子顺序
  *
  * Free: 浏览器系统 TTS (Web Speech API)
  */
 
-import { useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { ttsStream } from '../services/http';
 import { useCreditStore } from '../stores/creditStore';
 
@@ -21,7 +24,6 @@ function isPremiumTier(): boolean {
   return membership === 'pro' || membership === 'max' || membership === 'admin';
 }
 
-/** base64 → Uint8Array */
 function base64ToBytes(base64: string): Uint8Array {
   const bin = atob(base64);
   const bytes = new Uint8Array(bin.length);
@@ -29,462 +31,353 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-/** 解析 WAV 头部 */
 function parseWavHeader(buf: Uint8Array): {
   sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number;
 } | null {
   if (buf.length < 44) return null;
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  if (view.getUint32(0, false) !== 0x52494646) return null; // "RIFF"
-  if (view.getUint32(8, false) !== 0x57415645) return null; // "WAVE"
+  if (view.getUint32(0, false) !== 0x52494646) return null;
+  if (view.getUint32(8, false) !== 0x57415645) return null;
   const channels = view.getUint16(22, true);
   const sampleRate = view.getUint32(24, true);
   const bitsPerSample = view.getUint16(34, true);
   let offset = 36;
   while (offset + 8 <= buf.length) {
-    const chunkId = view.getUint32(offset, false);
-    const chunkSize = view.getUint32(offset + 4, true);
-    if (chunkId === 0x64617461) { // "data"
+    if (view.getUint32(offset, false) === 0x64617461) {
       return { sampleRate, channels, bitsPerSample, dataOffset: offset + 8 };
     }
-    offset += 8 + chunkSize;
+    offset += 8 + view.getUint32(offset + 4, true);
   }
   return { sampleRate, channels, bitsPerSample, dataOffset: 44 };
 }
 
-/** PCM Int16 LE → Float32 */
 function pcm16ToFloat32(bytes: Uint8Array): Float32Array {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const numSamples = Math.floor(bytes.length / 2);
-  const float32 = new Float32Array(numSamples);
-  for (let i = 0; i < numSamples; i++) {
-    float32[i] = view.getInt16(i * 2, true) / 32768;
-  }
-  return float32;
+  const n = Math.floor(bytes.length / 2);
+  const f = new Float32Array(n);
+  for (let i = 0; i < n; i++) f[i] = view.getInt16(i * 2, true) / 32768;
+  return f;
 }
 
-/**
- * TTS 文本预处理 — 清除不适合朗读的内容
- *
- * Qwen3-TTS 会尝试读出所有字符，包括特殊符号。
- * 必须在送入 TTS 前彻底清理。
- */
+// ─── TTS 文本预处理 ───
+
 function preprocessForTTS(text: string): string {
   let t = text;
-  // 1. 括号内的中文翻译（N5/初心者向け）
   t = t.replace(/[（(][^）)]*[\u4e00-\u9fff][^）)]*[）)]/g, '');
-  // 2. テキスト表現（笑/w/草/泣）— 任意位置
   t = t.replace(/[（(]?笑[）)]?/g, '');
   t = t.replace(/[（(]?泣[）)]?/g, '');
-  t = t.replace(/[wWｗＷ]{2,}/g, '');           // ww, www 等
-  t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, ''); // 文末 w
+  t = t.replace(/[wWｗＷ]{2,}/g, '');
+  t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, '');
   t = t.replace(/草(?=[。！？!?\s]|$)/g, '');
-  // 3. 标点正规化 — 连续标点/全角标点 TTS 会读成奇怪的音
-  t = t.replace(/[？?][！!]/g, '？');  // ？！→ ？
-  t = t.replace(/[！!][？?]/g, '？');  // ！？→ ？
-  t = t.replace(/[？?]{2,}/g, '？');   // ？？→ ？
-  t = t.replace(/[！!]{2,}/g, '！');   // ！！→ ！
-  // 4. 特殊记号 — TTS 会读成奇怪的音
-  t = t.replace(/[〜～]/g, '');    // 波浪线 → 去掉
-  t = t.replace(/…+/g, '、');      // 省略号 → 短停顿
-  t = t.replace(/・{2,}/g, '、');   // 中点连续 → 短停顿
-  t = t.replace(/ⓘ/g, '');        // UI info icon
-  t = t.replace(/[♪♫♬♩]/g, '');   // 音符
+  t = t.replace(/[？?][！!]/g, '？');
+  t = t.replace(/[！!][？?]/g, '？');
+  t = t.replace(/[？?]{2,}/g, '？');
+  t = t.replace(/[！!]{2,}/g, '！');
+  t = t.replace(/[〜～]/g, '');
+  t = t.replace(/…+/g, '、');
+  t = t.replace(/・{2,}/g, '、');
+  t = t.replace(/ⓘ/g, '');
+  t = t.replace(/[♪♫♬♩]/g, '');
   t = t.replace(/[★☆※→←↑↓]/g, '');
-  // 4. Emoji — 显式 Unicode 范围（避免 \p{} 兼容性问题）
   t = t.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2934}\u{2935}\u{2190}-\u{21FF}]+/gu, '');
-  // 5. 顔文字残骸（括号内非日文内容）
   t = t.replace(/[（(][^）)]*[_^;><][^）)]*[）)]/g, '');
-  // 6. 清理残余
   t = t.replace(/\s+/g, ' ').trim();
-  // 7. 去掉句首句尾的无意义标点
   t = t.replace(/^[、，,.\s]+/, '').replace(/[、，,.\s]+$/, '');
   return t;
 }
 
-/**
- * 日语分句 — 按句末标点分割，保留标点
- * 短句（< 5 字符）合并到前一句，避免过度碎片化
- */
 function splitSentences(text: string): string[] {
   const raw = text.split(/(?<=[。！？!?\n])/);
   const result: string[] = [];
   for (const s of raw) {
     const trimmed = s.trim();
     if (!trimmed) continue;
-    // 短片段合并到前一句
     if (result.length > 0 && trimmed.length < 5) {
       result[result.length - 1] += s;
     } else {
       result.push(s);
     }
   }
-  // 如果分句结果只有 1 句或文本很短，直接返回整段
   return result.length > 0 ? result : [text];
 }
 
-// ─── 全局 AudioContext ───
+// ═══════════════════════════════════════════
+// 模块级单例状态 — 所有 useTTS 实例共享
+// ═══════════════════════════════════════════
 
 let sharedAudioCtx: AudioContext | null = null;
 
 function getOrCreateAudioContext(): AudioContext {
-  if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') {
-    return sharedAudioCtx;
-  }
+  if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') return sharedAudioCtx;
   sharedAudioCtx = new AudioContext();
   return sharedAudioCtx;
 }
 
-/** 必须在用户手势同步栈内调用（iOS Safari 要求） */
 function ensureAudioContextResumed(): AudioContext {
   const ctx = getOrCreateAudioContext();
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 }
 
-// ─── 每个句子的流式状态 ───
-
 interface SentenceState {
-  chunks: Float32Array[];  // 已解码的 PCM 数据
+  chunks: Float32Array[];
   sampleRate: number;
   headerParsed: boolean;
-  done: boolean;           // 播放完毕
+  done: boolean;
   error: boolean;
-  /** 缓存命中时的 URL */
   cachedUrl?: string;
-  /** fetch 已发起（防重入） */
   cachedFetching?: boolean;
 }
 
-// ─── Hook ───
+// 模块级播放状态
+let g_sessionId = 0;
+let g_nextTime = 0;
+let g_playingText: string | null = null;
+let g_speaking = false;
+let g_abortFns: Array<() => void> = [];
+let g_allSources: AudioBufferSourceNode[] = [];
+let g_allAudioElems: HTMLAudioElement[] = [];
+let g_states: SentenceState[] = [];
+let g_playingSentence = 0;
+let g_playedChunks: number[] = [];
+let g_onFinish: (() => void) | null = null;
+
+/** 全局停止 TTS — 任何组件/页面离开时调用 */
+export function stopAllTTS() {
+  g_sessionId++;
+  g_playingText = null;
+  g_speaking = false;
+  for (const abort of g_abortFns) abort();
+  g_abortFns = [];
+  for (const src of g_allSources) {
+    try { src.stop(); } catch { /* ok */ }
+    try { src.disconnect(); } catch { /* ok */ }
+  }
+  g_allSources = [];
+  for (const audio of g_allAudioElems) {
+    try { audio.pause(); audio.src = ''; } catch { /* ok */ }
+  }
+  g_allAudioElems = [];
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  g_nextTime = 0;
+  g_states = [];
+  g_playingSentence = 0;
+  g_playedChunks = [];
+  g_onFinish = null;
+}
+
+function schedulePlayback(audioCtx: AudioContext, text: string, sid: number) {
+  if (sid !== g_sessionId || g_playingText !== text) return;
+
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => schedulePlayback(audioCtx, text, sid));
+    return;
+  }
+
+  while (g_playingSentence < g_states.length) {
+    const idx = g_playingSentence;
+    const state = g_states[idx];
+
+    // 缓存命中：Audio 元素播放
+    if (state.cachedUrl && !state.cachedFetching) {
+      state.cachedFetching = true;
+      const audio = new Audio(state.cachedUrl);
+      g_allAudioElems.push(audio);
+      audio.onended = () => { state.done = true; schedulePlayback(audioCtx, text, sid); };
+      audio.onerror = () => { state.done = true; state.error = true; schedulePlayback(audioCtx, text, sid); };
+      audio.play().catch(() => { state.done = true; state.error = true; schedulePlayback(audioCtx, text, sid); });
+      break;
+    }
+    if (state.cachedUrl && !state.done) break;
+
+    // 流式：播放 chunk
+    for (let i = g_playedChunks[idx]; i < state.chunks.length; i++) {
+      const float32 = state.chunks[i];
+      if (float32.length === 0) continue;
+      try {
+        const buffer = audioCtx.createBuffer(1, float32.length, state.sampleRate);
+        buffer.getChannelData(0).set(float32);
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        const startAt = Math.max(audioCtx.currentTime, g_nextTime);
+        source.start(startAt);
+        g_nextTime = startAt + buffer.duration;
+        g_allSources.push(source);
+      } catch { /* skip */ }
+      g_playedChunks[idx] = i + 1;
+    }
+
+    if (state.done || state.error) {
+      g_playingSentence = idx + 1;
+    } else {
+      break;
+    }
+  }
+
+  if (g_playingSentence >= g_states.length && g_states.every(s => s.done || s.error)) {
+    g_onFinish?.();
+  }
+}
+
+function globalSpeak(
+  text: string,
+  voice?: string,
+  onDone?: () => void,
+  onError?: (msg: string) => void,
+) {
+  // toggle：同一文本再次点击 → 停止
+  if (g_speaking && g_playingText === text) {
+    stopAllTTS();
+    onDone?.();
+    return;
+  }
+
+  stopAllTTS();
+  g_speaking = true;
+
+  // Free 用户：系统 TTS
+  if (!isPremiumTier()) {
+    g_playingText = text;
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const utterance = new SpeechSynthesisUtterance(preprocessForTTS(text));
+      utterance.lang = 'ja-JP';
+      utterance.onend = () => { g_playingText = null; g_speaking = false; onDone?.(); };
+      utterance.onerror = () => { g_playingText = null; g_speaking = false; onError?.('音声の再生に失敗しました'); onDone?.(); };
+      window.speechSynthesis.speak(utterance);
+    } else {
+      g_playingText = null; g_speaking = false;
+      onError?.('このブラウザは音声合成に対応していません');
+      onDone?.();
+    }
+    return;
+  }
+
+  // Premium：分句并发 + 顺序播放
+  const audioCtx = ensureAudioContextResumed();
+  g_playingText = text;
+  g_nextTime = audioCtx.currentTime;
+  const sid = g_sessionId;
+
+  const cleanText = preprocessForTTS(text);
+  if (!cleanText) {
+    g_speaking = false; g_playingText = null; onDone?.();
+    return;
+  }
+  const sentences = splitSentences(cleanText);
+
+  g_states = sentences.map(() => ({
+    chunks: [], sampleRate: 24000, headerParsed: false, done: false, error: false,
+  }));
+  g_playingSentence = 0;
+  g_playedChunks = new Array(sentences.length).fill(0);
+
+  let completedCount = 0;
+  let finished = false;
+
+  const finishPlayback = () => {
+    if (finished || g_playingText !== text) return;
+    finished = true;
+    g_playingText = null;
+    g_speaking = false;
+    onDone?.();
+  };
+  g_onFinish = finishPlayback;
+
+  const checkAllDone = () => {
+    completedCount++;
+    if (completedCount < sentences.length) return;
+    const hasCachedPlaying = g_states.some(s => s.cachedUrl && !s.done && !s.error);
+    if (hasCachedPlaying) return;
+    const remaining = g_nextTime - audioCtx.currentTime;
+    if (remaining > 0.05) {
+      setTimeout(finishPlayback, remaining * 1000 + 200);
+    } else {
+      finishPlayback();
+    }
+  };
+
+  const checkAllError = () => {
+    if (g_states.every(s => s.error)) {
+      g_playingText = null; g_speaking = false;
+      onError?.('音声の生成に失敗しました');
+      onDone?.();
+    }
+  };
+
+  const aborts: Array<() => void> = [];
+
+  sentences.forEach((sentence, sentIdx) => {
+    const abort = ttsStream(
+      sentence,
+      voice,
+      (base64) => {
+        if (sid !== g_sessionId || g_playingText !== text) return;
+        const bytes = base64ToBytes(base64);
+        if (bytes.length === 0) return;
+        let pcmBytes: Uint8Array;
+        const state = g_states[sentIdx];
+        const hasWav = bytes.length >= 44 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+        if (hasWav) {
+          const header = parseWavHeader(bytes);
+          if (header) { state.sampleRate = header.sampleRate; pcmBytes = bytes.slice(header.dataOffset); }
+          else { pcmBytes = bytes; }
+          state.headerParsed = true;
+        } else {
+          if (!state.headerParsed) state.headerParsed = true;
+          pcmBytes = bytes;
+        }
+        if (pcmBytes.length < 2) return;
+        const float32 = pcm16ToFloat32(pcmBytes);
+        if (float32.length === 0) return;
+        state.chunks.push(float32);
+        schedulePlayback(audioCtx, text, sid);
+      },
+      () => {
+        if (sid !== g_sessionId) return;
+        if (!g_states[sentIdx].cachedUrl) g_states[sentIdx].done = true;
+        schedulePlayback(audioCtx, text, sid);
+        checkAllDone();
+      },
+      (err) => {
+        if (sid !== g_sessionId) return;
+        g_states[sentIdx].error = true;
+        g_states[sentIdx].done = true;
+        schedulePlayback(audioCtx, text, sid);
+        checkAllError();
+        checkAllDone();
+      },
+      (url) => {
+        if (sid !== g_sessionId) return;
+        g_states[sentIdx].cachedUrl = url;
+        schedulePlayback(audioCtx, text, sid);
+      },
+    );
+    aborts.push(abort);
+  });
+
+  g_abortFns = aborts;
+}
+
+// ═══════════════════════════════════════════
+// Hook — 薄封装，返回稳定的 speak/stop
+// ═══════════════════════════════════════════
 
 export function useTTS() {
-  // 播放调度器状态
-  const nextTimeRef = useRef(0);
-  const abortFnsRef = useRef<Array<() => void>>([]);
-  const playingTextRef = useRef<string | null>(null);
-  const speakingRef = useRef(false);
-  // 每次 speak 递增，旧回调通过比对 sessionId 快速丢弃
-  const sessionIdRef = useRef(0);
-  // 追踪所有已调度的 AudioBufferSourceNode，stop 时全部断开
-  const allSourcesRef = useRef<AudioBufferSourceNode[]>([]);
-  // 追踪所有 new Audio() 元素，stop 时停止
-  const allAudioElemsRef = useRef<HTMLAudioElement[]>([]);
-
-  // 分句播放队列状态
-  const sentenceStatesRef = useRef<SentenceState[]>([]);
-  const playingSentenceRef = useRef(0);
-  const playedChunksRef = useRef<number[]>([]);
-  // 回调 refs
-  const onErrorRef = useRef<((msg: string) => void) | null>(null);
-  const onFinishRef = useRef<(() => void) | null>(null);
-
-  const stop = useCallback(() => {
-    sessionIdRef.current++;  // 让所有旧回调失效
-    playingTextRef.current = null;
-    speakingRef.current = false;
-    // 中止所有 SSE 连接
-    for (const abort of abortFnsRef.current) abort();
-    abortFnsRef.current = [];
-    // 断开所有已调度的 AudioBufferSourceNode
-    for (const src of allSourcesRef.current) {
-      try { src.stop(); } catch { /* ok */ }
-      try { src.disconnect(); } catch { /* ok */ }
-    }
-    allSourcesRef.current = [];
-    // 停止所有 Audio 元素（缓存路径）
-    for (const audio of allAudioElemsRef.current) {
-      try { audio.pause(); audio.src = ''; } catch { /* ok */ }
-    }
-    allAudioElemsRef.current = [];
-    // 停止系统 TTS
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    nextTimeRef.current = 0;
-    sentenceStatesRef.current = [];
-    playingSentenceRef.current = 0;
-    playedChunksRef.current = [];
-    onFinishRef.current = null;
-  }, []);
-
-  /**
-   * 调度播放：从当前句子开始，依次播放已缓冲的 chunk
-   * - 当前句子的 chunk 到达即播放
-   * - 当前句子所有 chunk 接收完毕（done=true）后，切到下一句
-   */
-  const schedulePlayback = useCallback((audioCtx: AudioContext, text: string, sid: number) => {
-    if (sid !== sessionIdRef.current || playingTextRef.current !== text) return;
-
-    // iOS Safari: AudioContext 可能还没 resume，等它 running 再调度
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(() => schedulePlayback(audioCtx, text, sid));
-      return;
-    }
-
-    const states = sentenceStatesRef.current;
-    const played = playedChunksRef.current;
-
-    while (playingSentenceRef.current < states.length) {
-      const idx = playingSentenceRef.current;
-      const state = states[idx];
-
-      // 缓存命中的句子：用 Audio 元素播放（不能用 fetch+decodeAudioData，OSS 有 CORS 限制）
-      if (state.cachedUrl && !state.cachedFetching) {
-        state.cachedFetching = true;
-        const audio = new Audio(state.cachedUrl);
-        allAudioElemsRef.current.push(audio); // 追踪，stop 时可停
-        audio.onended = () => {
-          state.done = true;
-          schedulePlayback(audioCtx, text, sid);
-        };
-        audio.onerror = () => {
-          state.done = true;
-          state.error = true;
-          schedulePlayback(audioCtx, text, sid);
-        };
-        audio.play().catch(() => {
-          state.done = true;
-          state.error = true;
-          schedulePlayback(audioCtx, text, sid);
-        });
-        break; // 等播放完成
-      }
-
-      // 缓存句子正在播放中，等待
-      if (state.cachedUrl && !state.done) break;
-
-      // 流式句子：播放尚未播放的 chunk
-      for (let i = played[idx]; i < state.chunks.length; i++) {
-        const float32 = state.chunks[i];
-        if (float32.length === 0) continue;
-
-        try {
-          const buffer = audioCtx.createBuffer(1, float32.length, state.sampleRate);
-          buffer.getChannelData(0).set(float32);
-
-          const source = audioCtx.createBufferSource();
-          source.buffer = buffer;
-          source.connect(audioCtx.destination);
-
-          const startAt = Math.max(audioCtx.currentTime, nextTimeRef.current);
-          source.start(startAt);
-          nextTimeRef.current = startAt + buffer.duration;
-          allSourcesRef.current.push(source);
-        } catch { /* skip bad chunk */ }
-
-        played[idx] = i + 1;
-      }
-
-      // 如果当前句子的 SSE 流已结束，切到下一句
-      if (state.done || state.error) {
-        playingSentenceRef.current = idx + 1;
-      } else {
-        break; // 等待更多 chunk
-      }
-    }
-
-    // 所有句子播放完毕？（缓存句子 Audio.onended 后回到这里）
-    if (playingSentenceRef.current >= states.length && states.every(s => s.done || s.error)) {
-      onFinishRef.current?.();
-    }
-  }, []);
-
   const speak = useCallback((
     text: string,
     voice?: string,
     onDone?: () => void,
     onError?: (msg: string) => void,
   ) => {
-    // 同一文本再次点击 → toggle 停止
-    if (speakingRef.current && playingTextRef.current === text) {
-      stop();
-      onDone?.();
-      return;
-    }
+    globalSpeak(text, voice, onDone, onError);
+  }, []);
 
-    // 不同文本或非播放状态 → 停掉旧的，开始新的
-    stop();
-    speakingRef.current = true;
-    onErrorRef.current = onError || null;
-
-    // ── Free 用户：系统 TTS ──
-    if (!isPremiumTier()) {
-      playingTextRef.current = text;
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance(preprocessForTTS(text));
-        utterance.lang = 'ja-JP';
-        utterance.onend = () => {
-          playingTextRef.current = null;
-          speakingRef.current = false;
-          onDone?.();
-        };
-        utterance.onerror = (e) => {
-          playingTextRef.current = null;
-          speakingRef.current = false;
-          onError?.('音声の再生に失敗しました');
-          onDone?.();
-        };
-        window.speechSynthesis.speak(utterance);
-      } else {
-        playingTextRef.current = null;
-        speakingRef.current = false;
-        onError?.('このブラウザは音声合成に対応していません');
-        onDone?.();
-      }
-      return;
-    }
-
-    // ── Premium：分句并发 SSE + 顺序播放队列 ──
-    const audioCtx = ensureAudioContextResumed();
-    playingTextRef.current = text;
-    nextTimeRef.current = audioCtx.currentTime;
-    const sid = sessionIdRef.current; // 捕获当前 session，旧回调通过比对丢弃
-
-    // 预处理：去掉中文括号翻译、emoji、テキスト表現
-    const cleanText = preprocessForTTS(text);
-    if (!cleanText) {
-      speakingRef.current = false;
-      playingTextRef.current = null;
-      onDone?.();
-      return;
-    }
-    const sentences = splitSentences(cleanText);
-
-    // 初始化每个句子的状态
-    const states: SentenceState[] = sentences.map(() => ({
-      chunks: [],
-      sampleRate: 24000,
-      headerParsed: false,
-      done: false,
-      error: false,
-    }));
-    sentenceStatesRef.current = states;
-    playingSentenceRef.current = 0;
-    playedChunksRef.current = new Array(sentences.length).fill(0);
-
-    let completedCount = 0;
-
-    let finished = false;
-    const finishPlayback = () => {
-      if (finished) return;
-      if (playingTextRef.current !== text) return;
-      finished = true;
-      playingTextRef.current = null;
-      speakingRef.current = false;
-      onDone?.();
-    };
-    onFinishRef.current = finishPlayback;
-
-    const checkAllDone = () => {
-      completedCount++;
-      if (completedCount < sentences.length) return;
-
-      // 所有 SSE 流结束。检查是否有缓存句子仍在播放
-      const hasCachedPlaying = states.some(s => s.cachedUrl && !s.done && !s.error);
-      if (hasCachedPlaying) {
-        // 缓存句子的 Audio.onended 会设 done=true 并推进调度器
-        // 最后一个缓存句子播完时通过 schedulePlayback → 检测全部完成 → 清理
-        return;
-      }
-
-      // 纯流式路径：用 Web Audio 时间计算剩余播放时间
-      const remaining = nextTimeRef.current - audioCtx.currentTime;
-      if (remaining > 0.05) {
-        // 还有音频在排队，等它播完
-        setTimeout(finishPlayback, remaining * 1000 + 200);
-      } else {
-        finishPlayback();
-      }
-    };
-
-    // 检查是否全部出错
-    const checkAllError = () => {
-      if (states.every(s => s.error)) {
-        playingTextRef.current = null;
-        speakingRef.current = false;
-        onError?.('音声の生成に失敗しました');
-        onDone?.();
-      }
-    };
-
-    // 并发发出所有句子的 TTS 请求
-    const aborts: Array<() => void> = [];
-
-    sentences.forEach((sentence, sentIdx) => {
-      const abort = ttsStream(
-        sentence,
-        voice,
-        // onChunk
-        (base64) => {
-          if (sid !== sessionIdRef.current || playingTextRef.current !== text) return;
-          const bytes = base64ToBytes(base64);
-          if (bytes.length === 0) return;
-
-          let pcmBytes: Uint8Array;
-          const state = states[sentIdx];
-
-          // 检查 WAV 头
-          const hasWavHeader = bytes.length >= 44 &&
-            bytes[0] === 0x52 && bytes[1] === 0x49 &&
-            bytes[2] === 0x46 && bytes[3] === 0x46;
-
-          if (hasWavHeader) {
-            const header = parseWavHeader(bytes);
-            if (header) {
-              state.sampleRate = header.sampleRate;
-              pcmBytes = bytes.slice(header.dataOffset);
-            } else {
-              pcmBytes = bytes;
-            }
-            state.headerParsed = true;
-          } else {
-            if (!state.headerParsed) state.headerParsed = true;
-            pcmBytes = bytes;
-          }
-
-          if (pcmBytes.length < 2) return;
-
-          const float32 = pcm16ToFloat32(pcmBytes);
-          if (float32.length === 0) return;
-
-          state.chunks.push(float32);
-
-          // 尝试调度播放（只有当前句子或之前句子的 chunk 会被播放）
-          schedulePlayback(audioCtx, text, sid);
-        },
-        // onDone — SSE 流结束
-        () => {
-          if (sid !== sessionIdRef.current) return;
-          // 缓存句子的 done 由 Audio.onended 设置，这里不设
-          if (!states[sentIdx].cachedUrl) {
-            states[sentIdx].done = true;
-          }
-          schedulePlayback(audioCtx, text, sid);
-          checkAllDone();
-        },
-        // onError
-        (err) => {
-          if (sid !== sessionIdRef.current) return;
-          states[sentIdx].error = true;
-          states[sentIdx].done = true;
-          schedulePlayback(audioCtx, text, sid);
-          checkAllError();
-          checkAllDone();
-        },
-        // onCachedUrl — 服务端缓存命中，直接拿 URL
-        (url) => {
-          if (sid !== sessionIdRef.current) return;
-          states[sentIdx].cachedUrl = url;
-          // 不设 done=true，让 schedulePlayback 的 Audio.onended 来设
-          schedulePlayback(audioCtx, text, sid);
-        },
-      );
-      aborts.push(abort);
-    });
-
-    abortFnsRef.current = aborts;
-  }, [stop, schedulePlayback]);
+  const stop = useCallback(() => {
+    stopAllTTS();
+  }, []);
 
   return { speak, stop };
 }
