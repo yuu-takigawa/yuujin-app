@@ -125,8 +125,6 @@ interface SentenceState {
   headerParsed: boolean;
   done: boolean;
   error: boolean;
-  cachedUrl?: string;
-  cachedFetching?: boolean;
 }
 
 // 模块级播放状态
@@ -136,7 +134,6 @@ let g_playingText: string | null = null;
 let g_speaking = false;
 let g_abortFns: Array<() => void> = [];
 let g_allSources: AudioBufferSourceNode[] = [];
-let g_allAudioElems: HTMLAudioElement[] = [];
 let g_states: SentenceState[] = [];
 let g_playingSentence = 0;
 let g_playedChunks: number[] = [];
@@ -154,10 +151,6 @@ export function stopAllTTS() {
     try { src.disconnect(); } catch { /* ok */ }
   }
   g_allSources = [];
-  for (const audio of g_allAudioElems) {
-    try { audio.pause(); audio.src = ''; } catch { /* ok */ }
-  }
-  g_allAudioElems = [];
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -169,10 +162,7 @@ export function stopAllTTS() {
 }
 
 function schedulePlayback(audioCtx: AudioContext, text: string, sid: number) {
-  if (sid !== g_sessionId || g_playingText !== text) {
-    console.log('[TTS] schedulePlayback SKIP: sid', sid, '!= g_sid', g_sessionId, 'or text mismatch');
-    return;
-  }
+  if (sid !== g_sessionId || g_playingText !== text) return;
 
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().then(() => schedulePlayback(audioCtx, text, sid));
@@ -182,18 +172,6 @@ function schedulePlayback(audioCtx: AudioContext, text: string, sid: number) {
   while (g_playingSentence < g_states.length) {
     const idx = g_playingSentence;
     const state = g_states[idx];
-
-    // 缓存命中：Audio 元素播放
-    if (state.cachedUrl && !state.cachedFetching) {
-      state.cachedFetching = true;
-      const audio = new Audio(state.cachedUrl);
-      g_allAudioElems.push(audio);
-      audio.onended = () => { state.done = true; schedulePlayback(audioCtx, text, sid); };
-      audio.onerror = () => { state.done = true; state.error = true; schedulePlayback(audioCtx, text, sid); };
-      audio.play().catch(() => { state.done = true; state.error = true; schedulePlayback(audioCtx, text, sid); });
-      break;
-    }
-    if (state.cachedUrl && !state.done) break;
 
     // 流式：播放 chunk
     for (let i = g_playedChunks[idx]; i < state.chunks.length; i++) {
@@ -231,11 +209,8 @@ function globalSpeak(
   onDone?: () => void,
   onError?: (msg: string) => void,
 ) {
-  console.log('[TTS] globalSpeak called, text:', text.slice(0, 30), 'g_speaking:', g_speaking, 'g_playingText:', g_playingText?.slice(0, 20));
-
   // toggle：同一文本再次点击 → 停止
   if (g_speaking && g_playingText === text) {
-    console.log('[TTS] toggle stop');
     stopAllTTS();
     onDone?.();
     return;
@@ -243,7 +218,6 @@ function globalSpeak(
 
   stopAllTTS();
   g_speaking = true;
-  console.log('[TTS] sessionId:', g_sessionId, 'premium:', isPremiumTier());
 
   // Free 用户：系统 TTS
   if (!isPremiumTier()) {
@@ -274,7 +248,6 @@ function globalSpeak(
     return;
   }
   const sentences = splitSentences(cleanText);
-  console.log('[TTS] sentences:', sentences.length, sentences.map(s => s.slice(0, 20)));
 
   g_states = sentences.map(() => ({
     chunks: [], sampleRate: 24000, headerParsed: false, done: false, error: false,
@@ -297,8 +270,7 @@ function globalSpeak(
   const checkAllDone = () => {
     completedCount++;
     if (completedCount < sentences.length) return;
-    const hasCachedPlaying = g_states.some(s => s.cachedUrl && !s.done && !s.error);
-    if (hasCachedPlaying) return;
+    // 所有 SSE 流结束，计算 Web Audio 剩余播放时间
     const remaining = g_nextTime - audioCtx.currentTime;
     if (remaining > 0.05) {
       setTimeout(finishPlayback, remaining * 1000 + 200);
@@ -322,10 +294,9 @@ function globalSpeak(
       sentence,
       voice,
       (base64) => {
-        if (sid !== g_sessionId || g_playingText !== text) { console.log('[TTS] chunk SKIP sid/text mismatch'); return; }
+        if (sid !== g_sessionId || g_playingText !== text) return;
         const bytes = base64ToBytes(base64);
         if (bytes.length === 0) return;
-        console.log('[TTS] chunk received, sent#', sentIdx, 'bytes:', bytes.length);
         let pcmBytes: Uint8Array;
         const state = g_states[sentIdx];
         const hasWav = bytes.length >= 44 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
@@ -345,9 +316,8 @@ function globalSpeak(
         schedulePlayback(audioCtx, text, sid);
       },
       () => {
-        console.log('[TTS] onDone sent#', sentIdx, 'sid:', sid, 'g_sid:', g_sessionId, 'cached:', !!g_states[sentIdx]?.cachedUrl);
         if (sid !== g_sessionId) return;
-        if (!g_states[sentIdx].cachedUrl) g_states[sentIdx].done = true;
+        g_states[sentIdx].done = true;
         schedulePlayback(audioCtx, text, sid);
         checkAllDone();
       },
@@ -358,12 +328,6 @@ function globalSpeak(
         schedulePlayback(audioCtx, text, sid);
         checkAllError();
         checkAllDone();
-      },
-      (url) => {
-        console.log('[TTS] cachedUrl sent#', sentIdx, 'url:', url?.slice(0, 60));
-        if (sid !== g_sessionId) return;
-        g_states[sentIdx].cachedUrl = url;
-        schedulePlayback(audioCtx, text, sid);
       },
     );
     aborts.push(abort);
