@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,12 +16,14 @@ import { useCharacterStore } from '../stores/characterStore';
 import { useFriendStore } from '../stores/friendStore';
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../hooks/useTheme';
+import { useLocale } from '../hooks/useLocale';
 import { radii } from '../constants/theme';
 
 export default function AddFriendScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
 
   const user = useAuthStore((s) => s.user);
   const characters = useCharacterStore((s) => s.characters);
@@ -33,6 +36,7 @@ export default function AddFriendScreen() {
   }, []);
 
   const [searchText, setSearchText] = useState('');
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   const isFriend = (charId: string) =>
     friends.some((f) => f.characterId === charId);
@@ -42,9 +46,14 @@ export default function AddFriendScreen() {
     : characters;
 
   const handleAdd = async (characterId: string) => {
-    if (!user) return;
-    const conversation = await addFriend(user.id, characterId);
-    router.replace(`/conversation/${conversation.id}`);
+    if (!user || addingId) return;
+    setAddingId(characterId);
+    try {
+      const conversation = await addFriend(user.id, characterId);
+      router.replace(`/conversation/${conversation.id}`);
+    } catch {
+      setAddingId(null);
+    }
   };
 
   return (
@@ -52,9 +61,9 @@ export default function AddFriendScreen() {
       <View style={[styles.header, { borderBottomColor: t.border }]}>
         <TouchableOpacity style={styles.headerBack} onPress={() => router.back()} hitSlop={8}>
           <Text style={[styles.backChevron, { color: t.brand }]}>‹</Text>
-          <Text style={[styles.backLabel, { color: t.brand }]}>戻る</Text>
+          <Text style={[styles.backLabel, { color: t.brand }]}>{i('action.back') || '戻る'}</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: t.text }]}>友達を追加</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('action.addFriend')}</Text>
         <TouchableOpacity
           style={styles.headerRight}
           onPress={() => router.push('/create-character')}
@@ -69,7 +78,7 @@ export default function AddFriendScreen() {
         <Ionicons name="search-outline" size={18} color={t.textSecondary} />
         <TextInput
           style={[styles.searchInput, { color: t.text }]}
-          placeholder="名前で検索..."
+          placeholder={i('friends.search') || '名前で検索...'}
           placeholderTextColor={t.textSecondary}
           value={searchText}
           onChangeText={setSearchText}
@@ -92,13 +101,18 @@ export default function AddFriendScreen() {
                 </Text>
               </View>
               {alreadyFriend ? (
-                <Text style={[styles.addedText, { color: t.success }]}>追加済み</Text>
+                <Text style={[styles.addedText, { color: t.success }]}>{i('friends.added') || '追加済み'}</Text>
               ) : (
                 <TouchableOpacity
                   style={[styles.addBtn, { backgroundColor: t.brand }]}
                   onPress={() => handleAdd(item.id)}
+                  disabled={addingId === item.id}
                 >
-                  <Text style={styles.addBtnText}>追加</Text>
+                  {addingId === item.id ? (
+                    <ActivityIndicator size={14} color="#FFF" />
+                  ) : (
+                    <Text style={styles.addBtnText}>{i('friends.add') || '追加'}</Text>
+                  )}
                 </TouchableOpacity>
               )}
             </View>
