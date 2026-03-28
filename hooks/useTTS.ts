@@ -79,7 +79,12 @@ function preprocessForTTS(text: string): string {
   t = t.replace(/[wWｗＷ]{2,}/g, '');           // ww, www 等
   t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, ''); // 文末 w
   t = t.replace(/草(?=[。！？!?\s]|$)/g, '');
-  // 3. 特殊记号 — TTS 会读成奇怪的音
+  // 3. 标点正规化 — 连续标点/全角标点 TTS 会读成奇怪的音
+  t = t.replace(/[？?][！!]/g, '？');  // ？！→ ？
+  t = t.replace(/[！!][？?]/g, '？');  // ！？→ ？
+  t = t.replace(/[？?]{2,}/g, '？');   // ？？→ ？
+  t = t.replace(/[！!]{2,}/g, '！');   // ！！→ ！
+  // 4. 特殊记号 — TTS 会读成奇怪的音
   t = t.replace(/[〜～]/g, '');    // 波浪线 → 去掉
   t = t.replace(/…+/g, '、');      // 省略号 → 短停顿
   t = t.replace(/・{2,}/g, '、');   // 中点连续 → 短停顿
