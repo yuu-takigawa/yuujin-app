@@ -209,36 +209,28 @@ export function useTTS() {
       const idx = playingSentenceRef.current;
       const state = states[idx];
 
-      // 缓存命中的句子：fetch + Web Audio decodeAudioData
-      // （不用 new Audio() — iOS Safari 异步回调里 .play() 会被拒）
+      // 缓存命中的句子：用 Audio 元素播放（不能用 fetch+decodeAudioData，OSS 有 CORS 限制）
       if (state.cachedUrl && !state.cachedFetching) {
         state.cachedFetching = true;
-        fetch(state.cachedUrl)
-          .then(res => res.arrayBuffer())
-          .then(buf => audioCtx.decodeAudioData(buf))
-          .then(decoded => {
-            if (playingTextRef.current !== text) return;
-            const source = audioCtx.createBufferSource();
-            source.buffer = decoded;
-            source.connect(audioCtx.destination);
-            const startAt = Math.max(audioCtx.currentTime, nextTimeRef.current);
-            source.start(startAt);
-            nextTimeRef.current = startAt + decoded.duration;
-            allSourcesRef.current.push(source);
-            source.onended = () => {
-              state.done = true;
-              schedulePlayback(audioCtx, text);
-            };
-          })
-          .catch(() => {
-            state.done = true;
-            state.error = true;
-            schedulePlayback(audioCtx, text);
-          });
-        break; // 等 fetch+decode+播放 完成
+        const audio = new Audio(state.cachedUrl);
+        audio.onended = () => {
+          state.done = true;
+          schedulePlayback(audioCtx, text);
+        };
+        audio.onerror = () => {
+          state.done = true;
+          state.error = true;
+          schedulePlayback(audioCtx, text);
+        };
+        audio.play().catch(() => {
+          state.done = true;
+          state.error = true;
+          schedulePlayback(audioCtx, text);
+        });
+        break; // 等播放完成
       }
 
-      // 缓存句子正在加载/播放中，等待
+      // 缓存句子正在播放中，等待
       if (state.cachedUrl && !state.done) break;
 
       // 流式句子：播放尚未播放的 chunk
