@@ -73,10 +73,14 @@ export default function BubbleTooltip({
   const isAbove = position === 'above';
 
   return (
-    <View style={[
-      styles.wrapper,
-      isAbove ? styles.wrapperAbove : styles.wrapperBelow,
-    ]}>
+    <View
+      // @ts-ignore — Web only: data-tooltip 用于全局 click 监听识别
+      dataSet={{ tooltip: 'true' }}
+      style={[
+        styles.wrapper,
+        isAbove ? styles.wrapperAbove : styles.wrapperBelow,
+      ]}
+    >
       <View style={[styles.container, { backgroundColor: 'rgba(30,30,30,0.92)' }]}>
         {items.map((item, idx) => (
           <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>

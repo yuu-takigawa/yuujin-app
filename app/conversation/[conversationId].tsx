@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Pressable,
   Animated,
   ActivityIndicator,
 } from 'react-native';
@@ -114,6 +113,22 @@ export default function ConversationScreen() {
   const contentTranslateStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: kbHeight.value }],
   }));
+
+  // 点击 tooltip 外部关闭（Web 全局 click 监听，不阻塞滚动和触摸）
+  useEffect(() => {
+    if (!activeTooltipId || typeof document === 'undefined') return;
+    const handler = (e: MouseEvent) => {
+      let el = e.target as HTMLElement | null;
+      while (el) {
+        if (el.getAttribute?.('data-tooltip') === 'true') return; // 点在 tooltip 上，不关闭
+        el = el.parentElement;
+      }
+      setActiveTooltipId(null);
+    };
+    // 延迟注册，避免当前点击立即触发关闭
+    const timer = setTimeout(() => document.addEventListener('click', handler), 50);
+    return () => { clearTimeout(timer); document.removeEventListener('click', handler); };
+  }, [activeTooltipId]);
 
   // z-index boost: 直接操作 DOM 修改 cell 的 zIndex，不触发 React 重渲染
   useEffect(() => {
@@ -372,13 +387,6 @@ export default function ConversationScreen() {
             );
           }}
         />
-        {/* 透明遮罩：点击空白关闭 tooltip */}
-        {activeTooltipId && (
-          <Pressable
-            style={StyleSheet.compose(StyleSheet.absoluteFillObject, { zIndex: 9998 })}
-            onPress={() => setActiveTooltipId(null)}
-          />
-        )}
         {chatError ? (
           <TouchableOpacity
             style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 12, marginBottom: 4, borderRadius: 8 }}
