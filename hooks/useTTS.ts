@@ -8,7 +8,7 @@
  */
 
 import { useCallback } from 'react';
-import { tts, ttsStream } from '../services/http';
+import { ttsStream } from '../services/http';
 import { useCreditStore } from '../stores/creditStore';
 
 // ═══════════════════════════════════════════
@@ -58,62 +58,38 @@ function splitSentences(text: string): string[] {
 // ═══════════════════════════════════════════
 
 /**
- * 获取音频 URL：优先用非流式 API（缓存命中秒回），
- * 未缓存则用流式 API 收集数据→Blob URL（避免 DashScope CDN 下载延迟）。
+ * 获取可播放的音频 URL：
+ * - 缓存命中 → 服务端返回 cachedUrl（<100ms）
+ * - 未缓存 → 流式收集 chunk → Blob URL（比非流式快，跳过 CDN 下载）
  */
 function ttsToUrl(text: string, voice?: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    // 先尝试非流式（缓存命中时 <100ms）
-    // 设一个短超时：如果 1.5s 内没返回，切换到流式
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (resolved) return;
-      // 非流式太慢，启动流式收集
-      collectStream();
-    }, 1500);
+    let done = false;
+    const chunks: string[] = [];
 
-    tts(text, voice).then(url => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timer);
-      resolve(url);
-    }).catch(() => {
-      if (resolved) return;
-      clearTimeout(timer);
-      collectStream();
-    });
-
-    function collectStream() {
-      if (resolved) return;
-      const chunks: string[] = [];
-      ttsStream(text, voice,
-        (base64) => { chunks.push(base64); },
-        () => {
-          if (resolved) return;
-          resolved = true;
-          if (chunks.length === 0) { reject(new Error('no audio')); return; }
-          // base64 chunks → 二进制 → Blob URL
-          try {
-            const binaryParts: Uint8Array[] = chunks.map(b64 => {
-              const bin = atob(b64);
-              const u8 = new Uint8Array(bin.length);
-              for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-              return u8;
-            });
-            const total = binaryParts.reduce((s, a) => s + a.length, 0);
-            const merged = new Uint8Array(total);
-            let offset = 0;
-            for (const part of binaryParts) { merged.set(part, offset); offset += part.length; }
-            const blob = new Blob([merged], { type: 'audio/wav' });
-            resolve(URL.createObjectURL(blob));
-          } catch (e) {
-            reject(e);
-          }
-        },
-        (err) => { if (!resolved) { resolved = true; reject(new Error(err)); } },
-        (url) => { if (!resolved) { resolved = true; resolve(url); } }, // cachedUrl 命中
-      );
-    }
+    ttsStream(text, voice,
+      (base64) => { chunks.push(base64); },
+      () => {
+        if (done) return;
+        done = true;
+        if (chunks.length === 0) { reject(new Error('no audio')); return; }
+        try {
+          const parts: Uint8Array[] = chunks.map(b64 => {
+            const bin = atob(b64);
+            const u8 = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+            return u8;
+          });
+          const total = parts.reduce((s, a) => s + a.length, 0);
+          const merged = new Uint8Array(total);
+          let off = 0;
+          for (const p of parts) { merged.set(p, off); off += p.length; }
+          resolve(URL.createObjectURL(new Blob([merged], { type: 'audio/wav' })));
+        } catch (e) { reject(e); }
+      },
+      (err) => { if (!done) { done = true; reject(new Error(err)); } },
+      (url) => { if (!done) { done = true; resolve(url); } }, // cachedUrl
+    );
   });
 }
 
