@@ -12,8 +12,8 @@ interface BubbleTooltipProps {
   content: string;
   role?: string;
   voice?: string;
-  position?: 'above' | 'below';  // 不再使用，始终在上方
-  bubbleRect?: unknown;          // 不再使用
+  position: 'above' | 'below';
+  bubbleRect?: unknown;
   onClose: () => void;
   onAction: (action: BubbleAction) => void;
 }
@@ -70,8 +70,13 @@ export default function BubbleTooltip({
         { label: 'コピー', icon: 'copy-outline' as const, onPress: handleCopy },
       ];
 
+  const isAbove = position === 'above';
+
   return (
-    <View style={[styles.wrapper, styles.wrapperAbove]}>
+    <View style={[
+      styles.wrapper,
+      isAbove ? styles.wrapperAbove : styles.wrapperBelow,
+    ]}>
       <View style={[styles.container, { backgroundColor: 'rgba(30,30,30,0.92)' }]}>
         {items.map((item, idx) => (
           <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -87,7 +92,12 @@ export default function BubbleTooltip({
           </View>
         ))}
       </View>
-      <View style={[styles.arrow, { borderTopColor: 'rgba(30,30,30,0.92)', borderBottomWidth: 0 }]} />
+      <View style={[
+        styles.arrow,
+        isAbove
+          ? { borderTopColor: 'rgba(30,30,30,0.92)', borderBottomWidth: 0 }
+          : { borderBottomColor: 'rgba(30,30,30,0.92)', borderTopWidth: 0 },
+      ]} />
     </View>
   );
 }

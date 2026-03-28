@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Pressable,
   Animated,
   ActivityIndicator,
 } from 'react-native';
@@ -282,8 +283,8 @@ export default function ConversationScreen() {
           initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
-          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => (
-            <View {...props} style={[style, { zIndex: 1000 - (index ?? 0) }]}>{children}</View>
+          CellRendererComponent={useCallback(({ children, style, ...props }: any) => (
+            <View {...props} style={style}>{children}</View>
           ), [])}
           onEndReached={() => {
             if (hasMore && !loadingMore) {
@@ -350,6 +351,13 @@ export default function ConversationScreen() {
             );
           }}
         />
+        {/* 透明遮罩：点击空白关闭 tooltip */}
+        {activeTooltipId && (
+          <Pressable
+            style={StyleSheet.compose(StyleSheet.absoluteFillObject, { zIndex: 9998 })}
+            onPress={() => setActiveTooltipId(null)}
+          />
+        )}
         {chatError ? (
           <TouchableOpacity
             style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 12, marginBottom: 4, borderRadius: 8 }}
