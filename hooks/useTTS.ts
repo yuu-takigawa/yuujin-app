@@ -27,13 +27,16 @@ function cleanForTTS(text: string): string {
   // 3. 特殊符号转換
   t = t.replace(/[〜～]/g, 'ー');  // 波浪线→長音符
   t = t.replace(/…+/g, '、');      // 省略号→停顿
-  t = t.replace(/[？?][！!]/g, '？');
-  t = t.replace(/[！!][？?]/g, '？');
-  t = t.replace(/[？?]{2,}/g, '？');
-  t = t.replace(/[！!]{2,}/g, '！');
+  // 全角标点→半角（TTS 对全角标点发音不稳定）
+  t = t.replace(/！/g, '!').replace(/？/g, '?').replace(/，/g, '、').replace(/：/g, ' ').replace(/；/g, '、');
+  t = t.replace(/[?][!]/g, '?');
+  t = t.replace(/[!][?]/g, '?');
+  t = t.replace(/[?]{2,}/g, '?');
+  t = t.replace(/[!]{2,}/g, '!');
   // 4. 白名单：只保留 TTS 能正确朗读的字符
   //    平仮名・片仮名・漢字・英数字・基本标点・空格
-  t = t.replace(/[^\u3040-\u309F\u30A0-\u30FFー\u4E00-\u9FFF\u3400-\u4DBFa-zA-Z0-9０-９。、！？!?「」『』・ \n]/g, '');
+  //    平仮名・片仮名・漢字・英数字・基本标点（半角）・空格
+  t = t.replace(/[^\u3040-\u309F\u30A0-\u30FFー\u4E00-\u9FFF\u3400-\u4DBFa-zA-Z0-9。、!?「」『』・ \n]/g, '');
   // 5. 清理
   t = t.replace(/\s+/g, ' ').trim();
   t = t.replace(/^[、，,.。]+/, '').replace(/[、，,.。]+$/, '');
