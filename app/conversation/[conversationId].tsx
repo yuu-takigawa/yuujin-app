@@ -30,6 +30,7 @@ import ModelSelectorModal from '../../components/chat/ModelSelectorModal';
 import TopicDrawModal from '../../components/chat/TopicDrawModal';
 import NewsPickerModal from '../../components/chat/NewsPickerModal';
 import { useTheme } from '../../hooks/useTheme';
+import { stopAllTTS } from '../../hooks/useTTS';
 import { uploadChatImage, streamSuggest } from '../../services/api';
 import type { Message } from '../../services/api';
 
@@ -120,7 +121,7 @@ export default function ConversationScreen() {
     }
     loadCredits();
     loadModels();
-    return () => {};
+    return () => { stopAllTTS(); };
   }, [conversationId]);
 
   useEffect(() => {
