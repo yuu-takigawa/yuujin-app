@@ -111,6 +111,7 @@ function ttsToUrl(text: string, voice?: string): Promise<string> {
           }
         },
         (err) => { if (!resolved) { resolved = true; reject(new Error(err)); } },
+        (url) => { if (!resolved) { resolved = true; resolve(url); } }, // cachedUrl 命中
       );
     }
   });
