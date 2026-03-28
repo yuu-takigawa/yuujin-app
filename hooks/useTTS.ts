@@ -1,95 +1,79 @@
 /**
- * useTTS — 朗読 hook（v3：模块级单例 + 分句并发 + 顺序播放）
+ * useTTS — 朗読 hook（v4：从零重写，简洁可靠）
  *
- * 所有 useTTS() 实例共享同一个播放管道（模块级状态）。
- * 任何组件调 stop() 都会停掉全局正在播放的 TTS。
- * 退出页面时调 stopAllTTS() 清理。
+ * 架构：模块级单例 — 全局只有一个 TTS 在播放。
+ * 任何组件调 stop/speak 都操作同一个播放管道。
  *
- * Premium (Pro/Max/Admin):
- *   1. 文本按日语句子分割
- *   2. 所有句子同时发出 TTS-stream 请求（并发网络）
- *   3. 播放队列严格按句子顺序
- *
- * Free: 浏览器系统 TTS (Web Speech API)
+ * 流程：文本预处理 → 分句 → 并发 SSE 请求 → 按句顺序播放 PCM chunk
+ * 全部走 Web Audio API，不使用 new Audio()。
  */
 
 import { useCallback } from 'react';
 import { ttsStream } from '../services/http';
 import { useCreditStore } from '../stores/creditStore';
 
-// ─── 工具函数 ───
+// ═══════════════════════════════════════════
+// 工具函数
+// ═══════════════════════════════════════════
 
-function isPremiumTier(): boolean {
-  const membership = useCreditStore.getState().membership;
-  return membership === 'pro' || membership === 'max' || membership === 'admin';
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
 }
 
-function base64ToBytes(base64: string): Uint8Array {
-  const bin = atob(base64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-function parseWavHeader(buf: Uint8Array): {
-  sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number;
-} | null {
+function parseWavHeader(buf: Uint8Array) {
   if (buf.length < 44) return null;
-  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  if (view.getUint32(0, false) !== 0x52494646) return null;
-  if (view.getUint32(8, false) !== 0x57415645) return null;
-  const channels = view.getUint16(22, true);
-  const sampleRate = view.getUint32(24, true);
-  const bitsPerSample = view.getUint16(34, true);
-  let offset = 36;
-  while (offset + 8 <= buf.length) {
-    if (view.getUint32(offset, false) === 0x64617461) {
-      return { sampleRate, channels, bitsPerSample, dataOffset: offset + 8 };
-    }
-    offset += 8 + view.getUint32(offset + 4, true);
+  const v = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (v.getUint32(0, false) !== 0x52494646) return null; // RIFF
+  if (v.getUint32(8, false) !== 0x57415645) return null; // WAVE
+  const sampleRate = v.getUint32(24, true);
+  let off = 36;
+  while (off + 8 <= buf.length) {
+    if (v.getUint32(off, false) === 0x64617461) return { sampleRate, dataOffset: off + 8 };
+    off += 8 + v.getUint32(off + 4, true);
   }
-  return { sampleRate, channels, bitsPerSample, dataOffset: 44 };
+  return { sampleRate, dataOffset: 44 };
 }
 
 function pcm16ToFloat32(bytes: Uint8Array): Float32Array {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const n = Math.floor(bytes.length / 2);
   const f = new Float32Array(n);
-  for (let i = 0; i < n; i++) f[i] = view.getInt16(i * 2, true) / 32768;
+  for (let i = 0; i < n; i++) f[i] = v.getInt16(i * 2, true) / 32768;
   return f;
 }
 
-// ─── TTS 文本预处理 ───
-
-function preprocessForTTS(text: string): string {
+/** 清除不适合 TTS 朗读的内容 */
+function cleanForTTS(text: string): string {
   let t = text;
-  t = t.replace(/[（(][^）)]*[\u4e00-\u9fff][^）)]*[）)]/g, '');
-  t = t.replace(/[（(]?笑[）)]?/g, '');
-  t = t.replace(/[（(]?泣[）)]?/g, '');
-  t = t.replace(/[wWｗＷ]{2,}/g, '');
-  t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, '');
-  t = t.replace(/草(?=[。！？!?\s]|$)/g, '');
-  t = t.replace(/[？?][！!]/g, '？');
-  t = t.replace(/[！!][？?]/g, '？');
+  t = t.replace(/[（(][^）)]*[\u4e00-\u9fff][^）)]*[）)]/g, ''); // 中文括号翻译
+  t = t.replace(/[（(]?[笑泣][）)]?/g, '');                       // 笑/泣
+  t = t.replace(/[wWｗＷ]{2,}/g, '');                              // ww
+  t = t.replace(/[wWｗＷ]+(?=[。！？!?\s]|$)/g, '');               // 文末 w
+  t = t.replace(/草(?=[。！？!?\s]|$)/g, '');                      // 草
+  t = t.replace(/[？?][！!]/g, '？');                              // ？！→？
+  t = t.replace(/[！!][？?]/g, '？');                              // ！？→？
   t = t.replace(/[？?]{2,}/g, '？');
   t = t.replace(/[！!]{2,}/g, '！');
-  t = t.replace(/[〜～]/g, '');
-  t = t.replace(/…+/g, '、');
+  t = t.replace(/[〜～]/g, '');                                    // 波浪线
+  t = t.replace(/…+/g, '、');                                      // 省略号→停顿
   t = t.replace(/・{2,}/g, '、');
   t = t.replace(/ⓘ/g, '');
-  t = t.replace(/[♪♫♬♩]/g, '');
-  t = t.replace(/[★☆※→←↑↓]/g, '');
+  t = t.replace(/[♪♫♬♩★☆※→←↑↓]/g, '');
   t = t.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2934}\u{2935}\u{2190}-\u{21FF}]+/gu, '');
-  t = t.replace(/[（(][^）)]*[_^;><][^）)]*[）)]/g, '');
+  t = t.replace(/[（(][^）)]*[_^;><][^）)]*[）)]/g, '');           // 顔文字
   t = t.replace(/\s+/g, ' ').trim();
-  t = t.replace(/^[、，,.\s]+/, '').replace(/[、，,.\s]+$/, '');
+  t = t.replace(/^[、，,.]+/, '').replace(/[、，,.]+$/, '');
   return t;
 }
 
+/** 按日语句末标点分割，短片段合并 */
 function splitSentences(text: string): string[] {
-  const raw = text.split(/(?<=[。！？!?\n])/);
+  const parts = text.split(/(?<=[。！？!?\n])/);
   const result: string[] = [];
-  for (const s of raw) {
+  for (const s of parts) {
     const trimmed = s.trim();
     if (!trimmed) continue;
     if (result.length > 0 && trimmed.length < 5) {
@@ -102,106 +86,104 @@ function splitSentences(text: string): string[] {
 }
 
 // ═══════════════════════════════════════════
-// 模块级单例状态 — 所有 useTTS 实例共享
+// 模块级单例
 // ═══════════════════════════════════════════
 
-let sharedAudioCtx: AudioContext | null = null;
+let audioCtx: AudioContext | null = null;
+let sessionId = 0;           // 递增，旧回调通过比对丢弃
+let abortFns: Array<() => void> = [];
+let sources: AudioBufferSourceNode[] = [];
+let nextTime = 0;
+let speaking = false;
+let playingText: string | null = null;
 
-function getOrCreateAudioContext(): AudioContext {
-  if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') return sharedAudioCtx;
-  sharedAudioCtx = new AudioContext();
-  return sharedAudioCtx;
-}
-
-function ensureAudioContextResumed(): AudioContext {
-  const ctx = getOrCreateAudioContext();
-  if (ctx.state === 'suspended') ctx.resume();
-  return ctx;
-}
-
-interface SentenceState {
+// 每个句子的状态
+interface Sent {
   chunks: Float32Array[];
   sampleRate: number;
   headerParsed: boolean;
   done: boolean;
-  error: boolean;
 }
+let sents: Sent[] = [];
+let sentIdx = 0;              // 当前播放到哪个句子
+let chunkIdx: number[] = [];  // 每个句子播放到哪个 chunk
+let onFinishCb: (() => void) | null = null;
 
-// 模块级播放状态
-let g_sessionId = 0;
-let g_nextTime = 0;
-let g_playingText: string | null = null;
-let g_speaking = false;
-let g_abortFns: Array<() => void> = [];
-let g_allSources: AudioBufferSourceNode[] = [];
-let g_states: SentenceState[] = [];
-let g_playingSentence = 0;
-let g_playedChunks: number[] = [];
-let g_onFinish: (() => void) | null = null;
+// ── 停止 ──
 
-/** 全局停止 TTS — 任何组件/页面离开时调用 */
 export function stopAllTTS() {
-  g_sessionId++;
-  g_playingText = null;
-  g_speaking = false;
-  for (const abort of g_abortFns) abort();
-  g_abortFns = [];
-  for (const src of g_allSources) {
-    try { src.stop(); } catch { /* ok */ }
-    try { src.disconnect(); } catch { /* ok */ }
+  sessionId++;
+  playingText = null;
+  speaking = false;
+  for (const fn of abortFns) fn();
+  abortFns = [];
+  for (const s of sources) {
+    try { s.stop(); } catch {}
+    try { s.disconnect(); } catch {}
   }
-  g_allSources = [];
+  sources = [];
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
-  g_nextTime = 0;
-  g_states = [];
-  g_playingSentence = 0;
-  g_playedChunks = [];
-  g_onFinish = null;
+  nextTime = 0;
+  sents = [];
+  sentIdx = 0;
+  chunkIdx = [];
+  onFinishCb = null;
 }
 
-function schedulePlayback(audioCtx: AudioContext, text: string, sid: number) {
-  if (sid !== g_sessionId || g_playingText !== text) return;
+// ── 调度播放 ──
 
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => schedulePlayback(audioCtx, text, sid));
+function pump(sid: number) {
+  if (sid !== sessionId || !playingText) return;
+  const ctx = audioCtx;
+  if (!ctx) return;
+
+  // AudioContext 还没 resume → 等
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => pump(sid));
     return;
   }
 
-  while (g_playingSentence < g_states.length) {
-    const idx = g_playingSentence;
-    const state = g_states[idx];
+  while (sentIdx < sents.length) {
+    const s = sents[sentIdx];
 
-    // 流式：播放 chunk
-    for (let i = g_playedChunks[idx]; i < state.chunks.length; i++) {
-      const float32 = state.chunks[i];
-      if (float32.length === 0) continue;
+    // 播放这个句子中还没播的 chunk
+    while (chunkIdx[sentIdx] < s.chunks.length) {
+      const f32 = s.chunks[chunkIdx[sentIdx]];
+      chunkIdx[sentIdx]++;
+      if (f32.length === 0) continue;
       try {
-        const buffer = audioCtx.createBuffer(1, float32.length, state.sampleRate);
-        buffer.getChannelData(0).set(float32);
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        const startAt = Math.max(audioCtx.currentTime, g_nextTime);
-        source.start(startAt);
-        g_nextTime = startAt + buffer.duration;
-        g_allSources.push(source);
-      } catch { /* skip */ }
-      g_playedChunks[idx] = i + 1;
+        const buf = ctx.createBuffer(1, f32.length, s.sampleRate);
+        buf.getChannelData(0).set(f32);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        const t = Math.max(ctx.currentTime, nextTime);
+        src.start(t);
+        nextTime = t + buf.duration;
+        sources.push(src);
+      } catch {}
     }
 
-    if (state.done || state.error) {
-      g_playingSentence = idx + 1;
+    // 句子的 SSE 结束了 → 可以切下一句
+    if (s.done) {
+      sentIdx++;
     } else {
-      break;
+      break; // 等更多 chunk
     }
   }
 
-  if (g_playingSentence >= g_states.length && g_states.every(s => s.done || s.error)) {
-    g_onFinish?.();
+  // 全部完成
+  if (sentIdx >= sents.length && sents.length > 0 && sents.every(s => s.done)) {
+    const remaining = nextTime - ctx.currentTime;
+    setTimeout(() => {
+      if (sid === sessionId) onFinishCb?.();
+    }, Math.max(remaining * 1000 + 100, 50));
   }
 }
+
+// ── 播放 ──
 
 function globalSpeak(
   text: string,
@@ -209,150 +191,131 @@ function globalSpeak(
   onDone?: () => void,
   onError?: (msg: string) => void,
 ) {
-  // toggle：同一文本再次点击 → 停止
-  if (g_speaking && g_playingText === text) {
+  // toggle：同一文本 → 停止
+  if (speaking && playingText === text) {
     stopAllTTS();
     onDone?.();
     return;
   }
 
   stopAllTTS();
-  g_speaking = true;
+  speaking = true;
 
-  // Free 用户：系统 TTS
-  if (!isPremiumTier()) {
-    g_playingText = text;
+  // Free 用户 → 系统 TTS
+  const membership = useCreditStore.getState().membership;
+  const premium = membership === 'pro' || membership === 'max' || membership === 'admin';
+  if (!premium) {
+    playingText = text;
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(preprocessForTTS(text));
-      utterance.lang = 'ja-JP';
-      utterance.onend = () => { g_playingText = null; g_speaking = false; onDone?.(); };
-      utterance.onerror = () => { g_playingText = null; g_speaking = false; onError?.('音声の再生に失敗しました'); onDone?.(); };
-      window.speechSynthesis.speak(utterance);
+      const u = new SpeechSynthesisUtterance(cleanForTTS(text));
+      u.lang = 'ja-JP';
+      u.onend = () => { playingText = null; speaking = false; onDone?.(); };
+      u.onerror = () => { playingText = null; speaking = false; onDone?.(); };
+      window.speechSynthesis.speak(u);
     } else {
-      g_playingText = null; g_speaking = false;
-      onError?.('このブラウザは音声合成に対応していません');
-      onDone?.();
+      playingText = null; speaking = false; onDone?.();
     }
     return;
   }
 
-  // Premium：分句并发 + 顺序播放
-  const audioCtx = ensureAudioContextResumed();
-  g_playingText = text;
-  g_nextTime = audioCtx.currentTime;
-  const sid = g_sessionId;
+  // Premium → Web Audio
+  if (!audioCtx || audioCtx.state === 'closed') audioCtx = new AudioContext();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 
-  const cleanText = preprocessForTTS(text);
-  if (!cleanText) {
-    g_speaking = false; g_playingText = null; onDone?.();
-    return;
-  }
-  const sentences = splitSentences(cleanText);
+  playingText = text;
+  nextTime = audioCtx.currentTime;
+  const sid = sessionId;
 
-  g_states = sentences.map(() => ({
-    chunks: [], sampleRate: 24000, headerParsed: false, done: false, error: false,
-  }));
-  g_playingSentence = 0;
-  g_playedChunks = new Array(sentences.length).fill(0);
+  const clean = cleanForTTS(text);
+  if (!clean) { speaking = false; playingText = null; onDone?.(); return; }
 
-  let completedCount = 0;
-  let finished = false;
+  const sentences = splitSentences(clean);
 
-  const finishPlayback = () => {
-    if (finished || g_playingText !== text) return;
-    finished = true;
-    g_playingText = null;
-    g_speaking = false;
+  // 初始化句子状态
+  sents = sentences.map(() => ({ chunks: [], sampleRate: 24000, headerParsed: false, done: false }));
+  sentIdx = 0;
+  chunkIdx = new Array(sentences.length).fill(0);
+
+  let doneCount = 0;
+  const finish = () => {
+    if (sid !== sessionId) return;
+    playingText = null;
+    speaking = false;
     onDone?.();
   };
-  g_onFinish = finishPlayback;
+  onFinishCb = finish;
 
-  const checkAllDone = () => {
-    completedCount++;
-    if (completedCount < sentences.length) return;
-    // 所有 SSE 流结束，计算 Web Audio 剩余播放时间
-    const remaining = g_nextTime - audioCtx.currentTime;
-    if (remaining > 0.05) {
-      setTimeout(finishPlayback, remaining * 1000 + 200);
-    } else {
-      finishPlayback();
-    }
-  };
+  // 并发发出所有句子的请求
+  const newAborts: Array<() => void> = [];
 
-  const checkAllError = () => {
-    if (g_states.every(s => s.error)) {
-      g_playingText = null; g_speaking = false;
-      onError?.('音声の生成に失敗しました');
-      onDone?.();
-    }
-  };
-
-  const aborts: Array<() => void> = [];
-
-  sentences.forEach((sentence, sentIdx) => {
+  sentences.forEach((sentence, i) => {
     const abort = ttsStream(
       sentence,
       voice,
-      (base64) => {
-        if (sid !== g_sessionId || g_playingText !== text) return;
-        const bytes = base64ToBytes(base64);
-        if (bytes.length === 0) return;
-        let pcmBytes: Uint8Array;
-        const state = g_states[sentIdx];
-        const hasWav = bytes.length >= 44 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
-        if (hasWav) {
-          const header = parseWavHeader(bytes);
-          if (header) { state.sampleRate = header.sampleRate; pcmBytes = bytes.slice(header.dataOffset); }
-          else { pcmBytes = bytes; }
-          state.headerParsed = true;
+      // onChunk
+      (b64) => {
+        if (sid !== sessionId) return;
+        const raw = base64ToBytes(b64);
+        if (raw.length === 0) return;
+
+        const s = sents[i];
+        let pcm: Uint8Array;
+
+        // 首片可能带 WAV header
+        if (!s.headerParsed && raw.length >= 44 && raw[0] === 0x52 && raw[1] === 0x49) {
+          const hdr = parseWavHeader(raw);
+          if (hdr) { s.sampleRate = hdr.sampleRate; pcm = raw.slice(hdr.dataOffset); }
+          else pcm = raw;
+          s.headerParsed = true;
         } else {
-          if (!state.headerParsed) state.headerParsed = true;
-          pcmBytes = bytes;
+          s.headerParsed = true;
+          pcm = raw;
         }
-        if (pcmBytes.length < 2) return;
-        const float32 = pcm16ToFloat32(pcmBytes);
-        if (float32.length === 0) return;
-        state.chunks.push(float32);
-        schedulePlayback(audioCtx, text, sid);
+
+        if (pcm.length < 2) return;
+        const f32 = pcm16ToFloat32(pcm);
+        if (f32.length > 0) {
+          s.chunks.push(f32);
+          pump(sid);
+        }
       },
+      // onDone
       () => {
-        if (sid !== g_sessionId) return;
-        g_states[sentIdx].done = true;
-        schedulePlayback(audioCtx, text, sid);
-        checkAllDone();
+        if (sid !== sessionId) return;
+        sents[i].done = true;
+        doneCount++;
+        pump(sid); // 推进到下一句
       },
+      // onError
       (err) => {
-        if (sid !== g_sessionId) return;
-        g_states[sentIdx].error = true;
-        g_states[sentIdx].done = true;
-        schedulePlayback(audioCtx, text, sid);
-        checkAllError();
-        checkAllDone();
+        if (sid !== sessionId) return;
+        sents[i].done = true;
+        doneCount++;
+        pump(sid);
+        // 全部失败
+        if (doneCount >= sentences.length && sents.every(s => s.chunks.length === 0)) {
+          speaking = false; playingText = null;
+          onError?.('音声の生成に失敗しました');
+          onDone?.();
+        }
       },
     );
-    aborts.push(abort);
+    newAborts.push(abort);
   });
 
-  g_abortFns = aborts;
+  abortFns = newAborts;
 }
 
 // ═══════════════════════════════════════════
-// Hook — 薄封装，返回稳定的 speak/stop
+// Hook
 // ═══════════════════════════════════════════
 
 export function useTTS() {
   const speak = useCallback((
-    text: string,
-    voice?: string,
-    onDone?: () => void,
-    onError?: (msg: string) => void,
-  ) => {
-    globalSpeak(text, voice, onDone, onError);
-  }, []);
+    text: string, voice?: string, onDone?: () => void, onError?: (msg: string) => void,
+  ) => globalSpeak(text, voice, onDone, onError), []);
 
-  const stop = useCallback(() => {
-    stopAllTTS();
-  }, []);
+  const stop = useCallback(() => stopAllTTS(), []);
 
   return { speak, stop };
 }
