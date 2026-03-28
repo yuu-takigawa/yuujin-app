@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../hooks/useTheme';
@@ -12,9 +12,8 @@ interface BubbleTooltipProps {
   content: string;
   role?: string;
   voice?: string;
-  position: 'above' | 'below';
-  /** 气泡的屏幕坐标（用于 Web fixed 定位，解决 z-index 问题） */
-  bubbleRect?: { x: number; y: number; w: number; h: number } | null;
+  position?: 'above' | 'below';  // 不再使用，始终在上方
+  bubbleRect?: unknown;          // 不再使用
   onClose: () => void;
   onAction: (action: BubbleAction) => void;
 }
@@ -71,28 +70,8 @@ export default function BubbleTooltip({
         { label: 'コピー', icon: 'copy-outline' as const, onPress: handleCopy },
       ];
 
-  const isAbove = position === 'above';
-  const isWeb = Platform.OS === 'web';
-
-  // Web: fixed 定位 + 屏幕坐标（脱离 FlatList cell stacking context，解决 z-index 问题）
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fixedStyle = isWeb && bubbleRect ? {
-    position: 'fixed',
-    zIndex: 99999,
-    left: bubbleRect.x,
-    right: undefined,
-    ...(isAbove
-      ? { top: bubbleRect.y - 52, bottom: undefined }
-      : { top: bubbleRect.y + bubbleRect.h + 4, bottom: undefined }),
-    width: bubbleRect.w,
-    alignItems: 'center',
-  } as any : undefined;
-
   return (
-    <View style={[
-      fixedStyle || styles.wrapper,
-      !fixedStyle && (isAbove ? styles.wrapperAbove : styles.wrapperBelow),
-    ]}>
+    <View style={[styles.wrapper, styles.wrapperAbove]}>
       <View style={[styles.container, { backgroundColor: 'rgba(30,30,30,0.92)' }]}>
         {items.map((item, idx) => (
           <View key={idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -108,15 +87,7 @@ export default function BubbleTooltip({
           </View>
         ))}
       </View>
-      {/* Arrow - 只在非 fixed 模式显示 */}
-      {!fixedStyle && (
-        <View style={[
-          styles.arrow,
-          isAbove
-            ? { borderTopColor: 'rgba(30,30,30,0.92)', borderBottomWidth: 0 }
-            : { borderBottomColor: 'rgba(30,30,30,0.92)', borderTopWidth: 0 },
-        ]} />
-      )}
+      <View style={[styles.arrow, { borderTopColor: 'rgba(30,30,30,0.92)', borderBottomWidth: 0 }]} />
     </View>
   );
 }

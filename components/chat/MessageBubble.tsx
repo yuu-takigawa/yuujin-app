@@ -72,7 +72,6 @@ function MessageBubble({
     setLocalTooltipVisible(v);
     onTooltipChange?.(v);
   }, [onTooltipChange]);
-  const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('above');
   const bubbleRef = useRef<View>(null);
   const [annotation, setAnnotation] = useState<{ type: 'translation' | 'analysis' | 'correct' } | null>(null);
   const [imageZoomVisible, setImageZoomVisible] = useState(false);
@@ -117,25 +116,12 @@ function MessageBubble({
     }).start(() => setToastVisible(false));
   }, []);
 
-  const [tooltipRect, setTooltipRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-
   const handleInfoPress = () => {
     if (tooltipVisible) {
       setTooltipVisible(false);
       return;
     }
-    const node = bubbleRef.current as any;
-    if (node && typeof node.measureInWindow === 'function') {
-      node.measureInWindow((x: number, y: number, w: number, h: number) => {
-        setTooltipPosition(y < 120 ? 'below' : 'above');
-        setTooltipRect({ x, y, w, h });
-        setTooltipVisible(true);
-      });
-    } else {
-      setTooltipPosition('above');
-      setTooltipRect(null);
-      setTooltipVisible(true);
-    }
+    setTooltipVisible(true);
   };
 
   const handleAction = async (action: BubbleAction) => {
@@ -249,8 +235,6 @@ function MessageBubble({
             content={content}
             role={role}
             voice={voice}
-            position={tooltipPosition}
-            bubbleRect={tooltipRect}
             onClose={() => setTooltipVisible(false)}
             onAction={handleAction}
           />
