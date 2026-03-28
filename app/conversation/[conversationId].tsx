@@ -283,9 +283,15 @@ export default function ConversationScreen() {
           initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
-          CellRendererComponent={useCallback(({ children, style, ...props }: any) => (
-            <View {...props} style={style}>{children}</View>
-          ), [])}
+          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => {
+            const item = chatItems[index];
+            const isActive = item?.type === 'message' && item.data.id === activeTooltipId;
+            return (
+              <View {...props} style={[style, { zIndex: isActive ? 9999 : 1000 - (index ?? 0) }]}>
+                {children}
+              </View>
+            );
+          }, [activeTooltipId, chatItems])}
           onEndReached={() => {
             if (hasMore && !loadingMore) {
               loadMoreMessages();
