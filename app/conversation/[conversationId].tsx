@@ -270,7 +270,10 @@ export default function ConversationScreen() {
         </Animated.View>
       )}
 
-      <ReAnimated.View style={[styles.contentArea, contentTranslateStyle]}>
+      <ReAnimated.View
+        style={[styles.contentArea, contentTranslateStyle]}
+        onTouchEnd={() => { if (activeTooltipId) setActiveTooltipId(null); }}
+      >
         <FlatList
           key={conversationId}
           ref={flatListRef as any}
@@ -282,9 +285,11 @@ export default function ConversationScreen() {
           initialNumToRender={15}
           automaticallyAdjustKeyboardInsets={false}
           keyboardShouldPersistTaps="handled"
-          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => (
-            <View {...props} style={[style, { zIndex: 1000 - (index ?? 0) }]}>{children}</View>
-          ), [])}
+          CellRendererComponent={useCallback(({ children, index, style, ...props }: any) => {
+            const item = chatItems[index];
+            const isActive = item?.type === 'message' && item.data.id === activeTooltipId;
+            return <View {...props} style={[style, { zIndex: isActive ? 9999 : 1000 - (index ?? 0) }]}>{children}</View>;
+          }, [activeTooltipId, chatItems])}
           onEndReached={() => {
             if (hasMore && !loadingMore) {
               loadMoreMessages();
