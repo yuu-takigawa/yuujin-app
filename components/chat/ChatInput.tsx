@@ -112,7 +112,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
         ]}>
           <TextInput
             style={[styles.input, { color: t.text }]}
-            placeholder={`${characterName || '友達'}に話しかけてみよう...`}
+            placeholder={characterName ? i('chat.placeholder').replace('{name}', characterName) : i('chat.placeholderDefault')}
             placeholderTextColor={t.textSecondary}
             value={text}
             onChangeText={setText}
@@ -156,7 +156,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
         <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={async () => {
           setExpandOpen(false);
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('カメラの許可が必要です'); return; }
+          if (status !== 'granted') { Alert.alert(i('chat.cameraPermission')); return; }
           const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
           if (!result.canceled && result.assets[0]) onImagePicked?.(result.assets[0].uri);
         }}>
@@ -168,7 +168,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
         <TouchableOpacity style={styles.expandItem} activeOpacity={0.6} onPress={async () => {
           setExpandOpen(false);
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('写真の許可が必要です'); return; }
+          if (status !== 'granted') { Alert.alert(i('chat.photoPermission')); return; }
           const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
           if (!result.canceled && result.assets[0]) onImagePicked?.(result.assets[0].uri);
         }}>

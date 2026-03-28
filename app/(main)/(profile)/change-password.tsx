@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import { changePassword } from '../../../services/api';
 import { radii, spacing, fontSize } from '../../../constants/theme';
 
@@ -22,29 +23,30 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
 
   const handleSubmit = async () => {
     setError('');
     if (!currentPw) {
-      setError('現在のパスワードを入力してください');
+      setError(i('changePassword.currentRequired'));
       return;
     }
     if (!newPw || newPw.length < 6) {
-      setError('新しいパスワードは6文字以上で入力してください');
+      setError(i('changePassword.tooShort'));
       return;
     }
     if (newPw !== confirmPw) {
-      setError('パスワードが一致しません');
+      setError(i('changePassword.mismatch'));
       return;
     }
     setSubmitting(true);
     try {
       await changePassword(currentPw, newPw);
-      Alert.alert('パスワード変更完了', '新しいパスワードが設定されました。', [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(i('changePassword.success'), i('changePassword.successMsg'), [
+        { text: i('action.confirm'), onPress: () => router.back() },
       ]);
     } catch {
-      setError('現在のパスワードが正しくありません');
+      setError(i('changePassword.wrongPassword'));
     } finally {
       setSubmitting(false);
     }
@@ -56,14 +58,14 @@ export default function ChangePasswordScreen() {
         <TouchableOpacity style={styles.back} onPress={() => router.back()} activeOpacity={0.6}>
           <Text style={[styles.backText, { color: t.brand }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.text }]}>パスワード変更</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]}>{i('changePassword.title')}</Text>
         <View style={styles.back} />
       </View>
 
       <View style={styles.form}>
         <TextInput
           style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-          placeholder="現在のパスワード"
+          placeholder={i('changePassword.currentPassword')}
           placeholderTextColor={t.textSecondary}
           value={currentPw}
           onChangeText={(v) => { setCurrentPw(v); setError(''); }}
@@ -71,7 +73,7 @@ export default function ChangePasswordScreen() {
         />
         <TextInput
           style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-          placeholder="新しいパスワード（6文字以上）"
+          placeholder={i('changePassword.newPassword')}
           placeholderTextColor={t.textSecondary}
           value={newPw}
           onChangeText={(v) => { setNewPw(v); setError(''); }}
@@ -79,7 +81,7 @@ export default function ChangePasswordScreen() {
         />
         <TextInput
           style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-          placeholder="新しいパスワード（確認）"
+          placeholder={i('changePassword.confirmPassword')}
           placeholderTextColor={t.textSecondary}
           value={confirmPw}
           onChangeText={(v) => { setConfirmPw(v); setError(''); }}
@@ -96,7 +98,7 @@ export default function ChangePasswordScreen() {
           disabled={submitting}
         >
           <Text style={styles.buttonText}>
-            {submitting ? '変更中...' : 'パスワードを変更'}
+            {submitting ? i('changePassword.submitting') : i('changePassword.submit')}
           </Text>
         </TouchableOpacity>
       </View>

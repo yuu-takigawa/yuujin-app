@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { drawTopics, shuffleTopic } from '../../services/api';
 import type { Topic } from '../../services/api';
 import HalfScreenModal from '../common/HalfScreenModal';
@@ -15,15 +16,13 @@ interface TopicDrawModalProps {
 
 export default function TopicDrawModal({ visible, onClose, onSelectTopic, characterId }: TopicDrawModalProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(false);
   const [shuffling, setShuffling] = useState(false);
   const cardAnim = useRef(new Animated.Value(1)).current;
-  const panY = useRef(new Animated.Value(0)).current;
-  const panOpacity = useRef(new Animated.Value(1)).current;
 
-  // Load pre-generated topics from DB; if empty, auto-generate via AI
   useEffect(() => {
     if (!visible || !characterId) return;
     setLoading(true);
@@ -33,7 +32,6 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
           setTopics(cards);
           setCurrentIndex(0);
         } else {
-          // No pre-stored topics — auto-generate one via AI
           try {
             const newTopic = await shuffleTopic(characterId);
             setTopics([newTopic]);
@@ -60,7 +58,6 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
     });
   }, [topics.length]);
 
-  // Shuffle: AI generates 1 new topic (costs credits)
   const handleShuffle = useCallback(async () => {
     if (!characterId || shuffling) return;
     setShuffling(true);
@@ -68,7 +65,6 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
       const newTopic = await shuffleTopic(characterId);
       setTopics((prev) => [newTopic, ...prev]);
       setCurrentIndex(0);
-      // Animate card flip
       cardAnim.setValue(0);
       Animated.timing(cardAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     } catch {}
@@ -83,40 +79,10 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
     onClose();
   }, [currentTopic, onSelectTopic, onClose]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 10 && gs.dy < 0,
-      onPanResponderMove: (_, gs) => {
-        if (gs.dy < 0) {
-          panY.setValue(gs.dy);
-          panOpacity.setValue(1 + gs.dy / 200);
-        }
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dy < -80) {
-          Animated.parallel([
-            Animated.timing(panY, { toValue: -300, duration: 200, useNativeDriver: true }),
-            Animated.timing(panOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-          ]).start(() => {
-            panY.setValue(0);
-            panOpacity.setValue(1);
-            handleSend();
-          });
-        } else {
-          Animated.parallel([
-            Animated.spring(panY, { toValue: 0, useNativeDriver: true, tension: 40, friction: 7 }),
-            Animated.timing(panOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-          ]).start();
-        }
-      },
-    })
-  ).current;
-
   return (
-    <HalfScreenModal visible={visible} onClose={onClose} height={500}>
+    <HalfScreenModal visible={visible} onClose={onClose} height={480}>
       <View style={[styles.header, { borderBottomColor: t.border }]}>
-        <Text style={[styles.title, { color: t.text }]}>話題を引く</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('topic.title')}</Text>
       </View>
 
       <View style={styles.body}>
@@ -126,12 +92,10 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
 
         {/* Front card */}
         <Animated.View
-          {...panResponder.panHandlers}
           style={[styles.cardBase, styles.frontCard, { backgroundColor: t.surface, borderColor: t.brand, shadowColor: t.brand }, {
-            opacity: Animated.multiply(cardAnim, panOpacity),
+            opacity: cardAnim,
             transform: [
               { scale: cardAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
-              { translateY: panY },
             ],
           }]}
         >
@@ -144,20 +108,20 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
             {loading ? (
               <>
                 <ActivityIndicator size="large" color={t.brand} />
-                <Text style={[styles.cardHint, { color: t.textSecondary }]}>読み込み中...</Text>
+                <Text style={[styles.cardHint, { color: t.textSecondary }]}>{i('topic.loading')}</Text>
               </>
             ) : currentTopic ? (
               <>
                 <Text style={styles.cardEmoji}>{currentTopic.emoji}</Text>
                 <Text style={[styles.cardTopic, { color: t.text }]}>{currentTopic.text}</Text>
                 {topics.length > 1 && (
-                  <Text style={[styles.cardHint, { color: t.textSecondary }]}>タップして次へ</Text>
+                  <Text style={[styles.cardHint, { color: t.textSecondary }]}>{i('topic.tapNext')}</Text>
                 )}
               </>
             ) : (
               <>
                 <Text style={styles.cardEmoji}>💬</Text>
-                <Text style={[styles.cardTopic, { color: t.textSecondary }]}>ランダムで話題を生成しよう</Text>
+                <Text style={[styles.cardTopic, { color: t.textSecondary }]}>{i('topic.generateHint')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -177,7 +141,7 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
             ) : (
               <>
                 <Ionicons name="dice-outline" size={18} color={t.brand} />
-                <Text style={[styles.shuffleText, { color: t.brand }]}>ランダム</Text>
+                <Text style={[styles.shuffleText, { color: t.brand }]}>{i('topic.shuffle')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -186,13 +150,9 @@ export default function TopicDrawModal({ visible, onClose, onSelectTopic, charac
             onPress={handleSend}
             activeOpacity={0.7}
           >
-            <Text style={styles.sendButtonText}>この話題を送る</Text>
+            <Text style={styles.sendButtonText}>{i('topic.send')}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={[styles.swipeHint, { color: t.textSecondary }]}>
-          <Ionicons name="chevron-up" size={14} color={t.textSecondary} />
-          {'  '}上にスワイプしても送れます
-        </Text>
       </View>
     </HalfScreenModal>
   );
@@ -291,8 +251,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
-  },
-  swipeHint: {
-    fontSize: 12,
   },
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { getNewsArticles } from '../../services/api';
 import type { NewsArticle } from '../../services/api';
 import HalfScreenModal from '../common/HalfScreenModal';
@@ -13,6 +14,7 @@ interface NewsPickerModalProps {
 
 export default function NewsPickerModal({ visible, onClose, onSelectNews }: NewsPickerModalProps) {
   const t = useTheme();
+  const { t: i } = useLocale();
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -51,7 +53,7 @@ export default function NewsPickerModal({ visible, onClose, onSelectNews }: News
   return (
     <HalfScreenModal visible={visible} onClose={onClose} height={520}>
       <View style={[styles.header, { borderBottomColor: t.border }]}>
-        <Text style={[styles.title, { color: t.text }]}>ニュースを選ぶ</Text>
+        <Text style={[styles.title, { color: t.text }]}>{i('news.pickTitle')}</Text>
       </View>
       {loading ? (
         <View style={styles.loadingWrap}>
@@ -93,7 +95,7 @@ export default function NewsPickerModal({ visible, onClose, onSelectNews }: News
           }
           ListEmptyComponent={
             <Text style={[styles.emptyText, { color: t.textSecondary }]}>
-              ニュースはまだありません
+              {i('news.empty')}
             </Text>
           }
         />

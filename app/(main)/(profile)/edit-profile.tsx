@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../stores/authStore';
 import { useTheme } from '../../../hooks/useTheme';
+import { useLocale } from '../../../hooks/useLocale';
 import { uploadAvatar, getAvatarPresets } from '../../../services/api';
 import type { AvatarPreset } from '../../../services/api';
 import ImageCropper from '../../../components/common/ImageCropper';
@@ -25,6 +26,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { t: i } = useLocale();
 
   const [username, setUsername] = useState(safeDisplayName(user?.username, user?.email));
   const [selectedEmoji, setSelectedEmoji] = useState(user?.avatarEmoji || '');
@@ -41,7 +43,7 @@ export default function EditProfileScreen() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('権限が必要', 'フォトライブラリへのアクセスを許可してください');
+      Alert.alert(i('editProfile.permissionRequired'), i('editProfile.photoPermission'));
       return;
     }
     const isWeb = Platform.OS === 'web';
@@ -76,7 +78,7 @@ export default function EditProfileScreen() {
       setAvatarUrl(url);
       setSelectedEmoji('');
     } catch (err) {
-      Alert.alert('アップロード失敗', (err as Error).message);
+      Alert.alert(i('editProfile.uploadFailed'), (err as Error).message);
     } finally {
       setUploadingAvatar(false);
     }
@@ -90,7 +92,7 @@ export default function EditProfileScreen() {
   const handleSave = async () => {
     const trimmed = username.trim();
     if (!trimmed) {
-      Alert.alert('', 'ユーザー名を入力してください');
+      Alert.alert('', i('editProfile.nameRequired'));
       return;
     }
     setSaving(true);
@@ -113,7 +115,7 @@ export default function EditProfileScreen() {
         <TouchableOpacity style={styles.headerBack} onPress={() => router.back()} activeOpacity={0.6}>
           <Text style={[styles.headerBackText, { color: t.brand }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.text }]}>プロフィール編集</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]}>{i('editProfile.title')}</Text>
         <TouchableOpacity
           style={styles.headerSave}
           onPress={handleSave}
@@ -121,7 +123,7 @@ export default function EditProfileScreen() {
           activeOpacity={0.7}
         >
           <Text style={[styles.headerSaveText, { color: saving ? t.textSecondary : t.brand }]}>
-            {saving ? '保存中…' : '保存'}
+            {saving ? i('editProfile.saving') : i('editProfile.save')}
           </Text>
         </TouchableOpacity>
       </View>

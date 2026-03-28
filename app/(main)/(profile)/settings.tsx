@@ -78,10 +78,10 @@ export default function SettingsScreen() {
   const currentLevelLabel = i(`level.${jpLevel}`);
 
   const handleLogout = () => {
-    Alert.alert('ログアウト', '本当にログアウトしますか？', [
-      { text: 'キャンセル', style: 'cancel' },
+    Alert.alert(i('action.logout'), i('settings.logoutConfirm'), [
+      { text: i('action.cancel'), style: 'cancel' },
       {
-        text: 'ログアウト', style: 'destructive', onPress: () => {
+        text: i('action.logout'), style: 'destructive', onPress: () => {
           logout();
           router.replace('/(auth)/login');
         },
@@ -90,15 +90,15 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert('アカウント削除', '本当に削除しますか？この操作は取り消せません。', [
-      { text: 'キャンセル', style: 'cancel' },
+    Alert.alert(i('settings.deleteAccount'), i('settings.deleteConfirm'), [
+      { text: i('action.cancel'), style: 'cancel' },
       {
-        text: '削除', style: 'destructive', onPress: async () => {
+        text: i('settings.delete'), style: 'destructive', onPress: async () => {
           try {
             await deleteAccount();
             router.replace('/(auth)/login');
           } catch {
-            Alert.alert('エラー', '削除に失敗しました。もう一度お試しください。');
+            Alert.alert(i('action.error'), i('settings.deleteFailed'));
           }
         },
       },
