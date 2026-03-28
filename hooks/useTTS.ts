@@ -113,14 +113,11 @@ function ensureAudioContextResumed(): AudioContext {
 
 // ─── 全局停止（供页面 cleanup 使用） ───
 
-/** 停止全局 TTS — 关闭 AudioContext，停止所有 SSE */
+/** 停止全局 TTS — suspend AudioContext（不 close，避免后续无法复用） */
 export function stopAllTTS() {
-  // 关闭 AudioContext → 所有已调度的 source 立即停止
-  if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') {
-    sharedAudioCtx.close().catch(() => {});
-    sharedAudioCtx = null;
+  if (sharedAudioCtx && sharedAudioCtx.state === 'running') {
+    sharedAudioCtx.suspend().catch(() => {});
   }
-  // 停止系统 TTS
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -171,12 +168,6 @@ export function useTTS() {
 
   const schedulePlayback = useCallback((audioCtx: AudioContext, text: string) => {
     if (playingTextRef.current !== text) return;
-
-    // iOS Safari: 等 AudioContext resume
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(() => schedulePlayback(audioCtx, text));
-      return;
-    }
 
     const states = sentenceStatesRef.current;
     const played = playedChunksRef.current;
