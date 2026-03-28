@@ -1,4 +1,4 @@
-import { Tabs, useRouter, useSegments } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Text, View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +33,6 @@ export default function MainLayout() {
   const t = useTheme();
   const { t: i } = useLocale();
   const router = useRouter();
-  const segments = useSegments();
   const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -90,15 +89,7 @@ export default function MainLayout() {
             <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={24} color={color} />
           ),
         }}
-        listeners={{
-          tabPress: (e) => {
-            // 已经在 chat tab 但在子页面 → 回到主页
-            if ((segments as string[])[1] === '(chat)' && segments.length > 2) {
-              e.preventDefault();
-              router.replace('/(main)/(chat)');
-            }
-          },
-        }}
+        listeners={{ tabPress: () => { router.replace('/(main)/(chat)'); } }}
       />
       <Tabs.Screen
         name="(friends)"
@@ -108,14 +99,7 @@ export default function MainLayout() {
             <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color} />
           ),
         }}
-        listeners={{
-          tabPress: (e) => {
-            if ((segments as string[])[1] === '(friends)' && segments.length > 2) {
-              e.preventDefault();
-              router.replace('/(main)/(friends)');
-            }
-          },
-        }}
+        listeners={{ tabPress: () => { router.replace('/(main)/(friends)'); } }}
       />
       <Tabs.Screen
         name="(news)"
@@ -125,14 +109,7 @@ export default function MainLayout() {
             <Ionicons name={focused ? 'newspaper' : 'newspaper-outline'} size={24} color={color} />
           ),
         }}
-        listeners={{
-          tabPress: (e) => {
-            if ((segments as string[])[1] === '(news)' && segments.length > 2) {
-              e.preventDefault();
-              router.replace('/(main)/(news)');
-            }
-          },
-        }}
+        listeners={{ tabPress: () => { router.replace('/(main)/(news)'); } }}
       />
       <Tabs.Screen
         name="(profile)"
@@ -149,14 +126,7 @@ export default function MainLayout() {
             </View>
           ),
         }}
-        listeners={{
-          tabPress: (e) => {
-            if ((segments as string[])[1] === '(profile)' && segments.length > 2) {
-              e.preventDefault();
-              router.replace('/(main)/(profile)');
-            }
-          },
-        }}
+        listeners={{ tabPress: () => { router.replace('/(main)/(profile)'); } }}
       />
     </Tabs>
   );
