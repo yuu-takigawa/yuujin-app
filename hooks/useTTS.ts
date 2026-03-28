@@ -164,6 +164,8 @@ export function useTTS() {
   const abortFnsRef = useRef<Array<() => void>>([]);
   const playingTextRef = useRef<string | null>(null);
   const speakingRef = useRef(false);
+  // 每次 speak 递增，旧回调通过比对 sessionId 快速丢弃
+  const sessionIdRef = useRef(0);
   // 追踪所有已调度的 AudioBufferSourceNode，stop 时全部断开
   const allSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   // 追踪所有 new Audio() 元素，stop 时停止
@@ -178,6 +180,7 @@ export function useTTS() {
   const onFinishRef = useRef<(() => void) | null>(null);
 
   const stop = useCallback(() => {
+    sessionIdRef.current++;  // 让所有旧回调失效
     playingTextRef.current = null;
     speakingRef.current = false;
     // 中止所有 SSE 连接
@@ -210,12 +213,12 @@ export function useTTS() {
    * - 当前句子的 chunk 到达即播放
    * - 当前句子所有 chunk 接收完毕（done=true）后，切到下一句
    */
-  const schedulePlayback = useCallback((audioCtx: AudioContext, text: string) => {
-    if (playingTextRef.current !== text) return;
+  const schedulePlayback = useCallback((audioCtx: AudioContext, text: string, sid: number) => {
+    if (sid !== sessionIdRef.current || playingTextRef.current !== text) return;
 
     // iOS Safari: AudioContext 可能还没 resume，等它 running 再调度
     if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(() => schedulePlayback(audioCtx, text));
+      audioCtx.resume().then(() => schedulePlayback(audioCtx, text, sid));
       return;
     }
 
@@ -233,17 +236,17 @@ export function useTTS() {
         allAudioElemsRef.current.push(audio); // 追踪，stop 时可停
         audio.onended = () => {
           state.done = true;
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
         };
         audio.onerror = () => {
           state.done = true;
           state.error = true;
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
         };
         audio.play().catch(() => {
           state.done = true;
           state.error = true;
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
         });
         break; // 等播放完成
       }
@@ -336,6 +339,7 @@ export function useTTS() {
     const audioCtx = ensureAudioContextResumed();
     playingTextRef.current = text;
     nextTimeRef.current = audioCtx.currentTime;
+    const sid = sessionIdRef.current; // 捕获当前 session，旧回调通过比对丢弃
 
     // 预处理：去掉中文括号翻译、emoji、テキスト表現
     const cleanText = preprocessForTTS(text);
@@ -413,7 +417,7 @@ export function useTTS() {
         voice,
         // onChunk
         (base64) => {
-          if (playingTextRef.current !== text) return;
+          if (sid !== sessionIdRef.current || playingTextRef.current !== text) return;
           const bytes = base64ToBytes(base64);
           if (bytes.length === 0) return;
 
@@ -447,30 +451,33 @@ export function useTTS() {
           state.chunks.push(float32);
 
           // 尝试调度播放（只有当前句子或之前句子的 chunk 会被播放）
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
         },
         // onDone — SSE 流结束
         () => {
+          if (sid !== sessionIdRef.current) return;
           // 缓存句子的 done 由 Audio.onended 设置，这里不设
           if (!states[sentIdx].cachedUrl) {
             states[sentIdx].done = true;
           }
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
           checkAllDone();
         },
         // onError
         (err) => {
+          if (sid !== sessionIdRef.current) return;
           states[sentIdx].error = true;
           states[sentIdx].done = true;
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
           checkAllError();
           checkAllDone();
         },
         // onCachedUrl — 服务端缓存命中，直接拿 URL
         (url) => {
+          if (sid !== sessionIdRef.current) return;
           states[sentIdx].cachedUrl = url;
           // 不设 done=true，让 schedulePlayback 的 Audio.onended 来设
-          schedulePlayback(audioCtx, text);
+          schedulePlayback(audioCtx, text, sid);
         },
       );
       aborts.push(abort);
