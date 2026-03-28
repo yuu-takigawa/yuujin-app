@@ -130,23 +130,10 @@ function getOrCreateAudioContext(): AudioContext {
   return sharedAudioCtx;
 }
 
-/**
- * 必须在用户手势同步栈内调用（iOS Safari 要求）
- * 播放一个静音 buffer 来真正解锁 AudioContext
- */
+/** 必须在用户手势同步栈内调用（iOS Safari 要求） */
 function ensureAudioContextResumed(): AudioContext {
   const ctx = getOrCreateAudioContext();
-  if (ctx.state === 'suspended') {
-    ctx.resume();
-    // iOS Safari 需要在用户手势栈内实际播放一个 buffer 才算解锁
-    try {
-      const silent = ctx.createBuffer(1, 1, ctx.sampleRate);
-      const src = ctx.createBufferSource();
-      src.buffer = silent;
-      src.connect(ctx.destination);
-      src.start();
-    } catch { /* ok */ }
-  }
+  if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 }
 
