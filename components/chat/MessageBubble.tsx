@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Platform, Pressable, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../common/Avatar';
 import BubbleTooltip, { type BubbleAction } from './BubbleTooltip';
 import AnnotationPanel from './AnnotationPanel';
@@ -55,6 +56,7 @@ function MessageBubble({
   const isUser = role === 'user';
   const t = useTheme();
   const { t: i } = useLocale();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const timeStr = formatMessageTime(createdAt);
   const hasAvatar = !!avatarUrl;
@@ -124,15 +126,18 @@ function MessageBubble({
       return;
     }
     const node = bubbleRef.current as any;
-    // Web/PWA: use getBoundingClientRect synchronously (measureInWindow's async
-    // callback has timing issues in PWA standalone mode)
+    // Tooltip needs ~120px above the bubble (header + tooltip height).
+    // In PWA standalone mode, viewport includes the status bar area, so
+    // getBoundingClientRect().top is offset by insets.top compared to browser mode.
+    // Add insets.top to the threshold so the check works in both contexts.
+    const threshold = 120 + insets.top;
     if (Platform.OS === 'web' && node && typeof node.getBoundingClientRect === 'function') {
       const rect = node.getBoundingClientRect();
-      setTooltipPosition(rect.top < 120 ? 'below' : 'above');
+      setTooltipPosition(rect.top < threshold ? 'below' : 'above');
       setTooltipVisible(true);
     } else if (node && typeof node.measureInWindow === 'function') {
       node.measureInWindow((_x: number, y: number) => {
-        setTooltipPosition(y < 120 ? 'below' : 'above');
+        setTooltipPosition(y < threshold ? 'below' : 'above');
         setTooltipVisible(true);
       });
     } else {
