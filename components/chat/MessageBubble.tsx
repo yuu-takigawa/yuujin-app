@@ -124,7 +124,13 @@ function MessageBubble({
       return;
     }
     const node = bubbleRef.current as any;
-    if (node && typeof node.measureInWindow === 'function') {
+    // Web/PWA: use getBoundingClientRect synchronously (measureInWindow's async
+    // callback has timing issues in PWA standalone mode)
+    if (Platform.OS === 'web' && node && typeof node.getBoundingClientRect === 'function') {
+      const rect = node.getBoundingClientRect();
+      setTooltipPosition(rect.top < 120 ? 'below' : 'above');
+      setTooltipVisible(true);
+    } else if (node && typeof node.measureInWindow === 'function') {
       node.measureInWindow((_x: number, y: number) => {
         setTooltipPosition(y < 120 ? 'below' : 'above');
         setTooltipVisible(true);
