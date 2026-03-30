@@ -126,11 +126,12 @@ function MessageBubble({
       return;
     }
     const node = bubbleRef.current as any;
-    // Tooltip needs ~120px above the bubble (header + tooltip height).
-    // In PWA standalone mode, viewport includes the status bar area, so
-    // getBoundingClientRect().top is offset by insets.top compared to browser mode.
-    // Add insets.top to the threshold so the check works in both contexts.
-    const threshold = 120 + insets.top;
+    // Tooltip needs ~70px above the bubble. The visible top boundary varies:
+    // - Browser: below header (~56px from viewport top)
+    // - PWA standalone: insets.top + header (~103px, viewport includes status bar)
+    // getBoundingClientRect().top includes the safe area offset in PWA, so add
+    // insets.top to normalize the threshold across both environments.
+    const threshold = 80 + insets.top;
     if (Platform.OS === 'web' && node && typeof node.getBoundingClientRect === 'function') {
       const rect = node.getBoundingClientRect();
       setTooltipPosition(rect.top < threshold ? 'below' : 'above');
@@ -228,6 +229,18 @@ function MessageBubble({
           ]}
         >
           {renderContent()}
+          {/* Tooltip - inside bubble so above/below positioning is relative to bubble, not bubbleWrap */}
+          {tooltipVisible && (
+            <BubbleTooltip
+              visible={tooltipVisible}
+              content={content}
+              role={role}
+              voice={voice}
+              position={tooltipPosition}
+              onClose={() => setTooltipVisible(false)}
+              onAction={handleAction}
+            />
+          )}
         </View>
         {timeStr ? (
           <Text
@@ -247,19 +260,6 @@ function MessageBubble({
             content={content}
             type={annotation.type}
             onClose={() => setAnnotation(null)}
-          />
-        )}
-
-        {/* Tooltip - floats above or below the bubble based on position */}
-        {tooltipVisible && (
-          <BubbleTooltip
-            visible={tooltipVisible}
-            content={content}
-            role={role}
-            voice={voice}
-            position={tooltipPosition}
-            onClose={() => setTooltipVisible(false)}
-            onAction={handleAction}
           />
         )}
 
