@@ -87,6 +87,71 @@ export async function del<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+/** STT: 语音转文字，上传音频文件到 /voice/transcribe */
+export async function transcribeAudio(
+  uri: string,
+  mimeType: string,
+  language = 'ja',
+): Promise<{ text: string; language?: string; confidence?: number }> {
+  const formData = new FormData();
+  // React Native / Web 兼容的 FormData append
+  formData.append('file', {
+    uri,
+    type: mimeType,
+    name: `recording.${mimeType.split('/')[1] || 'wav'}`,
+  } as any);
+  formData.append('language', language);
+
+  const res = await fetch(`${API_BASE_URL}/voice/transcribe`, {
+    method: 'POST',
+    headers: {
+      ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
+      // 不设 Content-Type，让浏览器/RN 自动设 multipart boundary
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 && _onUnauthorized) _onUnauthorized();
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Transcription failed');
+  return json.data;
+}
+
+/** STT (Web): 直接传 Blob 到 /voice/transcribe */
+export async function transcribeAudioBlob(
+  blob: Blob,
+  mimeType: string,
+  filename: string,
+  language = 'ja',
+): Promise<{ text: string; language?: string; confidence?: number }> {
+  const formData = new FormData();
+  formData.append('file', blob, filename);
+  formData.append('language', language);
+
+  const res = await fetch(`${API_BASE_URL}/voice/transcribe`, {
+    method: 'POST',
+    headers: {
+      ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 && _onUnauthorized) _onUnauthorized();
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Transcription failed');
+  return json.data;
+}
+
 /** TTS: 文字转语音，返回音频 URL（非流式，用于缓存命中时） */
 export async function tts(text: string, voice?: string): Promise<string> {
   const result = await post<{ url: string; cached: boolean }>('/voice/tts', { text, voice });

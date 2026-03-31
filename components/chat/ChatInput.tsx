@@ -16,8 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
+import { useCreditStore } from '../../stores/creditStore';
 import * as ImagePicker from 'expo-image-picker';
-// Voice recorder removed — users can use system keyboard voice input
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -38,6 +39,32 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
   const [text, setText] = useState('');
   const [expandOpen, setExpandOpen] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+
+  // Voice input (Pro/Max/Admin only, 5pt/次)
+  const membership = useCreditStore((s) => s.membership);
+  const canUseVoice = membership === 'pro' || membership === 'max' || membership === 'admin';
+  const { isRecording, isTranscribing, toggleRecording } = useVoiceInput({
+    language: 'ja',
+    onResult: (transcribedText) => {
+      setText((prev) => prev ? `${prev} ${transcribedText}` : transcribedText);
+      useCreditStore.getState().loadCredits(); // 刷新积分显示
+    },
+    onError: (code) => {
+      const msgMap: Record<string, string> = {
+        mic_permission: i('chat.micPermission'),
+        empty_result: i('chat.voiceEmpty'),
+      };
+      Alert.alert(msgMap[code] || i('chat.voiceError'));
+    },
+  });
+
+  const handleMicPress = () => {
+    if (!canUseVoice) {
+      Alert.alert(i('chat.voiceProOnly'));
+      return;
+    }
+    toggleRecording();
+  };
 
   // AI suggest text: 当 suggestedText 变化时填入输入框
   useEffect(() => {
@@ -105,31 +132,60 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           </Animated.Text>
         </TouchableOpacity>
 
-        {/* Input field */}
-        <View style={[
-          styles.inputWrap,
-          { borderColor: hasText ? t.brand : t.border },
-        ]}>
-          <TextInput
-            style={[styles.input, { color: t.text }]}
-            placeholder={characterName ? i('chat.placeholder').replace('{name}', characterName) : i('chat.placeholderDefault')}
-            placeholderTextColor={t.textSecondary}
-            value={text}
-            onChangeText={setText}
-            maxLength={1000}
-            editable={!disabled}
-            onSubmitEditing={Platform.OS === 'web' ? handleSend : undefined}
-            blurOnSubmit={Platform.OS === 'web'}
-          />
+        {/* Input field — 录音时整个区域变成停止按钮 */}
+        {isRecording || isTranscribing ? (
           <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: canSend ? t.brand : t.brandLight }]}
-            onPress={handleSend}
-            disabled={!canSend}
-            activeOpacity={0.7}
+            style={[styles.inputWrap, { borderColor: '#EF4444', justifyContent: 'center' }]}
+            onPress={handleMicPress}
+            disabled={isTranscribing}
+            activeOpacity={0.6}
           >
-            <Ionicons name="arrow-up" size={14} color={canSend ? '#FFFFFF' : t.textSecondary} />
+            {isTranscribing ? (
+              <ActivityIndicator size={16} color={t.brand} />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#EF4444' }} />
+                <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '500' }}>{i('chat.listening')}</Text>
+              </View>
+            )}
           </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={[
+            styles.inputWrap,
+            { borderColor: hasText ? t.brand : t.border },
+          ]}>
+            <TextInput
+              style={[styles.input, { color: t.text }]}
+              placeholder={characterName ? i('chat.placeholder').replace('{name}', characterName) : i('chat.placeholderDefault')}
+              placeholderTextColor={t.textSecondary}
+              value={text}
+              onChangeText={setText}
+              maxLength={1000}
+              editable={!disabled}
+              onSubmitEditing={Platform.OS === 'web' ? handleSend : undefined}
+              blurOnSubmit={Platform.OS === 'web'}
+            />
+            {hasText ? (
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: canSend ? t.brand : t.brandLight }]}
+                onPress={handleSend}
+                disabled={!canSend}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-up" size={14} color={canSend ? '#FFFFFF' : t.textSecondary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.micBtn}
+                onPress={handleMicPress}
+                disabled={disabled}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="mic-outline" size={16} color={t.brand} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* AI assist button */}
         <TouchableOpacity
@@ -198,6 +254,7 @@ export default function ChatInput({ onSend, disabled, onTopicDraw, onNewsPicker,
           <Text style={[styles.expandLabel, { color: t.text }]}>{i('panel.news')}</Text>
         </TouchableOpacity>
       </Animated.View>}
+
     </ReAnimated.View>
   );
 }
