@@ -125,12 +125,6 @@ export const USE_REAL_API = true;   // Connect to yuujin-server
 export const USE_REAL_API = false;  // Use mock data (no backend needed)
 ```
 
-### Web Deployment
-
-```bash
-bash deploy-web.sh
-```
-
 ## License
 
 MIT
