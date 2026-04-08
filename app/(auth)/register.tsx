@@ -66,7 +66,9 @@ export default function RegisterScreen() {
       router.replace('/');
     } catch (err: any) {
       const msg = err?.message || '';
-      if (msg.includes('招待コード') || msg.includes('invite')) {
+      if (msg.includes('利用枠') || msg.includes('quota')) {
+        setError(i('auth.inviteCodeFull'));
+      } else if (msg.includes('招待コード') || msg.includes('invite')) {
         setError(i('auth.inviteCodeInvalid'));
       } else {
         setError(i('auth.registerFailed'));
