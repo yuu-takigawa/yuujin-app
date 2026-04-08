@@ -69,6 +69,7 @@ export default function MembershipScreen() {
   const upgradePlan = useCreditStore((s) => s.upgradePlan);
   const isUpgrading = useCreditStore((s) => s.isUpgrading);
 
+  const invited = useCreditStore((s) => s.invited);
   const isAdmin = membership === 'admin';
   const currentTierOrder = TIER_ORDER[membership] ?? 0;
 
@@ -226,6 +227,10 @@ export default function MembershipScreen() {
               ) : plan.tier === 'max' ? (
                 <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
                   <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.comingSoon')}</Text>
+                </View>
+              ) : !invited ? (
+                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
+                  <Text style={[styles.ctaBtnText, { color: t.textSecondary, fontSize: 13 }]}>{i('membership.inviteRequired')}</Text>
                 </View>
               ) : (
                 <TouchableOpacity

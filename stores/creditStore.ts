@@ -10,6 +10,7 @@ interface CreditState {
   credits: number;
   dailyCredits: number;
   membership: string;
+  invited: boolean;
   models: AiModel[];
   selectedModelId: string | null;
   isLoaded: boolean;
@@ -27,6 +28,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   credits: 0,
   dailyCredits: 100,
   membership: 'free',
+  invited: false,
   models: [],
   selectedModelId: null,
   isLoaded: false,
@@ -39,6 +41,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
         credits: info.credits,
         dailyCredits: info.dailyCredits,
         membership: info.membership,
+        invited: info.invited,
       });
     } catch {
       // silently fail - will use defaults

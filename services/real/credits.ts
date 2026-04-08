@@ -4,6 +4,7 @@ export interface CreditsInfo {
   credits: number;
   dailyCredits: number;
   membership: string;
+  invited: boolean;
   creditsResetAt: string;
 }
 

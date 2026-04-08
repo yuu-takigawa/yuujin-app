@@ -61,12 +61,8 @@ export default function RegisterScreen() {
       setError(i('auth.passwordMismatch'));
       return;
     }
-    if (!inviteCode.trim()) {
-      setError(i('auth.inviteCodeRequired'));
-      return;
-    }
     try {
-      await register(email.trim(), password, username.trim(), code.trim(), inviteCode.trim());
+      await register(email.trim(), password, username.trim(), code.trim(), inviteCode.trim() || undefined);
       router.replace('/');
     } catch (err: any) {
       const msg = err?.message || '';
@@ -128,7 +124,7 @@ export default function RegisterScreen() {
           />
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder={i('auth.inviteCode')}
+            placeholder={i('auth.inviteCodeOptional')}
             placeholderTextColor={t.textSecondary}
             value={inviteCode}
             onChangeText={(v) => { setInviteCode(v); setError(''); }}
