@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CreditsInfo, AiModel } from '../services/api';
-import { getCredits, getModels, updateProfile, upgradeSubscription } from '../services/api';
+import { getCredits, getModels, updateProfile, upgradeSubscription, redeemCode as apiRedeemCode } from '../services/api';
 import { useAuthStore } from './authStore';
 
 const AUTH_STORAGE_KEY = 'yuujin_auth';
@@ -22,6 +22,7 @@ interface CreditState {
   setDefaultModel: (modelId: string) => Promise<void>;
   updateCredits: (credits: number) => void;
   upgradePlan: (tier: 'pro' | 'max') => Promise<void>;
+  redeemCode: (code: string) => Promise<void>;
 }
 
 export const useCreditStore = create<CreditState>((set, get) => ({
@@ -116,5 +117,12 @@ export const useCreditStore = create<CreditState>((set, get) => ({
     } finally {
       set({ isUpgrading: false });
     }
+  },
+
+  redeemCode: async (code) => {
+    await apiRedeemCode(code);
+    // Refresh credits & models after redemption
+    await get().loadCredits();
+    await get().loadModels();
   },
 }));

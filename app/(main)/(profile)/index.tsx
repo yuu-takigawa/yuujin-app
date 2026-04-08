@@ -8,6 +8,7 @@ import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
 import { useLocale } from '../../../hooks/useLocale';
 import ModelSelectorModal from '../../../components/chat/ModelSelectorModal';
+import RedeemCodeModal from '../../../components/profile/RedeemCodeModal';
 
 type Tier = 'free' | 'pro' | 'max' | 'admin';
 
@@ -61,6 +62,7 @@ export default function ProfileScreen() {
   const selectedModelId = useCreditStore((s) => s.selectedModelId);
   const loadModels = useCreditStore((s) => s.loadModels);
   const [modelModalVisible, setModelModalVisible] = useState(false);
+  const [redeemModalVisible, setRedeemModalVisible] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -104,6 +106,12 @@ export default function ProfileScreen() {
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const menuItems = [
+    {
+      icon: 'gift-outline' as const,
+      label: i('redeem.menuTitle'),
+      iconColor: '#10B981',
+      onPress: () => setRedeemModalVisible(true),
+    },
     {
       icon: 'trophy-outline' as const,
       label: i('profile.membershipPlan'),
@@ -369,6 +377,7 @@ export default function ProfileScreen() {
       </ScrollView>
 
       <ModelSelectorModal visible={modelModalVisible} onClose={() => setModelModalVisible(false)} />
+      <RedeemCodeModal visible={redeemModalVisible} onClose={() => setRedeemModalVisible(false)} />
     </View>
   );
 }

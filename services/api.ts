@@ -66,6 +66,10 @@ export type { CreditsInfo, AiModel } from './real/credits';
 // ─── Subscriptions ───
 export { upgradeSubscription } from './real/subscription';
 
+// ─── Redeem ───
+export { redeemCode } from './real/redeem';
+export type { RedeemResult } from './real/redeem';
+
 // ─── Push Notifications ───
 export { registerPushToken, unregisterPushToken } from './real/push';
 

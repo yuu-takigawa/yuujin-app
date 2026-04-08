@@ -66,10 +66,10 @@ export default function RegisterScreen() {
       router.replace('/');
     } catch (err: any) {
       const msg = err?.message || '';
-      if (msg.includes('利用枠') || msg.includes('quota')) {
-        setError(i('auth.inviteCodeFull'));
-      } else if (msg.includes('招待コード') || msg.includes('invite')) {
-        setError(i('auth.inviteCodeInvalid'));
+      if (msg.includes('利用枠') || msg.includes('上限') || msg.includes('quota')) {
+        setError(i('auth.redeemCodeFull'));
+      } else if (msg.includes('兑換') || msg.includes('redeem') || msg.includes('招待コード') || msg.includes('invite')) {
+        setError(i('auth.redeemCodeInvalid'));
       } else {
         setError(i('auth.registerFailed'));
       }
@@ -126,7 +126,7 @@ export default function RegisterScreen() {
           />
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder={i('auth.inviteCodeOptional')}
+            placeholder={i('auth.redeemCodeOptional')}
             placeholderTextColor={t.textSecondary}
             value={inviteCode}
             onChangeText={(v) => { setInviteCode(v); setError(''); }}
