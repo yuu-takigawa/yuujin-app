@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,37 +7,68 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Pressable,
+  Animated,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import { useCreditStore } from '../../stores/creditStore';
-import { radii, spacing, fontSize } from '../../constants/theme';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
 }
 
+function rewardText(reward: Record<string, unknown>, i: (key: string) => string): string {
+  const parts: string[] = [];
+  if (reward.invited === true) {
+    parts.push(i('redeem.rewardInvited'));
+  }
+  if (typeof reward.credits === 'number' && reward.credits > 0) {
+    parts.push(i('redeem.rewardCredits').replace('{n}', String(reward.credits)));
+  }
+  if (typeof reward.membership === 'string') {
+    parts.push(i('redeem.rewardMembership').replace('{tier}', reward.membership.toUpperCase()));
+  }
+  return parts.join('\n');
+}
+
 export default function RedeemCodeModal({ visible, onClose }: Props) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [reward, setReward] = useState<Record<string, unknown> | null>(null);
   const redeemCode = useCreditStore((s) => s.redeemCode);
+  const loadCredits = useCreditStore((s) => s.loadCredits);
   const t = useTheme();
   const { t: i } = useLocale();
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+
+  useEffect(() => {
+    if (visible) {
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.85);
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, damping: 18, stiffness: 300, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
   const handleRedeem = async () => {
-    if (!code.trim()) return;
+    if (!code.trim()) {
+      setError(i('redeem.invalid'));
+      return;
+    }
     setError('');
-    setSuccess('');
     setLoading(true);
     try {
-      await redeemCode(code.trim());
-      setSuccess(i('redeem.success'));
+      const result = await redeemCode(code.trim());
+      setReward(result);
       setCode('');
     } catch (err: any) {
       const msg = err?.message || '';
@@ -56,115 +87,164 @@ export default function RedeemCodeModal({ visible, onClose }: Props) {
   };
 
   const handleClose = () => {
+    const hadReward = !!reward;
     setCode('');
     setError('');
-    setSuccess('');
+    setReward(null);
     onClose();
+    if (hadReward) {
+      loadCredits();
+    }
   };
 
+  const isSuccess = !!reward;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
-        <View style={[styles.container, { backgroundColor: t.surface }]}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: t.text }]}>{i('redeem.title')}</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={22} color={t.textSecondary} />
-            </TouchableOpacity>
-          </View>
+    <Modal visible={visible} transparent statusBarTranslucent onRequestClose={handleClose}>
+      <View style={styles.root}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={isSuccess ? undefined : handleClose} />
+        </Animated.View>
+        <Animated.View
+          style={[
+            styles.card,
+            { backgroundColor: t.surface, transform: [{ scale: scaleAnim }], opacity: fadeAnim },
+          ]}
+        >
+          {isSuccess ? (
+            <>
+              <Ionicons name="checkmark-circle" size={48} color={t.brand} style={{ marginBottom: 12 }} />
+              <Text style={[styles.title, { color: t.text }]}>{i('redeem.success')}</Text>
+              <Text style={[styles.message, { color: t.textSecondary }]}>
+                {rewardText(reward!, i)}
+              </Text>
+              <View style={[styles.buttons, { marginTop: 12 }]}>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: t.brand }]}
+                  onPress={handleClose}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>{i('redeem.close')}</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.title, { color: t.text }]}>{i('redeem.title')}</Text>
+              <Text style={[styles.message, { color: t.textSecondary }]}>{i('redeem.placeholder')}</Text>
 
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder={i('redeem.placeholder')}
-            placeholderTextColor={t.textSecondary}
-            value={code}
-            onChangeText={(v) => { setCode(v); setError(''); setSuccess(''); }}
-            autoCapitalize="characters"
-            autoCorrect={false}
-          />
+              <TextInput
+                style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
+                placeholderTextColor={t.textSecondary}
+                value={code}
+                onChangeText={(v) => { setCode(v); setError(''); }}
+                maxLength={30}
+                autoCapitalize="none"
+                multiline
+                numberOfLines={1}
+                blurOnSubmit
+              />
 
-          {error ? (
-            <Text style={[styles.msg, { color: t.error || '#E53935' }]}>{error}</Text>
-          ) : null}
-          {success ? (
-            <Text style={[styles.msg, { color: '#10B981' }]}>{success}</Text>
-          ) : null}
+              {error ? (
+                <Text style={[styles.feedback, { color: t.error || '#E53935' }]}>{error}</Text>
+              ) : null}
 
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: t.brand }, (!code.trim() || loading) && styles.btnDisabled]}
-            onPress={handleRedeem}
-            disabled={!code.trim() || loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.btnText}>{i('redeem.btn')}</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+              <View style={styles.buttons}>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: t.inputBg || t.background }]}
+                  onPress={handleClose}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.buttonText, { color: t.textSecondary }]}>{i('redeem.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: t.brand }, loading && styles.buttonDisabled]}
+                  onPress={handleRedeem}
+                  disabled={loading}
+                  activeOpacity={0.7}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>{i('redeem.btn')}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  root: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backdrop: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' } as any : {}),
   },
-  container: {
-    width: '85%',
-    maxWidth: 360,
-    borderRadius: radii.lg,
-    padding: spacing.xl,
-    gap: spacing.md,
+  card: {
+    width: '80%',
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 24,
-    elevation: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    elevation: 12,
   },
   title: {
-    fontSize: fontSize.subtitle,
+    fontSize: 17,
     fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
   },
   input: {
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
+    width: '100%',
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: fontSize.body,
+    fontSize: 15,
     letterSpacing: 1,
-  },
-  msg: {
-    fontSize: fontSize.caption,
     textAlign: 'center',
   },
-  btn: {
-    borderRadius: radii.lg,
-    paddingVertical: 14,
+  feedback: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  buttons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    width: '100%',
+  },
+  button: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  btnDisabled: {
-    opacity: 0.5,
+  buttonDisabled: {
+    opacity: 0.4,
   },
-  btnText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.body,
+  buttonText: {
+    fontSize: 15,
     fontWeight: '600',
   },
 });

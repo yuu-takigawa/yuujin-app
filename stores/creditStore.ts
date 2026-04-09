@@ -22,7 +22,7 @@ interface CreditState {
   setDefaultModel: (modelId: string) => Promise<void>;
   updateCredits: (credits: number) => void;
   upgradePlan: (tier: 'pro' | 'max') => Promise<void>;
-  redeemCode: (code: string) => Promise<void>;
+  redeemCode: (code: string) => Promise<Record<string, unknown>>;
 }
 
 export const useCreditStore = create<CreditState>((set, get) => ({
@@ -120,9 +120,10 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   },
 
   redeemCode: async (code) => {
-    await apiRedeemCode(code);
+    const result = await apiRedeemCode(code);
     // Refresh credits & models after redemption
     await get().loadCredits();
     await get().loadModels();
+    return result.reward;
   },
 }));

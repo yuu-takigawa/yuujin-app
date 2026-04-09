@@ -109,7 +109,7 @@ export default function ProfileScreen() {
     {
       icon: 'gift-outline' as const,
       label: i('redeem.menuTitle'),
-      iconColor: '#10B981',
+      iconColor: t.brand,
       onPress: () => setRedeemModalVisible(true),
     },
     {
