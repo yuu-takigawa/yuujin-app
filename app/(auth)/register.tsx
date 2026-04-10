@@ -19,7 +19,6 @@ import PasswordInput from '../../components/auth/PasswordInput';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
@@ -32,10 +31,6 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setError('');
-    if (!username.trim()) {
-      setError(i('auth.usernameRequired'));
-      return;
-    }
     if (!email.trim()) {
       setError(i('auth.emailRequired'));
       return;
@@ -61,7 +56,7 @@ export default function RegisterScreen() {
       return;
     }
     try {
-      await register(email.trim(), password, username.trim(), code.trim());
+      await register(email.trim(), password, code.trim());
       router.replace('/');
     } catch {
       setError(i('auth.registerFailed'));
@@ -81,13 +76,6 @@ export default function RegisterScreen() {
         <Text style={[styles.title, { color: t.text }]}>{i('auth.register')}</Text>
 
         <View style={styles.form}>
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder={i('auth.username')}
-            placeholderTextColor={t.textSecondary}
-            value={username}
-            onChangeText={(v) => { setUsername(v); setError(''); }}
-          />
           <TextInput
             style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
             placeholder={i('auth.email')}
