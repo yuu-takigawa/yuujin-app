@@ -23,13 +23,12 @@ interface Props {
 
 function rewardText(reward: Record<string, unknown>, i: (key: string) => string): string {
   const parts: string[] = [];
-  if (reward.invited === true) {
-    parts.push(i('redeem.rewardInvited'));
-  }
   if (typeof reward.credits === 'number' && reward.credits > 0) {
     parts.push(i('redeem.rewardCredits').replace('{n}', String(reward.credits)));
   }
-  if (typeof reward.membership === 'string') {
+  if (typeof reward.membership_days === 'number' && typeof reward.membership_tier === 'string') {
+    parts.push(i('redeem.rewardMembershipDays').replace('{tier}', reward.membership_tier.toUpperCase()).replace('{days}', String(reward.membership_days)));
+  } else if (typeof reward.membership === 'string') {
     parts.push(i('redeem.rewardMembership').replace('{tier}', reward.membership.toUpperCase()));
   }
   return parts.join('\n');
