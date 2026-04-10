@@ -139,7 +139,7 @@ export default function MembershipScreen() {
             </Text>
             {membershipExpiresAt && (
               <Text style={[styles.creditsText, { color: t.brand }]}>
-                {new Date(membershipExpiresAt).toLocaleDateString('ja-JP')} まで
+                {i('membership.expiresAt').replace('{date}', new Date(membershipExpiresAt).toLocaleDateString())}
               </Text>
             )}
           </View>
