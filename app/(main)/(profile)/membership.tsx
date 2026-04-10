@@ -40,7 +40,7 @@ const PLANS: Plan[] = [
     dailyCredits: '500pt',
     color: '#3B82F6',
     featureKeys: ['membership.feat.pro1', 'membership.feat.pro2', 'membership.feat.tts', 'membership.feat.pro3', 'membership.feat.pro4'],
-    models: ['\u901a\u7fa9 Flash \u30ad\u30e3\u30e9', 'DeepSeek V3', '\u901a\u7fa9 Plus \u30ad\u30e3\u30e9', '\u901a\u7fa9\u5343\u554f Plus'],
+    models: ['membership.model.qwenFlash', 'membership.model.deepseek', 'membership.model.qwenPlus', 'membership.model.qianwenPlus'],
   },
   {
     tier: 'free',
@@ -50,7 +50,7 @@ const PLANS: Plan[] = [
     dailyCredits: '100pt',
     color: '#9CA3AF',
     featureKeys: ['membership.feat.free1', 'membership.feat.free2', 'membership.feat.free3', 'membership.feat.free4'],
-    models: ['ERNIE Speed', 'ERNIE Lite'],
+    models: ['membership.model.ernieSpeed', 'membership.model.ernieLite'],
   },
 ];
 
@@ -211,7 +211,7 @@ export default function MembershipScreen() {
                   <Text style={[styles.modelItem, { color: t.text }]}>{'\u00b7'} {i('membership.allModels')}</Text>
                 ) : (
                   plan.models.map((m, idx) => (
-                    <Text key={idx} style={[styles.modelItem, { color: t.text }]}>{'\u00b7'} {m}</Text>
+                    <Text key={idx} style={[styles.modelItem, { color: t.text }]}>{'\u00b7'} {i(m)}</Text>
                   ))
                 )}
               </View>
