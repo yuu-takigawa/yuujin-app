@@ -6,6 +6,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useLocale } from '../../hooks/useLocale';
 import { useEffect, useState } from 'react';
 import { getUnreadCount, registerPushToken } from '../../services/api';
+import { useAuthStore } from '../../stores/authStore';
 
 async function registerForPushNotifications() {
   if (Platform.OS === 'web') return;
@@ -35,6 +36,14 @@ export default function MainLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
+  const token = useAuthStore((s) => s.token);
+
+  // Auto-redirect to login when token is cleared (logout / 401)
+  useEffect(() => {
+    if (token === null) {
+      router.replace('/(auth)/login');
+    }
+  }, [token]);
 
   useEffect(() => {
     const fetch = () => getUnreadCount().then(setUnreadCount).catch(() => {});
