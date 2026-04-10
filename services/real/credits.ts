@@ -6,6 +6,7 @@ export interface CreditsInfo {
   membership: string;
   invited: boolean;
   creditsResetAt: string;
+  membershipExpiresAt: string | null;
 }
 
 export interface AiModel {

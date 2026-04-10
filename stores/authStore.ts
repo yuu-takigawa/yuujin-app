@@ -12,7 +12,7 @@ interface AuthState {
   isLoading: boolean;
   isRestoring: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username: string, code: string, inviteCode?: string) => Promise<void>;
+  register: (email: string, password: string, username: string, code: string) => Promise<void>;
   logout: () => void;
   deleteAccount: () => Promise<void>;
   completeOnboarding: () => void;
@@ -55,10 +55,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  register: async (email, password, username, code, inviteCode) => {
+  register: async (email, password, username, code) => {
     set({ isLoading: true });
     try {
-      const res = await apiRegister(email, password, username, code, inviteCode);
+      const res = await apiRegister(email, password, username, code);
       set({ token: res.token, user: res.user, isLoading: false });
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: res.token, user: res.user }));
     } catch {

@@ -1,11 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreditStore } from '../../../stores/creditStore';
 import { useTheme } from '../../../hooks/useTheme';
 import { useLocale } from '../../../hooks/useLocale';
-import { ActivityIndicator } from 'react-native';
 
 type Tier = 'free' | 'pro' | 'max' | 'admin';
 
@@ -40,7 +39,6 @@ const PLANS: Plan[] = [
     priceNoteKey: 'membership.perMonth',
     dailyCredits: '500pt',
     color: '#3B82F6',
-    badgeTextKey: 'membership.freeCampaign',
     featureKeys: ['membership.feat.pro1', 'membership.feat.pro2', 'membership.feat.tts', 'membership.feat.pro3', 'membership.feat.pro4'],
     models: ['\u901a\u7fa9 Flash \u30ad\u30e3\u30e9', 'DeepSeek V3', '\u901a\u7fa9 Plus \u30ad\u30e3\u30e9', '\u901a\u7fa9\u5343\u554f Plus'],
   },
@@ -66,10 +64,8 @@ export default function MembershipScreen() {
   const membership = useCreditStore((s) => s.membership) as Tier;
   const credits = useCreditStore((s) => s.credits);
   const dailyCredits = useCreditStore((s) => s.dailyCredits);
-  const upgradePlan = useCreditStore((s) => s.upgradePlan);
-  const isUpgrading = useCreditStore((s) => s.isUpgrading);
-
   const invited = useCreditStore((s) => s.invited);
+  const membershipExpiresAt = useCreditStore((s) => s.membershipExpiresAt);
   const isAdmin = membership === 'admin';
   const currentTierOrder = TIER_ORDER[membership] ?? 0;
 
@@ -141,6 +137,11 @@ export default function MembershipScreen() {
             <Text style={[styles.creditsText, { color: t.textSecondary }]}>
               {i('membership.remainPt')} {credits} pt / {dailyCredits} pt
             </Text>
+            {membershipExpiresAt && (
+              <Text style={[styles.creditsText, { color: t.brand }]}>
+                {new Date(membershipExpiresAt).toLocaleDateString('ja-JP')} まで
+              </Text>
+            )}
           </View>
         )}
 
@@ -224,34 +225,10 @@ export default function MembershipScreen() {
                 null
               ) : !isUpgrade ? (
                 null
-              ) : plan.tier === 'max' ? (
-                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
-                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.comingSoon')}</Text>
-                </View>
-              ) : !invited ? (
-                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
-                  <Text style={[styles.ctaBtnText, { color: t.textSecondary, fontSize: 13 }]}>{i('membership.inviteRequired')}</Text>
-                </View>
               ) : (
-                <TouchableOpacity
-                  style={[styles.ctaBtn, { backgroundColor: isUpgrading ? plan.color + '88' : plan.color }]}
-                  activeOpacity={0.8}
-                  disabled={isUpgrading}
-                  onPress={async () => {
-                    try {
-                      await upgradePlan(plan.tier as 'pro' | 'max');
-                      Alert.alert('\ud83c\udf89', i('membership.upgradeSuccess').replace('{name}', plan.name));
-                    } catch {
-                      Alert.alert('\u26a0\ufe0f', i('membership.upgradeFailed'));
-                    }
-                  }}
-                >
-                  {isUpgrading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.ctaBtnText}>{i('membership.upgrade')}</Text>
-                  )}
-                </TouchableOpacity>
+                <View style={[styles.ctaBtn, { backgroundColor: t.inputBg }]}>
+                  <Text style={[styles.ctaBtnText, { color: t.textSecondary }]}>{i('membership.purchase')}</Text>
+                </View>
               )}
             </View>
           );

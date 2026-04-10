@@ -23,7 +23,6 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const register = useAuthStore((s) => s.register);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -62,17 +61,10 @@ export default function RegisterScreen() {
       return;
     }
     try {
-      await register(email.trim(), password, username.trim(), code.trim(), inviteCode.trim() || undefined);
+      await register(email.trim(), password, username.trim(), code.trim());
       router.replace('/');
-    } catch (err: any) {
-      const msg = err?.message || '';
-      if (msg.includes('利用枠') || msg.includes('上限') || msg.includes('quota')) {
-        setError(i('auth.redeemCodeFull'));
-      } else if (msg.includes('兑換') || msg.includes('redeem') || msg.includes('招待コード') || msg.includes('invite')) {
-        setError(i('auth.redeemCodeInvalid'));
-      } else {
-        setError(i('auth.registerFailed'));
-      }
+    } catch {
+      setError(i('auth.registerFailed'));
     }
   };
 
@@ -123,14 +115,6 @@ export default function RegisterScreen() {
             placeholder={i('auth.confirmPassword')}
             value={confirmPassword}
             onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
-          />
-          <TextInput
-            style={[styles.input, { backgroundColor: t.inputBg, color: t.text }]}
-            placeholder={i('auth.redeemCodeOptional')}
-            placeholderTextColor={t.textSecondary}
-            value={inviteCode}
-            onChangeText={(v) => { setInviteCode(v); setError(''); }}
-            autoCapitalize="none"
           />
           {error ? (
             <Text style={[styles.errorText, { color: t.error || '#E53935' }]}>{error}</Text>

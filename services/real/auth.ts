@@ -61,8 +61,8 @@ export async function login(email: string, password: string): Promise<AuthRespon
   }
 }
 
-export async function register(email: string, password: string, username: string, code: string, inviteCode?: string): Promise<AuthResponse> {
-  const result = await post<ServerAuthResult>('/auth/register', { email, password, name: username, code, inviteCode });
+export async function register(email: string, password: string, username: string, code: string): Promise<AuthResponse> {
+  const result = await post<ServerAuthResult>('/auth/register', { email, password, name: username, code });
   setTokens(result.token, result.refreshToken);
   return { token: result.token, user: mapUser(result.user, true) };
 }
