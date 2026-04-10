@@ -137,9 +137,11 @@ export default function MembershipScreen() {
             <Text style={[styles.creditsText, { color: t.textSecondary }]}>
               {i('membership.remainPt')} {credits} pt / {dailyCredits} pt
             </Text>
-            {membershipExpiresAt && (
+            {membership !== 'free' && (
               <Text style={[styles.creditsText, { color: t.brand }]}>
-                {i('membership.expiresAt').replace('{date}', new Date(membershipExpiresAt).toLocaleDateString())}
+                {membershipExpiresAt
+                  ? i('membership.expiresAt').replace('{date}', new Date(membershipExpiresAt).toLocaleDateString())
+                  : i('membership.permanent')}
               </Text>
             )}
           </View>
